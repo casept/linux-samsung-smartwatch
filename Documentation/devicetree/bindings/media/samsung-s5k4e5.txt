@@ -1,0 +1,45 @@
+* Samsung S5K4E5 Raw Image Sensor
+
+S5K4E5 is a raw image sensor with maximum resolution of 2560x1920
+pixels. Data transfer is carried out via MIPI CSI-2 port and controls
+via I2C bus.
+
+Required Properties:
+- compatible	: should contain "samsung,s5k4e5"
+- reg		: I2C device address
+- reset-gpios	: specifier of a GPIO connected to the RESET pin
+- clocks	: should refer to the clock named in clock-names, from
+		  the common clock bindings
+- clock-names	: should contain "extclk" entry
+- svdda-supply	: core voltage supply
+- svddio-supply	: I/O voltage supply
+
+Optional Properties:
+- clock-frequency : the frequency at which the "extclk" clock should be
+		    configured to operate, in Hz; if this property is not
+		    specified default 24 MHz value will be used
+
+The device node should be added to respective control bus controller
+(e.g. I2C0) nodes and linked to the csis port node, using the common
+video interfaces bindings, defined in video-interfaces.txt.
+
+Example:
+
+	i2c-isp@13130000 {
+		s5k4e5@20 {
+			compatible = "samsung,s5k4e5";
+			reg = <0x20>;
+			reset-gpios = <&gpx1 2 1>;
+			clock-frequency = <24000000>;
+			clocks = <&clock 129>;
+			clock-names = "extclk"
+			svdda-supply = <...>;
+			svddio-supply = <...>;
+			port {
+				is_s5k4e5_ep: endpoint {
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&csis0_ep>;
+				};
+			};
+		};
+	};
