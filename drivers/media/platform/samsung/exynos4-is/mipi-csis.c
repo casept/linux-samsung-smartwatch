@@ -43,43 +43,55 @@ MODULE_PARM_DESC(debug, "Debug level (0-2)");
 #define S5PCSIS_CTRL_DPDN_DEFAULT	(0 << 31)
 #define S5PCSIS_CTRL_DPDN_SWAP		(1UL << 31)
 #define S5PCSIS_CTRL_ALIGN_32BIT	(1 << 20)
-#define S5PCSIS_CTRL_UPDATE_SHADOW	(1 << 16)
-#define S5PCSIS_CTRL_WCLK_EXTCLK	(1 << 8)
+#define S5PCSIS_CTRL_UPDATE_SHADOW(x)	((1 << (x)) << 16)
+#define S5PCSIS_CTRL_WCLK_EXTCLK(ch)	(1 << (8 + (ch)))
 #define S5PCSIS_CTRL_RESET		(1 << 4)
+#define S5PCSIS_CTRL_NUM_DATA_LANES(x)	((x) << 2)
 #define S5PCSIS_CTRL_ENABLE		(1 << 0)
 
 /* D-PHY control */
 #define S5PCSIS_DPHYCTRL		0x04
 #define S5PCSIS_DPHYCTRL_HSS_MASK	(0x1f << 27)
+#define EXYNOS3250_DPHYCTRL_HSS_MASK	(0xff << 24)
 #define S5PCSIS_DPHYCTRL_ENABLE		(0x1f << 0)
 
 #define S5PCSIS_CONFIG			0x08
+/* ch = 1...3 */
+#define EXYNOS3_CSIS_CONFIG_CH(ch)	(0x40 + ((ch) - 1) * 0x10
 #define S5PCSIS_CFG_FMT_YCBCR422_8BIT	(0x1e << 2)
+#define EXYNOS3_CSIS_CFG_FMT_YCBCR422_10BIT (0x1f << 2)
+#define EXYNOS3_CSIS_CFG_FMT_RGB565	(0x22 << 2)
+#define EXYNOS3_CSIS_CFG_FMT_RGB566	(0x23 << 2)
+#define EXYNOS3_CSIS_CFG_FMT_RGB888	(0x24 << 2)
+#define EXYNOS3_CSIS_CFG_FMT_RAW6	(0x28 << 2)
+#define EXYNOS3_CSIS_CFG_FMT_RAW7	(0x29 << 2)
 #define S5PCSIS_CFG_FMT_RAW8		(0x2a << 2)
 #define S5PCSIS_CFG_FMT_RAW10		(0x2b << 2)
 #define S5PCSIS_CFG_FMT_RAW12		(0x2c << 2)
+#define EXYNOS3_CSIS_CFG_FMT_RAW14	(0x2d << 2)
 /* User defined formats, x = 1...4 */
-#define S5PCSIS_CFG_FMT_USER(x)		((0x30 + x - 1) << 2)
+#define S5PCSIS_CFG_FMT_USER(x)		((0x30 + (x) - 1) << 2)
 #define S5PCSIS_CFG_FMT_MASK		(0x3f << 2)
+#define S5PCSIS_CFG_VIRTUAL_CH(x)	((x) << 0)
 #define S5PCSIS_CFG_NR_LANE_MASK	3
 
 /* Interrupt mask */
+/*
+* Careful when working with specific interrupt
+* masks as the reg layout varies between supported SoCs
+* Use S5PCSIS_INTMSK_EXYNOSX_EN_ALL when possible
+*/
 #define S5PCSIS_INTMSK			0x10
 #define S5PCSIS_INTMSK_EVEN_BEFORE	(1UL << 31)
 #define S5PCSIS_INTMSK_EVEN_AFTER	(1 << 30)
 #define S5PCSIS_INTMSK_ODD_BEFORE	(1 << 29)
 #define S5PCSIS_INTMSK_ODD_AFTER	(1 << 28)
-#define S5PCSIS_INTMSK_FRAME_START	(1 << 27)
-#define S5PCSIS_INTMSK_FRAME_END	(1 << 26)
-#define S5PCSIS_INTMSK_ERR_SOT_HS	(1 << 12)
-#define S5PCSIS_INTMSK_ERR_LOST_FS	(1 << 5)
-#define S5PCSIS_INTMSK_ERR_LOST_FE	(1 << 4)
-#define S5PCSIS_INTMSK_ERR_OVER		(1 << 3)
 #define S5PCSIS_INTMSK_ERR_ECC		(1 << 2)
 #define S5PCSIS_INTMSK_ERR_CRC		(1 << 1)
 #define S5PCSIS_INTMSK_ERR_UNKNOWN	(1 << 0)
-#define S5PCSIS_INTMSK_EXYNOS4_EN_ALL	0xf000103f
-#define S5PCSIS_INTMSK_EXYNOS5_EN_ALL	0xfc00103f
+#define EXYNOS3250_INTMSK_EN_ALL	0xf1101117
+#define EXYNOS4_INTMSK_EN_ALL		0xf000103f
+#define EXYNOS5_INTMSK_EN_ALL		0xfc00103f
 
 /* Interrupt source */
 #define S5PCSIS_INTSRC			0x14
@@ -100,6 +112,7 @@ MODULE_PARM_DESC(debug, "Debug level (0-2)");
 #define S5PCSIS_INTSRC_ERR_CRC		(1 << 1)
 #define S5PCSIS_INTSRC_ERR_UNKNOWN	(1 << 0)
 #define S5PCSIS_INTSRC_ERRORS		0xf03f
+#define EXYNOS3250_INTSRC_ALL		0xf1111117
 
 /* Pixel resolution */
 #define S5PCSIS_RESOL			0x2c
@@ -141,23 +154,37 @@ struct s5pcsis_event {
 	unsigned int counter;
 };
 
+#define S5PCSIS_MAX_VC			4
+#define S5PCSIS_INTSRC_MASK_BASE	0x01
+#define S5PCSIS_INTSRC_MASK_VC		0x0f
+#define S5PCSIS_INTSRC_VC(vc) \
+	(S5PCSIS_INTSRC_MASK_VC >>(S5PCSIS_MAX_VC - (vc)))
+
+/*
+ * s5pcsis_events - set of CSIS events listed with accordance to
+ *                  CSIS_INTSRC reg layout (starting with
+ *                  the least significant bit)
+ * Note: the order in which the events are listed is important
+ *       so mind it when making any modifications
+ */
+
 static const struct s5pcsis_event s5pcsis_events[] = {
-	/* Errors */
-	{ S5PCSIS_INTSRC_ERR_SOT_HS,	"SOT Error" },
-	{ S5PCSIS_INTSRC_ERR_LOST_FS,	"Lost Frame Start Error" },
-	{ S5PCSIS_INTSRC_ERR_LOST_FE,	"Lost Frame End Error" },
-	{ S5PCSIS_INTSRC_ERR_OVER,	"FIFO Overflow Error" },
-	{ S5PCSIS_INTSRC_ERR_ECC,	"ECC Error" },
-	{ S5PCSIS_INTSRC_ERR_CRC,	"CRC Error" },
-	{ S5PCSIS_INTSRC_ERR_UNKNOWN,	"Unknown Error" },
-	/* Non-image data receive events */
-	{ S5PCSIS_INTSRC_EVEN_BEFORE,	"Non-image data before even frame" },
-	{ S5PCSIS_INTSRC_EVEN_AFTER,	"Non-image data after even frame" },
-	{ S5PCSIS_INTSRC_ODD_BEFORE,	"Non-image data before odd frame" },
-	{ S5PCSIS_INTSRC_ODD_AFTER,	"Non-image data after odd frame" },
+	/* Errors */							/* Field name */
+	{ S5PCSIS_INTSRC_MASK_BASE, "Unknown Error"                    }, /* ERR_ID      */
+	{ S5PCSIS_INTSRC_MASK_BASE, "CRC Error"                        }, /* ERR_CRC     */
+	{ S5PCSIS_INTSRC_MASK_BASE, "ECC Error"                        }, /* ERR_ECC     */
+	{ S5PCSIS_INTSRC_MASK_VC,   "FIFO Overflow Error"              }, /* ERR_OVER    */
+	{ S5PCSIS_INTSRC_MASK_VC,   "Lost Frame End Error"             }, /* ERR_LOST_FE */
+	{ S5PCSIS_INTSRC_MASK_VC,   "Lost Frame Start Error"           }, /* ERR_LOST_FS */
+	{ S5PCSIS_INTSRC_MASK_VC,   "SOT Error"                        }, /* ERR_SOT_HS  */
 	/* Frame start/end */
-	{ S5PCSIS_INTSRC_FRAME_START,	"Frame Start" },
-	{ S5PCSIS_INTSRC_FRAME_END,	"Frame End" },
+	{ S5PCSIS_INTSRC_MASK_VC,   "Frame End"                        }, /* Frame End   */
+	{ S5PCSIS_INTSRC_MASK_VC,   "Frame Start"                      }, /* Frame Start */
+	/* Non-image data receive events */
+	{ S5PCSIS_INTSRC_MASK_BASE, "Non-image data after odd frame"   }, /* OddAfter    */
+	{ S5PCSIS_INTSRC_MASK_BASE, "Non-image data before odd frame"  }, /* OddBefore   */
+	{ S5PCSIS_INTSRC_MASK_BASE, "Non-image data after even frame"  }, /* EvenAfter   */
+	{ S5PCSIS_INTSRC_MASK_BASE, "Non-image data before even frame" }, /* EvenBefore  */
 };
 #define S5PCSIS_NUM_EVENTS ARRAY_SIZE(s5pcsis_events)
 
@@ -166,9 +193,23 @@ struct csis_pktbuf {
 	unsigned int len;
 };
 
+
+/**
+ * struct csis_drvdata - the driver's internal setup data structure
+ * @interrupt_mask:      mask of all used interrupts in S5PCSIS_INTMSK
+ *                       register
+ * @interrupt_src_mask:  mask of all expected/handled interrupt sources
+ *                       in S5PCSIS_INTSRC register
+ * @hss_mask:            HS-RX settle time mask
+ * @num_virt_channels:   number of available virtual channels
+ * @num_dlanes_reg:      register for data lanes configuration
+ */
 struct csis_drvdata {
-	/* Mask of all used interrupts in S5PCSIS_INTMSK register */
-	u32 interrupt_mask;
+	u32		interrupt_mask;
+	u32		interrupt_src_mask;
+	u32		hss_mask;
+	unsigned short	num_virt_channels;
+	unsigned short	num_dlanes_reg;
 };
 
 /**
@@ -184,13 +225,13 @@ struct csis_drvdata {
  * @supplies: CSIS regulator supplies
  * @clock: CSIS clocks
  * @irq: requested s5p-mipi-csis irq number
- * @interrupt_mask: interrupt mask of the all used interrupts
  * @flags: the state variable for power and streaming control
  * @clk_frequency: device bus clock frequency
  * @hs_settle: HS-RX settle time
  * @num_lanes: number of MIPI-CSI data lanes used
  * @max_num_lanes: maximum number of MIPI-CSI data lanes supported
  * @wclk_ext: CSI wrapper clock: 0 - bus clock, 1 - external SCLK_CAM
+ * @drv_data: driver's internal data
  * @csis_fmt: current CSIS pixel format
  * @format: common media bus format for the source and sink pad
  * @slock: spinlock protecting structure members below
@@ -208,7 +249,6 @@ struct csis_state {
 	struct regulator_bulk_data supplies[CSIS_NUM_SUPPLIES];
 	struct clk *clock[NUM_CSIS_CLOCKS];
 	int irq;
-	u32 interrupt_mask;
 	u32 flags;
 
 	u32 clk_frequency;
@@ -217,6 +257,7 @@ struct csis_state {
 	u32 max_num_lanes;
 	u8 wclk_ext;
 
+	const struct csis_drvdata *drv_data;
 	const struct csis_pix_format *csis_fmt;
 	struct v4l2_mbus_framefmt format;
 
@@ -291,9 +332,9 @@ static void s5pcsis_enable_interrupts(struct csis_state *state, bool on)
 {
 	u32 val = s5pcsis_read(state, S5PCSIS_INTMSK);
 	if (on)
-		val |= state->interrupt_mask;
+		val |= state->drv_data->interrupt_mask;
 	else
-		val &= ~state->interrupt_mask;
+		val &= ~state->drv_data->interrupt_mask;
 	s5pcsis_write(state, S5PCSIS_INTMSK, val);
 }
 
@@ -348,7 +389,9 @@ static void s5pcsis_set_hsync_settle(struct csis_state *state, int settle)
 {
 	u32 val = s5pcsis_read(state, S5PCSIS_DPHYCTRL);
 
-	val = (val & ~S5PCSIS_DPHYCTRL_HSS_MASK) | (settle << 27);
+	int shift = ffz(state->drv_data->hss_mask);
+	val = (val & ~state->drv_data->hss_mask) | (settle << shift);
+
 	s5pcsis_write(state, S5PCSIS_DPHYCTRL, val);
 }
 
@@ -356,9 +399,12 @@ static void s5pcsis_set_params(struct csis_state *state)
 {
 	u32 val;
 
-	val = s5pcsis_read(state, S5PCSIS_CONFIG);
-	val = (val & ~S5PCSIS_CFG_NR_LANE_MASK) | (state->num_lanes - 1);
-	s5pcsis_write(state, S5PCSIS_CONFIG, val);
+	if (state->drv_data->num_dlanes_reg == S5PCSIS_CONFIG) {
+		val = s5pcsis_read(state, S5PCSIS_CONFIG);
+		val = (val & ~S5PCSIS_CFG_NR_LANE_MASK) |
+			(state->num_lanes - 1);
+		s5pcsis_write(state, S5PCSIS_CONFIG, val);
+	}
 
 	__s5pcsis_set_format(state);
 	s5pcsis_set_hsync_settle(state, state->hs_settle);
@@ -369,14 +415,19 @@ static void s5pcsis_set_params(struct csis_state *state)
 	else /* 24-bits */
 		val &= ~S5PCSIS_CTRL_ALIGN_32BIT;
 
-	val &= ~S5PCSIS_CTRL_WCLK_EXTCLK;
+	if (state->drv_data->num_dlanes_reg == S5PCSIS_CTRL) {
+		val = (val & ~(S5PCSIS_CFG_NR_LANE_MASK << 2))
+			| (state->num_lanes - 1) << 2;
+	}
+
+	val &= ~S5PCSIS_CTRL_WCLK_EXTCLK(0);
 	if (state->wclk_ext)
-		val |= S5PCSIS_CTRL_WCLK_EXTCLK;
+		val |= S5PCSIS_CTRL_WCLK_EXTCLK(0);
 	s5pcsis_write(state, S5PCSIS_CTRL, val);
 
 	/* Update the shadow register. */
 	val = s5pcsis_read(state, S5PCSIS_CTRL);
-	s5pcsis_write(state, S5PCSIS_CTRL, val | S5PCSIS_CTRL_UPDATE_SHADOW);
+	s5pcsis_write(state, S5PCSIS_CTRL, val | S5PCSIS_CTRL_UPDATE_SHADOW(0));
 }
 
 static void s5pcsis_clk_put(struct csis_state *state)
@@ -670,6 +721,55 @@ static const struct v4l2_subdev_ops s5pcsis_subdev_ops = {
 	.video = &s5pcsis_video_ops,
 };
 
+
+static void s5pcsis_track_events(struct csis_state *state, u32 events_status)
+{
+	int i;
+	u32 intsrc_mask = state->drv_data->interrupt_src_mask;
+
+	if (!(events_status & intsrc_mask) || debug)
+		return;
+
+	/* Update the event/error counters. */
+	for (i = 0; i < S5PCSIS_NUM_EVENTS; i++) {
+
+		u32 event_mask = state->events[i].mask;
+		u32 num_channels = state->drv_data->num_virt_channels;
+		unsigned int index;
+
+		/*
+		* This event might be generated for particular channel
+		* so adjust the mask with regard to number of available
+		* channels.
+		*/
+
+		if (S5PCSIS_INTSRC_MASK_VC == event_mask)
+			event_mask = S5PCSIS_INTSRC_VC(num_channels);
+
+		if (events_status & event_mask) {
+			state->events[i].counter++;
+			v4l2_dbg(2, debug, &state->sd, "%s: %d\n",
+				state->events[i].name,
+				state->events[i].counter);
+		}
+		intsrc_mask &=~event_mask;
+		index = ffs(intsrc_mask);
+		/*
+		* If there are no bits set - there are no more
+		* supported events.
+		*/
+		if (!index)
+			break;
+
+		/* Shift the event status to move to next event. */
+		events_status >>= --index;
+		intsrc_mask >>= index;
+
+		v4l2_dbg(2, debug, &state->sd,
+			"status: %08x\n", events_status);
+	}
+}
+
 static irqreturn_t s5pcsis_irq_handler(int irq, void *dev_id)
 {
 	struct csis_state *state = dev_id;
@@ -694,19 +794,7 @@ static irqreturn_t s5pcsis_irq_handler(int irq, void *dev_id)
 		rmb();
 	}
 
-	/* Update the event/error counters */
-	if ((status & S5PCSIS_INTSRC_ERRORS) || debug) {
-		int i;
-		for (i = 0; i < S5PCSIS_NUM_EVENTS; i++) {
-			if (!(status & state->events[i].mask))
-				continue;
-			state->events[i].counter++;
-			v4l2_dbg(2, debug, &state->sd, "%s: %d\n",
-				 state->events[i].name,
-				 state->events[i].counter);
-		}
-		v4l2_dbg(2, debug, &state->sd, "status: %08x\n", status);
-	}
+	s5pcsis_track_events(state, status);
 	spin_unlock_irqrestore(&state->slock, flags);
 
 	s5pcsis_write(state, S5PCSIS_INTSRC, status);
@@ -758,13 +846,42 @@ err:
 	return ret;
 }
 
+enum s5pcsis_dev_type {
+	S5PCSIS_EXYNOS3,
+	S5PCSIS_EXYNOS4,
+	S5PCSIS_EXYNOS5,
+};
+
+static const struct csis_drvdata s5pcsis_drvdata[] = {
+	[S5PCSIS_EXYNOS3] = {
+		.interrupt_mask     = EXYNOS3250_INTMSK_EN_ALL,
+		.interrupt_src_mask = EXYNOS3250_INTSRC_ALL,
+		.hss_mask           = EXYNOS3250_DPHYCTRL_HSS_MASK,
+		.num_dlanes_reg     = S5PCSIS_CTRL,
+		.num_virt_channels  = 4,
+	},
+	[S5PCSIS_EXYNOS4] = {
+		.interrupt_mask     = EXYNOS4_INTMSK_EN_ALL,
+		.interrupt_src_mask = S5PCSIS_INTSRC_ERRORS,
+		.hss_mask           = S5PCSIS_DPHYCTRL_HSS_MASK,
+		.num_dlanes_reg     = S5PCSIS_CONFIG,
+		.num_virt_channels  = 1,
+	},
+	[S5PCSIS_EXYNOS5] = {
+		.interrupt_mask     = EXYNOS5_INTMSK_EN_ALL,
+		.interrupt_src_mask = S5PCSIS_INTSRC_ERRORS,
+		.hss_mask           = S5PCSIS_DPHYCTRL_HSS_MASK,
+		.num_dlanes_reg     = S5PCSIS_CONFIG,
+		.num_virt_channels  = 1,
+	}
+};
+
 static int s5pcsis_pm_resume(struct device *dev, bool runtime);
 static const struct of_device_id s5pcsis_of_match[];
 
 static int s5pcsis_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *of_id;
-	const struct csis_drvdata *drv_data;
 	struct device *dev = &pdev->dev;
 	struct csis_state *state;
 	int ret = -ENOMEM;
@@ -782,9 +899,7 @@ static int s5pcsis_probe(struct platform_device *pdev)
 	if (WARN_ON(of_id == NULL))
 		return -EINVAL;
 
-	drv_data = of_id->data;
-	state->interrupt_mask = drv_data->interrupt_mask;
-
+	state->drv_data = of_id->data;
 	ret = s5pcsis_parse_dt(pdev, state);
 	if (ret < 0)
 		return ret;
@@ -1001,24 +1116,20 @@ static const struct dev_pm_ops s5pcsis_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(s5pcsis_suspend, s5pcsis_resume)
 };
 
-static const struct csis_drvdata exynos4_csis_drvdata = {
-	.interrupt_mask = S5PCSIS_INTMSK_EXYNOS4_EN_ALL,
-};
-
-static const struct csis_drvdata exynos5_csis_drvdata = {
-	.interrupt_mask = S5PCSIS_INTMSK_EXYNOS5_EN_ALL,
-};
-
 static const struct of_device_id s5pcsis_of_match[] = {
 	{
+		.compatible = "samsung,exynos3250-csis",
+		.data = &s5pcsis_drvdata[S5PCSIS_EXYNOS3],
+	}, {
 		.compatible = "samsung,s5pv210-csis",
-		.data = &exynos4_csis_drvdata,
+		/* FIXME: Correct drv data? Check commit log where this SoC was introduced */
+		.data = &s5pcsis_drvdata[S5PCSIS_EXYNOS4],
 	}, {
 		.compatible = "samsung,exynos4210-csis",
-		.data = &exynos4_csis_drvdata,
+		.data = &s5pcsis_drvdata[S5PCSIS_EXYNOS4],
 	}, {
 		.compatible = "samsung,exynos5250-csis",
-		.data = &exynos5_csis_drvdata,
+		.data = &s5pcsis_drvdata[S5PCSIS_EXYNOS5],
 	},
 	{ /* sentinel */ },
 };
