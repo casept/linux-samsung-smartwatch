@@ -55,6 +55,7 @@
  */
 struct fimc_is {
 	struct platform_device		*pdev;
+	struct fimc_md			*md;
 
 	struct clk			*clock[IS_CLK_MAX_NUM];
 	void __iomem			*pmu_regs;
@@ -62,7 +63,7 @@ struct fimc_is {
 
 	struct fimc_is_meminfo		minfo;
 
-	struct fimc_is_drvdata		*drvdata;
+	const struct fimc_is_drvdata	*drvdata;
 	struct fimc_is_sensor		sensor[FIMC_IS_NUM_SENSORS];
 	struct fimc_is_pipeline		pipeline[FIMC_IS_NUM_PIPELINES];
 	struct fimc_is_interface	interface;
