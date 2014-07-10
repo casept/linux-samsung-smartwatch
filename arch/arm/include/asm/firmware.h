@@ -50,6 +50,11 @@ struct firmware_ops {
 	 * Restore state of privileged hardware after system-wide suspend.
 	 */
 	int (*resume)(void);
+	/*
+	 * Read/write SFRs
+	 */
+	int (*readsfr)(unsigned int addr, unsigned int *value);
+	int (*writesfr)(unsigned int addr, unsigned int value);
 };
 
 /* Global pointer for current firmware_ops structure, can't be NULL. */
