@@ -274,22 +274,25 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 	if (atomic_read(&fimc->out_path) != FIMC_IO_DMA)
 		goto done;
 
-	if ((intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMSTART) &&
-	    test_bit(ST_FLITE_RUN, &fimc->state) &&
-	    !list_empty(&fimc->pending_buf_q)) {
-		vbuf = fimc_lite_pending_queue_pop(fimc);
-		flite_hw_set_dma_buffer(fimc, vbuf);
-		fimc_lite_active_queue_add(fimc, vbuf);
+	if ((intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMSTART)){
+		if (test_bit(ST_FLITE_RUN, &fimc->state) &&
+	    	    !list_empty(&fimc->pending_buf_q)) {
+			vbuf = fimc_lite_pending_queue_pop(fimc);
+			flite_hw_set_dma_buffer(fimc, vbuf);
+			fimc_lite_active_queue_add(fimc, vbuf);
+		}
 	}
 
-	if ((intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMEND) &&
-	    test_bit(ST_FLITE_RUN, &fimc->state) &&
-	    !list_empty(&fimc->active_buf_q)) {
-		vbuf = fimc_lite_active_queue_pop(fimc);
-		vbuf->vb.vb2_buf.timestamp = ktime_get_ns();
-		vbuf->vb.sequence = fimc->frame_count++;
-		flite_hw_mask_dma_buffer(fimc, vbuf->index);
-		vb2_buffer_done(&vbuf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+	if ((intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMEND)) {
+		if (test_bit(ST_FLITE_RUN, &fimc->state) &&
+	    	!list_empty(&fimc->active_buf_q)) {
+			vbuf = fimc_lite_active_queue_pop(fimc);
+			vbuf->vb.vb2_buf.timestamp = ktime_get_ns();
+			vbuf->vb.sequence = fimc->frame_count++;
+			flite_hw_mask_dma_buffer(fimc, vbuf->index);
+			vb2_buffer_done(&vbuf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+		}
+		v4l2_subdev_notify(&fimc->subdev, EXYNOS_FIMC_IS_FRAME_DONE, NULL);
 	}
 
 	if (test_bit(ST_FLITE_CONFIG, &fimc->state))
