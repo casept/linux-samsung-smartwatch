@@ -266,6 +266,9 @@ static int scaler_s_fmt_mplane(struct file *file, void *priv,
 	struct v4l2_pix_format_mplane *pixm = &f->fmt.pix_mp;
 	int ret;
 
+	if (test_bit(STATE_RUNNING, &ctx->capture_state))
+		return -EBUSY;
+
 	ret = scaler_try_fmt_mplane(file, priv, f);
 	if (ret)
 		return ret;
@@ -292,9 +295,23 @@ static int scaler_reqbufs(struct file *file, void *priv,
 	struct fimc_is_scaler *ctx = video_drvdata(file);
 	int ret;
 
+	if (test_bit(STATE_RUNNING, &ctx->capture_state))
+		return -EBUSY;
+
+	if (test_bit(STATE_BUFS_ALLOCATED, &ctx->capture_state) &&
+	    !reqbufs->count) {
+		/*
+		 * Release previously allocated buffers
+		 * vb2 will make sure the buffers can be freed safely.
+		 */
+		ret = vb2_reqbufs(&ctx->vbq, reqbufs);
+		if (!ret)
+			clear_bit(STATE_BUFS_ALLOCATED, &ctx->capture_state);
+		return ret;
+	}
 	reqbufs->count = max_t(u32, FIMC_IS_SCALER_REQ_BUFS_MIN,
-			reqbufs->count);
-	ret = vb2_reqbufs(&ctx->vbq, reqbufs);
+				reqbufs->count);
+	ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
 	if (ret) {
 		v4l2_err(&ctx->subdev, "vb2 req buffers failed\n");
 		return ret;
