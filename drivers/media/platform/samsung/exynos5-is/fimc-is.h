@@ -82,6 +82,7 @@ static inline void fimc_is_isp_wait_queue_add(struct fimc_is_isp *isp,
 {
 	list_add_tail(&buf->list, &isp->wait_queue);
 	isp->wait_queue_cnt++;
+	buf->state = FIMC_IS_BUF_QUEUED;
 }
 
 static inline struct fimc_is_buf *fimc_is_isp_wait_queue_get(
@@ -89,10 +90,12 @@ static inline struct fimc_is_buf *fimc_is_isp_wait_queue_get(
 {
 	struct fimc_is_buf *buf;
 
-	buf = list_entry(isp->wait_queue.next,
+	buf = list_first_entry_or_null(&isp->wait_queue,
 			struct fimc_is_buf, list);
-	list_del(&buf->list);
-	isp->wait_queue_cnt--;
+	if (buf) {
+		list_del(&buf->list);
+		isp->wait_queue_cnt--;
+	}
 	return buf;
 }
 
@@ -101,6 +104,7 @@ static inline void fimc_is_isp_run_queue_add(struct fimc_is_isp *isp,
 {
 	list_add_tail(&buf->list, &isp->run_queue);
 	isp->run_queue_cnt++;
+	buf->state = FIMC_IS_BUF_ACTIVE;
 }
 
 static inline struct fimc_is_buf *fimc_is_isp_run_queue_get(
@@ -108,10 +112,13 @@ static inline struct fimc_is_buf *fimc_is_isp_run_queue_get(
 {
 	struct fimc_is_buf *buf;
 
-	buf = list_entry(isp->run_queue.next,
+	buf = list_first_entry_or_null(&isp->run_queue,
 			struct fimc_is_buf, list);
-	list_del(&buf->list);
-	isp->run_queue_cnt--;
+	if (buf) {
+		list_del(&buf->list);
+		isp->run_queue_cnt--;
+		buf->state = FIMC_IS_BUF_DONE;
+	}
 	return buf;
 }
 
@@ -121,6 +128,7 @@ static inline void fimc_is_scaler_wait_queue_add(struct fimc_is_scaler *scp,
 {
 	list_add_tail(&buf->list, &scp->wait_queue);
 	scp->wait_queue_cnt++;
+	buf->state = FIMC_IS_BUF_QUEUED;
 }
 
 static inline struct fimc_is_buf *fimc_is_scaler_wait_queue_get(
@@ -128,10 +136,12 @@ static inline struct fimc_is_buf *fimc_is_scaler_wait_queue_get(
 {
 	struct fimc_is_buf *buf;
 
-	buf = list_entry(scp->wait_queue.next,
+	buf = list_first_entry_or_null(&scp->wait_queue,
 			struct fimc_is_buf, list);
-	list_del(&buf->list);
-	scp->wait_queue_cnt--;
+	if (buf) {
+		list_del(&buf->list);
+		scp->wait_queue_cnt--;
+	}
 	return buf;
 }
 
@@ -140,6 +150,7 @@ static inline void fimc_is_scaler_run_queue_add(struct fimc_is_scaler *scp,
 {
 	list_add_tail(&buf->list, &scp->run_queue);
 	scp->run_queue_cnt++;
+	buf->state = FIMC_IS_BUF_ACTIVE;
 }
 
 static inline struct fimc_is_buf *fimc_is_scaler_run_queue_get(
@@ -147,10 +158,13 @@ static inline struct fimc_is_buf *fimc_is_scaler_run_queue_get(
 {
 	struct fimc_is_buf *buf;
 
-	buf = list_entry(scp->run_queue.next,
+	buf = list_first_entry_or_null(&scp->run_queue,
 			struct fimc_is_buf, list);
-	list_del(&buf->list);
-	scp->run_queue_cnt--;
+	if (buf) {
+		list_del(&buf->list);
+		scp->run_queue_cnt--;
+		buf->state = FIMC_IS_BUF_DONE;
+	}
 	return buf;
 }
 
