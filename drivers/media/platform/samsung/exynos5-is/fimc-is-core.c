@@ -22,6 +22,7 @@
 #include "fimc-is.h"
 #include "fimc-is-i2c.h"
 #include "exynos5-mdev.h"
+#include "fimc-is-regs.h"
 
 #define CLK_MCU_ISP_DIV0_FREQ		(200 * 1000000)
 #define CLK_MCU_ISP_DIV1_FREQ		(100 * 1000000)
@@ -410,6 +411,12 @@ void fimc_is_clk_disable(struct fimc_is *is)
         }
 }
 
+static inline void fimc_is_reset_cmu_isp(struct fimc_is *is)
+{
+	if (is->drvdata->variant == FIMC_IS_EXYNOS3250)
+		pmu_is_write(0x0, is, EXYNOS3250_PMUREG_CMU_RESET_ISP);
+}
+
 static int fimc_is_pm_resume(struct device *dev)
 {
         struct fimc_is *is = dev_get_drvdata(dev);
@@ -428,6 +435,7 @@ static int fimc_is_pm_suspend(struct device *dev)
 {
         struct fimc_is *is = dev_get_drvdata(dev);
         fimc_is_clk_disable(is);
+	fimc_is_reset_cmu_isp(is);
         return 0;
 }
 
@@ -518,6 +526,8 @@ static int fimc_is_probe(struct platform_device *pdev)
                 }
 
         }
+
+	fimc_is_reset_cmu_isp(is);
 
 	/* Get IS-sensor contexts */
 	ret = fimc_is_parse_sensor(is);
