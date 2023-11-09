@@ -61,6 +61,26 @@ static inline void fs_usage_data_type_to_base(struct bch_fs_usage_base *fs_usage
 	}
 }
 
+static inline void fs_usage_data_type_to_base(struct bch_fs_usage_base *fs_usage,
+					      enum bch_data_type data_type,
+					      s64 sectors)
+{
+	switch (data_type) {
+	case BCH_DATA_btree:
+		fs_usage->btree		+= sectors;
+		break;
+	case BCH_DATA_user:
+	case BCH_DATA_parity:
+		fs_usage->data		+= sectors;
+		break;
+	case BCH_DATA_cached:
+		fs_usage->cached	+= sectors;
+		break;
+	default:
+		break;
+	}
+}
+
 static inline void bpos_to_disk_accounting_pos(struct disk_accounting_pos *acc, struct bpos p)
 {
 	acc->_pad = p;

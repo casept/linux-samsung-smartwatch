@@ -609,6 +609,14 @@ static noinline int bch2_trans_commit_run_gc_triggers(struct btree_trans *trans)
 	return 0;
 }
 
+static struct bversion journal_pos_to_bversion(struct journal_res *res, unsigned offset)
+{
+	return (struct bversion) {
+		.hi = res->seq >> 32,
+		.lo = (res->seq << 32) | (res->offset + offset),
+	};
+}
+
 static inline int
 bch2_trans_commit_write_locked(struct btree_trans *trans, unsigned flags,
 			       struct btree_insert_entry **stopped_at,

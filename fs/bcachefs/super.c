@@ -1798,6 +1798,10 @@ int bch2_dev_add(struct bch_fs *c, const char *path)
 	if (ret)
 		goto err_late;
 
+	ret = bch2_dev_usage_init(ca);
+	if (ret)
+		goto err_late;
+
 	ret = bch2_trans_mark_dev_sb(c, ca, BTREE_TRIGGER_transactional);
 	bch_err_msg(ca, ret, "marking new superblock");
 	if (ret)
