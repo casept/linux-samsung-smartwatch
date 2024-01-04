@@ -574,6 +574,17 @@ config NSM
 	  To compile this driver as a module, choose M here.
 	  The module will be called nsm.
 
+config SBOOT_UPLOAD
+	bool "Enable support for SBOOT upload mode"
+	default n
+	help
+	  On consumer Samsung devices, the S-Boot bootloader provides debug functionality,
+	  such as a memory dump mode. This is very useful when debugging the kernel without
+	  access to a serial console, as a pstore can be dumped from memory.
+
+	  This driver enables automatic triggering of upload mode on kernel panic,
+	  obviating the need to fiddle with key combinations to get into upload mode after a panic.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
