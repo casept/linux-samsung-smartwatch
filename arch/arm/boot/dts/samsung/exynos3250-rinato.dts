@@ -52,9 +52,20 @@
 
 
 
-	memory@40000000 {
+	/*
+	 * Memory actually starts at 0x40000000,
+	 * but retail devices can use the first 16K of RAM for S-Boot debug purposes.
+	 * Therefore, make main RAM start a bit later so we can also use this feature.
+	 *
+	 * Just leaving them in the memory node would result in multiple mappings
+	 * and unpredictable behaviour when attempting access in the S-Boot
+	 * debug driver.
+	 *
+	 * Unfortunately, just reserving the memory range doesn't seem to work.
+	 */
+	memory@40004000 {
 		device_type = "memory";
-		reg = <0x40000000 0x1ff00000>;
+		reg = <0x40004000 0x1fefc000>;
 	};
 
 	firmware@205f000 {
