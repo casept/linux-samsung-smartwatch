@@ -655,7 +655,14 @@
 	cap-mmc-highspeed;
 	mmc-hs200-1_8v;
 	card-detect-delay = <200>;
-	vmmc-supply = <&ldo12_reg>;
+	/* In mainline, LDO12 is set as the supplier, but downstream uses LDO4.
+	 * Maybe this is a copy-paste mistake from monk or artik5?
+	 * Either, way, it seems like voltage negotiation is broken in a similar way
+	 * to one of artik5's MMC controllers, meaning that just leaving vmmc-supply undefined
+	 * is apparently the only way to get it to work.
+	 * vmmc-supply = <&ldo12_reg>;
+	 * vmmc-supply = <&ldo4_reg>;
+	 */
 	clock-frequency = <100000000>;
 	max-frequency = <100000000>;
 	mmc-ddr-1_8v;
