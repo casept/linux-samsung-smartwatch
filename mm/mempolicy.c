@@ -131,6 +131,30 @@ static struct mempolicy default_policy = {
 
 static struct mempolicy preferred_node_policy[MAX_NUMNODES];
 
+struct iw_table {
+	struct rcu_head rcu;
+	u8 weights[MAX_NUMNODES];
+};
+/*
+ * default_iw_table is the kernel-internal default value interleave
+ * weight table. It is to be set by driver code capable of reading
+ * HMAT/CDAT information, and to provide mempolicy a sane set of
+ * default weight values for WEIGHTED_INTERLEAVE mode.
+ *
+ * By default, prior to HMAT/CDAT information being consumed, the
+ * default weight of all nodes is 1.  The default weight of any
+ * node can only be in the range 1-255. A 0-weight is not allowed.
+ */
+static struct iw_table default_iw_table;
+/*
+ * iw_table is the sysfs-set interleave weight table, a value of 0
+ * denotes that the default_iw_table value should be used.
+ *
+ * iw_table is RCU protected
+ */
+static struct iw_table __rcu *iw_table;
+static DEFINE_MUTEX(iw_table_mtx);
+
 /**
  * numa_nearest_node - Find nearest node by state
  * @node: Node id to start the search
@@ -3067,3 +3091,230 @@ void mpol_to_str(char *buffer, int maxlen, struct mempolicy *pol)
 		p += scnprintf(p, buffer + maxlen - p, ":%*pbl",
 			       nodemask_pr_args(&nodes));
 }
+
+#ifdef CONFIG_SYSFS
+struct iw_node_attr {
+	struct kobj_attribute kobj_attr;
+	int nid;
+};
+
+static ssize_t node_show(struct kobject *kobj, struct kobj_attribute *attr,
+			 char *buf)
+{
+	struct iw_node_attr *node_attr;
+	u8 weight;
+	struct iw_table __rcu *table;
+
+	node_attr = container_of(attr, struct iw_node_attr, kobj_attr);
+
+	rcu_read_lock();
+	table = rcu_dereference(iw_table);
+	weight = table->weights[node_attr->nid];
+	rcu_read_unlock();
+
+	return sysfs_emit(buf, "%d\n", weight);
+}
+
+static ssize_t node_store(struct kobject *kobj, struct kobj_attribute *attr,
+			  const char *buf, size_t count)
+{
+	struct iw_node_attr *node_attr;
+	struct iw_table __rcu *new;
+	struct iw_table __rcu *old;
+	u8 weight = 0;
+
+	node_attr = container_of(attr, struct iw_node_attr, kobj_attr);
+	if (count == 0 || sysfs_streq(buf, ""))
+		weight = 0;
+	else if (kstrtou8(buf, 0, &weight))
+		return -EINVAL;
+
+	new = kmalloc(sizeof(*new), GFP_KERNEL);
+	if (!new)
+		return -ENOMEM;
+
+	mutex_lock(&iw_table_mtx);
+	old = rcu_dereference_protected(iw_table,
+					lockdep_is_held(&iw_table_mtx));
+	/* If value is 0, revert to default weight */
+	weight = weight ? weight : default_iw_table.weights[node_attr->nid];
+	memcpy(&new->weights, &old->weights, sizeof(new->weights));
+	new->weights[node_attr->nid] = weight;
+	rcu_assign_pointer(iw_table, new);
+	mutex_unlock(&iw_table_mtx);
+	kfree_rcu(old, rcu);
+	return count;
+}
+
+static struct iw_node_attr *node_attrs[MAX_NUMNODES];
+
+static void sysfs_wi_node_release(struct iw_node_attr *node_attr,
+				  struct kobject *parent)
+{
+	if (!node_attr)
+		return;
+	sysfs_remove_file(parent, &node_attr->kobj_attr.attr);
+	kfree(node_attr->kobj_attr.attr.name);
+	kfree(node_attr);
+}
+
+static void sysfs_wi_release(struct kobject *wi_kobj)
+{
+	int i;
+
+	for (i = 0; i < MAX_NUMNODES; i++)
+		sysfs_wi_node_release(node_attrs[i], wi_kobj);
+	kobject_put(wi_kobj);
+}
+
+static const struct kobj_type wi_ktype = {
+	.sysfs_ops = &kobj_sysfs_ops,
+	.release = sysfs_wi_release,
+};
+
+static int add_weight_node(int nid, struct kobject *wi_kobj)
+{
+	struct iw_node_attr *node_attr;
+	char *name;
+
+	node_attr = kzalloc(sizeof(*node_attr), GFP_KERNEL);
+	if (!node_attr)
+		return -ENOMEM;
+
+	name = kasprintf(GFP_KERNEL, "node%d", nid);
+	if (!name) {
+		kfree(node_attr);
+		return -ENOMEM;
+	}
+
+	sysfs_attr_init(&node_attr->kobj_attr.attr);
+	node_attr->kobj_attr.attr.name = name;
+	node_attr->kobj_attr.attr.mode = 0644;
+	node_attr->kobj_attr.show = node_show;
+	node_attr->kobj_attr.store = node_store;
+	node_attr->nid = nid;
+
+	if (sysfs_create_file(wi_kobj, &node_attr->kobj_attr.attr)) {
+		kfree(node_attr->kobj_attr.attr.name);
+		kfree(node_attr);
+		pr_err("failed to add attribute to weighted_interleave\n");
+		return -ENOMEM;
+	}
+
+	node_attrs[nid] = node_attr;
+	return 0;
+}
+
+static int add_weighted_interleave_group(struct kobject *root_kobj)
+{
+	struct kobject *wi_kobj;
+	int nid, err;
+
+	wi_kobj = kzalloc(sizeof(struct kobject), GFP_KERNEL);
+	if (!wi_kobj)
+		return -ENOMEM;
+
+	err = kobject_init_and_add(wi_kobj, &wi_ktype, root_kobj,
+				   "weighted_interleave");
+	if (err) {
+		kfree(wi_kobj);
+		return err;
+	}
+
+	memset(node_attrs, 0, sizeof(node_attrs));
+	for_each_node_state(nid, N_POSSIBLE) {
+		err = add_weight_node(nid, wi_kobj);
+		if (err) {
+			pr_err("failed to add sysfs [node%d]\n", nid);
+			break;
+		}
+	}
+	if (err)
+		kobject_put(wi_kobj);
+	return 0;
+}
+
+static void mempolicy_kobj_release(struct kobject *kobj)
+{
+	if (iw_table != &default_iw_table)
+		kfree(iw_table);
+	kfree(kobj);
+}
+
+static const struct kobj_type mempolicy_ktype = {
+	.release = mempolicy_kobj_release
+};
+
+static struct kobject *mempolicy_kobj;
+static int __init mempolicy_sysfs_init(void)
+{
+	int err;
+	struct kobject *mempolicy_kobj;
+	struct iw_table __rcu *table = NULL;
+
+	/*
+	 * If sysfs setup fails, utilize the default weight table
+	 * This at least allows mempolicy to continue functioning safely.
+	 */
+	memset(&default_iw_table.weights, 1, MAX_NUMNODES);
+	iw_table = &default_iw_table;
+
+	table = kzalloc(sizeof(struct iw_table), GFP_KERNEL);
+	if (!table)
+		return -ENOMEM;
+
+	memcpy(&table->weights, default_iw_table.weights,
+	       sizeof(table->weights));
+
+	mempolicy_kobj = kzalloc(sizeof(*mempolicy_kobj), GFP_KERNEL);
+	if (!mempolicy_kobj) {
+		kfree(table);
+		pr_err("failed to add mempolicy kobject to the system\n");
+		return -ENOMEM;
+	}
+	err = kobject_init_and_add(mempolicy_kobj, &mempolicy_ktype, mm_kobj,
+				   "mempolicy");
+	if (err) {
+		kfree(table);
+		kfree(mempolicy_kobj);
+		return err;
+	}
+
+	err = add_weighted_interleave_group(mempolicy_kobj);
+
+	if (err) {
+		kobject_put(mempolicy_kobj);
+		return err;
+	}
+
+	iw_table = table;
+	return err;
+}
+
+static void __exit mempolicy_exit(void)
+{
+	if (mempolicy_kobj)
+		kobject_put(mempolicy_kobj);
+}
+
+#else
+static int __init mempolicy_sysfs_init(void)
+{
+	/*
+	 * if sysfs is not enabled MPOL_WEIGHTED_INTERLEAVE defaults to
+	 * MPOL_INTERLEAVE behavior, but is still defined separately to
+	 * allow task-local weighted interleave and system-defaults to
+	 * operate as intended.
+	 *
+	 * In this scenario iw_table cannot (presently) change, so
+	 * there's no need to set up RCU / cleanup code.
+	 */
+	memset(&default_iw_table.weights, 1, sizeof(default_iw_table));
+	iw_table = default_iw_table;
+	return 0;
+}
+
+static void __exit mempolicy_exit(void) { }
+#endif /* CONFIG_SYSFS */
+late_initcall(mempolicy_sysfs_init);
+module_exit(mempolicy_exit);
