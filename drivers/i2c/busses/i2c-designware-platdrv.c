@@ -285,28 +285,6 @@ static void i2c_dw_remove_lock_support(struct dw_i2c_dev *dev)
 		i2c_dw_semaphore_cb_table[dev->semaphore_idx].remove(dev);
 }
 
-static void dw_i2c_plat_assert_reset(void *data)
-{
-	struct dw_i2c_dev *dev = data;
-
-	reset_control_assert(dev->rst);
-}
-
-static int dw_i2c_plat_get_reset(struct dw_i2c_dev *dev)
-{
-	int ret;
-
-	dev->rst = devm_reset_control_get_optional_exclusive(dev->dev, NULL);
-	if (IS_ERR(dev->rst))
-		return PTR_ERR(dev->rst);
-
-	ret = reset_control_deassert(dev->rst);
-	if (ret)
-		return ret;
-
-	return devm_add_action_or_reset(dev->dev, dw_i2c_plat_assert_reset, dev);
-}
-
 static int dw_i2c_plat_probe(struct platform_device *pdev)
 {
 	struct i2c_adapter *adap;
@@ -334,9 +312,11 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = dw_i2c_plat_get_reset(dev);
-	if (ret)
-		return ret;
+	dev->rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
+	if (IS_ERR(dev->rst))
+		return PTR_ERR(dev->rst);
+
+	reset_control_deassert(dev->rst);
 
 	t = &dev->timings;
 	i2c_parse_fw_timings(&pdev->dev, t, false);
@@ -351,26 +331,30 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 
 	ret = i2c_dw_validate_speed(dev);
 	if (ret)
-		return ret;
+		goto exit_reset;
 
 	ret = i2c_dw_probe_lock_support(dev);
 	if (ret)
-		return ret;
+		goto exit_reset;
 
 	i2c_dw_configure(dev);
 
 	/* Optional interface clock */
 	dev->pclk = devm_clk_get_optional(&pdev->dev, "pclk");
-	if (IS_ERR(dev->pclk))
-		return PTR_ERR(dev->pclk);
+	if (IS_ERR(dev->pclk)) {
+		ret = PTR_ERR(dev->pclk);
+		goto exit_reset;
+	}
 
 	dev->clk = devm_clk_get_optional(&pdev->dev, NULL);
-	if (IS_ERR(dev->clk))
-		return PTR_ERR(dev->clk);
+	if (IS_ERR(dev->clk)) {
+		ret = PTR_ERR(dev->clk);
+		goto exit_reset;
+	}
 
 	ret = i2c_dw_prepare_clk(dev, true);
 	if (ret)
-		return ret;
+		goto exit_reset;
 
 	if (dev->clk) {
 		u64 clk_khz;
@@ -411,9 +395,17 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 
 	ret = dw_i2c_plat_pm_setup(dev);
 	if (ret)
-		return ret;
+		goto exit_reset;
 
-	return i2c_dw_probe(dev);
+	ret = i2c_dw_probe(dev);
+	if (ret)
+		goto exit_reset;
+
+	return ret;
+
+exit_reset:
+	reset_control_assert(dev->rst);
+	return ret;
 }
 
 static void dw_i2c_plat_remove(struct platform_device *pdev)
@@ -430,6 +422,8 @@ static void dw_i2c_plat_remove(struct platform_device *pdev)
 	pm_runtime_put_sync(&pdev->dev);
 
 	i2c_dw_remove_lock_support(dev);
+
+	reset_control_assert(dev->rst);
 }
 
 static int dw_i2c_plat_prepare(struct device *dev)
