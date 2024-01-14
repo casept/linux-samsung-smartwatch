@@ -247,17 +247,20 @@ static void i2c_dw_remove_lock_support(void *data)
 {
 	struct dw_i2c_dev *dev = data;
 
-	if (!dev->semaphore_cb)
+	if (dev->semaphore_idx < 0)
 		return;
 
-	if (dev->semaphore_cb->remove)
-		dev->semaphore_cb->remove(dev);
+	if (i2c_dw_semaphore_cb_table[dev->semaphore_idx].remove)
+		i2c_dw_semaphore_cb_table[dev->semaphore_idx].remove(dev);
 }
 
 static int i2c_dw_probe_lock_support(struct dw_i2c_dev *dev)
 {
 	const struct i2c_dw_semaphore_callbacks *ptr;
+	int i = 0;
 	int ret;
+
+	dev->semaphore_idx = -1;
 
 	for (ptr = i2c_dw_semaphore_cb_table; ptr->probe; ptr++) {
 		ret = ptr->probe(dev);
@@ -270,10 +273,11 @@ static int i2c_dw_probe_lock_support(struct dw_i2c_dev *dev)
 			if (ret != -ENODEV)
 				return ret;
 
+			i++;
 			continue;
 		}
 
-		dev->semaphore_cb = ptr;
+		dev->semaphore_idx = i;
 		break;
 	}
 
