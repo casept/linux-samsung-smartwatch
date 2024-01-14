@@ -110,10 +110,9 @@ static int mscc_twi_set_sda_hold_time(struct dw_i2c_dev *dev)
 	return 0;
 }
 
-static void i2c_dw_of_configure(struct device *device)
+static void dw_i2c_of_configure(struct platform_device *pdev)
 {
-	struct platform_device *pdev = to_platform_device(device);
-	struct dw_i2c_dev *dev = dev_get_drvdata(device);
+	struct dw_i2c_dev *dev = platform_get_drvdata(pdev);
 
 	switch (dev->flags & MODEL_MASK) {
 	case MODEL_MSCC_OCELOT:
@@ -131,7 +130,7 @@ static int bt1_i2c_request_regs(struct dw_i2c_dev *dev)
 	return -ENODEV;
 }
 
-static inline void i2c_dw_of_configure(struct device *device)
+static inline void dw_i2c_of_configure(struct platform_device *pdev)
 {
 }
 #endif
@@ -307,7 +306,7 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	i2c_dw_adjust_bus_speed(dev);
 
 	if (pdev->dev.of_node)
-		i2c_dw_of_configure(&pdev->dev);
+		dw_i2c_of_configure(pdev);
 
 	if (has_acpi_companion(&pdev->dev))
 		i2c_dw_acpi_configure(&pdev->dev);
