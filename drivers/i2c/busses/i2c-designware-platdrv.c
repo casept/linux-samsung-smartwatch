@@ -237,7 +237,6 @@ static int dw_i2c_plat_get_reset(struct dw_i2c_dev *dev)
 
 static int dw_i2c_plat_probe(struct platform_device *pdev)
 {
-	struct device *device = &pdev->dev;
 	struct i2c_adapter *adap;
 	struct dw_i2c_dev *dev;
 	int irq, ret;
@@ -246,15 +245,15 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	if (irq < 0)
 		return irq;
 
-	dev = devm_kzalloc(device, sizeof(*dev), GFP_KERNEL);
+	dev = devm_kzalloc(&pdev->dev, sizeof(struct dw_i2c_dev), GFP_KERNEL);
 	if (!dev)
 		return -ENOMEM;
 
-	dev->flags = (uintptr_t)device_get_match_data(device);
-	if (device_property_present(device, "wx,i2c-snps-model"))
+	dev->flags = (uintptr_t)device_get_match_data(&pdev->dev);
+	if (device_property_present(&pdev->dev, "wx,i2c-snps-model"))
 		dev->flags = MODEL_WANGXUN_SP;
 
-	dev->dev = device;
+	dev->dev = &pdev->dev;
 	dev->irq = irq;
 	platform_set_drvdata(pdev, dev);
 
@@ -277,11 +276,11 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 	i2c_dw_configure(dev);
 
 	/* Optional interface clock */
-	dev->pclk = devm_clk_get_optional(device, "pclk");
+	dev->pclk = devm_clk_get_optional(&pdev->dev, "pclk");
 	if (IS_ERR(dev->pclk))
 		return PTR_ERR(dev->pclk);
 
-	dev->clk = devm_clk_get_optional(device, NULL);
+	dev->clk = devm_clk_get_optional(&pdev->dev, NULL);
 	if (IS_ERR(dev->clk))
 		return PTR_ERR(dev->clk);
 
@@ -307,19 +306,23 @@ static int dw_i2c_plat_probe(struct platform_device *pdev)
 					I2C_CLASS_HWMON : I2C_CLASS_DEPRECATED;
 	adap->nr = -1;
 
-	if (dev->flags & ACCESS_NO_IRQ_SUSPEND)
-		dev_pm_set_driver_flags(device, DPM_FLAG_SMART_PREPARE);
-	else
-		dev_pm_set_driver_flags(device, DPM_FLAG_SMART_PREPARE | DPM_FLAG_SMART_SUSPEND);
+	if (dev->flags & ACCESS_NO_IRQ_SUSPEND) {
+		dev_pm_set_driver_flags(&pdev->dev,
+					DPM_FLAG_SMART_PREPARE);
+	} else {
+		dev_pm_set_driver_flags(&pdev->dev,
+					DPM_FLAG_SMART_PREPARE |
+					DPM_FLAG_SMART_SUSPEND);
+	}
 
-	device_enable_async_suspend(device);
+	device_enable_async_suspend(&pdev->dev);
 
 	/* The code below assumes runtime PM to be disabled. */
-	WARN_ON(pm_runtime_enabled(device));
+	WARN_ON(pm_runtime_enabled(&pdev->dev));
 
-	pm_runtime_set_autosuspend_delay(device, 1000);
-	pm_runtime_use_autosuspend(device);
-	pm_runtime_set_active(device);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 1000);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_active(&pdev->dev);
 
 	ret = dw_i2c_plat_pm_setup(dev);
 	if (ret)
