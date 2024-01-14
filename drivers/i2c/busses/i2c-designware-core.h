@@ -399,7 +399,7 @@ int i2c_dw_validate_speed(struct dw_i2c_dev *dev);
 void i2c_dw_adjust_bus_speed(struct dw_i2c_dev *dev);
 
 #if IS_ENABLED(CONFIG_ACPI)
-void i2c_dw_acpi_configure(struct device *device);
+int i2c_dw_acpi_configure(struct device *device);
 #else
-static inline void i2c_dw_acpi_configure(struct device *device) { }
+static inline int i2c_dw_acpi_configure(struct device *device) { return -ENODEV; }
 #endif
