@@ -301,7 +301,7 @@ static void gfs2_metapath_ra(struct gfs2_glock *gl, __be64 *start, __be64 *end)
 		if (!*t)
 			continue;
 
-		rabh = gfs2_getbuf(gl, be64_to_cpu(*t), CREATE);
+		rabh = gfs2_getbuf(gl, be64_to_cpu(*t), FGP_CREAT);
 		if (trylock_buffer(rabh)) {
 			if (!buffer_uptodate(rabh)) {
 				rabh->b_end_io = end_buffer_read_sync;

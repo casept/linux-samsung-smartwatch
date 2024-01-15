@@ -1500,7 +1500,7 @@ static void gfs2_dir_readahead(struct inode *inode, unsigned hsize, u32 index,
 		if (blocknr == last)
 			continue;
 
-		bh = gfs2_getbuf(gl, blocknr, 1);
+		bh = gfs2_getbuf(gl, blocknr, FGP_CREAT);
 		if (trylock_buffer(bh)) {
 			if (buffer_uptodate(bh)) {
 				unlock_buffer(bh);

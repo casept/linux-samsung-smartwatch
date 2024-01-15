@@ -106,12 +106,15 @@ const struct address_space_operations gfs2_rgrp_aops = {
  * gfs2_getbuf - Get a buffer with a given address space
  * @gl: the glock
  * @blkno: the block number (filesystem scope)
- * @create: 1 if the buffer should be created
+ * @fgp_flags: Flags like FGP_CREAT and FGP_NOWAIT
+ *
+ * Returns ERR_PTR(-EAGAIN) if the FGP_NOWAIT flag is set and the function
+ * would sleep.
  *
  * Returns: the buffer
  */
-
-struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
+struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno,
+				fgf_t fgp_flags)
 {
 	struct address_space *mapping = gfs2_glock2aspace(gl);
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
@@ -128,17 +131,19 @@ struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
 	index = blkno >> shift;             /* convert block to page */
 	bufnum = blkno - (index << shift);  /* block buf index within page */
 
-	if (create) {
+	fgp_flags |= FGP_LOCK | FGP_ACCESSED;
+	if (fgp_flags & FGP_CREAT) {
 		folio = __filemap_get_folio(mapping, index,
-				FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
+				fgp_flags,
 				mapping_gfp_mask(mapping) | __GFP_NOFAIL);
+		if (IS_ERR(folio))
+			return ERR_CAST(folio);
 		bh = folio_buffers(folio);
-		if (!bh)
+		if (!bh && !(fgp_flags & FGP_NOWAIT))
 			bh = create_empty_buffers(folio,
 				sdp->sd_sb.sb_bsize, 0);
 	} else {
-		folio = __filemap_get_folio(mapping, index,
-				FGP_LOCK | FGP_ACCESSED, 0);
+		folio = __filemap_get_folio(mapping, index, fgp_flags, 0);
 		if (IS_ERR(folio))
 			return NULL;
 		bh = folio_buffers(folio);
@@ -181,7 +186,7 @@ static void meta_prep_new(struct buffer_head *bh)
 struct buffer_head *gfs2_meta_new(struct gfs2_glock *gl, u64 blkno)
 {
 	struct buffer_head *bh;
-	bh = gfs2_getbuf(gl, blkno, CREATE);
+	bh = gfs2_getbuf(gl, blkno, FGP_CREAT);
 	meta_prep_new(bh);
 	return bh;
 }
@@ -258,7 +263,7 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 		return -EIO;
 	}
 
-	*bhp = bh = gfs2_getbuf(gl, blkno, CREATE);
+	*bhp = bh = gfs2_getbuf(gl, blkno, FGP_CREAT);
 
 	lock_buffer(bh);
 	if (buffer_uptodate(bh)) {
@@ -271,7 +276,7 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 	}
 
 	if (rahead) {
-		bh = gfs2_getbuf(gl, blkno + 1, CREATE);
+		bh = gfs2_getbuf(gl, blkno + 1, FGP_CREAT);
 
 		lock_buffer(bh);
 		if (buffer_uptodate(bh)) {
@@ -443,7 +448,7 @@ void gfs2_journal_wipe(struct gfs2_inode *ip, u64 bstart, u32 blen)
 	gfs2_ail1_wipe(sdp, bstart, blen);
 	while (blen) {
 		ty = REMOVE_META;
-		bh = gfs2_getbuf(ip->i_gl, bstart, NO_CREATE);
+		bh = gfs2_getbuf(ip->i_gl, bstart, 0);
 		if (!bh && gfs2_is_jdata(ip)) {
 			bh = gfs2_getjdatabuf(ip, bstart);
 			ty = REMOVE_JDATA;
@@ -519,7 +524,7 @@ struct buffer_head *gfs2_meta_ra(struct gfs2_glock *gl, u64 dblock, u32 extlen)
 	if (extlen > max_ra)
 		extlen = max_ra;
 
-	first_bh = gfs2_getbuf(gl, dblock, CREATE);
+	first_bh = gfs2_getbuf(gl, dblock, FGP_CREAT);
 
 	if (buffer_uptodate(first_bh))
 		goto out;
@@ -529,7 +534,7 @@ struct buffer_head *gfs2_meta_ra(struct gfs2_glock *gl, u64 dblock, u32 extlen)
 	extlen--;
 
 	while (extlen) {
-		bh = gfs2_getbuf(gl, dblock, CREATE);
+		bh = gfs2_getbuf(gl, dblock, FGP_CREAT);
 
 		bh_readahead(bh, REQ_RAHEAD | REQ_META | REQ_PRIO);
 		brelse(bh);

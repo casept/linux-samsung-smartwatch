@@ -55,7 +55,7 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 		   int rahead, struct buffer_head **bhp);
 int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh);
 struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno,
-			        int create);
+				fgf_t fgp_flags);
 enum {
 	REMOVE_JDATA = 0,
 	REMOVE_META = 1,
