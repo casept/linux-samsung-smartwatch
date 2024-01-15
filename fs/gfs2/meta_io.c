@@ -240,18 +240,17 @@ static void gfs2_submit_bhs(blk_opf_t opf, struct buffer_head *bhs[], int num)
 }
 
 /**
- * gfs2_meta_read - Read a block from disk
+ * gfs2_meta_read_async - Read a block from disk
  * @gl: The glock covering the block
  * @blkno: The block number
- * @flags: flags
  * @rahead: Do read-ahead
  * @bhp: the place where the buffer is returned (NULL on failure)
  *
  * Returns: errno
  */
 
-int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
-		   int rahead, struct buffer_head **bhp)
+int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno,
+			 int rahead, struct buffer_head **bhp)
 {
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
 	struct buffer_head *bh, *bhs[2];
@@ -268,7 +267,6 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 	lock_buffer(bh);
 	if (buffer_uptodate(bh)) {
 		unlock_buffer(bh);
-		flags &= ~DIO_WAIT;
 	} else {
 		bh->b_end_io = end_buffer_read_sync;
 		get_bh(bh);
@@ -289,20 +287,6 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 	}
 
 	gfs2_submit_bhs(REQ_OP_READ | REQ_META | REQ_PRIO, bhs, num);
-	if (!(flags & DIO_WAIT))
-		return 0;
-
-	bh = *bhp;
-	wait_on_buffer(bh);
-	if (unlikely(!buffer_uptodate(bh))) {
-		struct gfs2_trans *tr = current->journal_info;
-		if (tr && test_bit(TR_TOUCHED, &tr->tr_flags))
-			gfs2_io_error_bh_wd(sdp, bh);
-		brelse(bh);
-		*bhp = NULL;
-		return -EIO;
-	}
-
 	return 0;
 }
 
@@ -316,10 +300,6 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 
 int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh)
 {
-	if (gfs2_withdrawing_or_withdrawn(sdp) &&
-	    !gfs2_withdraw_in_prog(sdp))
-		return -EIO;
-
 	wait_on_buffer(bh);
 
 	if (!buffer_uptodate(bh)) {
@@ -333,6 +313,24 @@ int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh)
 		return -EIO;
 
 	return 0;
+}
+
+int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno,
+		   int rahead, struct buffer_head **bhp)
+{
+	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
+	int ret;
+
+	ret = gfs2_meta_read_async(gl, blkno, rahead, bhp);
+	if (ret)
+		return ret;
+
+	ret = gfs2_meta_wait(sdp, *bhp);
+	if (ret) {
+		brelse(*bhp);
+		*bhp = NULL;
+	}
+	return ret;
 }
 
 void gfs2_remove_from_journal(struct buffer_head *bh, int meta)
@@ -491,7 +489,7 @@ int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
 	if (num == ip->i_no_addr)
 		rahead = ip->i_rahead;
 
-	ret = gfs2_meta_read(gl, num, DIO_WAIT, rahead, &bh);
+	ret = gfs2_meta_read(gl, num, rahead, &bh);
 	if (ret == 0 && gfs2_metatype_check(sdp, bh, mtype)) {
 		brelse(bh);
 		ret = -EIO;
