@@ -24,6 +24,7 @@
 
 	aliases {
 		i2c7 = &i2c_max77836;
+		i2c14 = &i2c_fuelgauge;
 		mmc0 = &mshc_0;
 		mmc1 = &mshc_1;
 	};
@@ -142,6 +143,24 @@
 				maxim,eoc-uamp = <7500>;
 				maxim,ovp-uvolt = <6500000>;
 			};
+		};
+	};
+
+	i2c_fuelgauge: i2c-gpio-1 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&gpd1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpd1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+	/* fails to enumerate with max77836-battery: Failed to locate of_node [id: -1], maybe wrong addr? */
+	/* Downstream code suggests true address might be 0xE (14), though 0x36 is also used */
+		fuelgauge@36 {
+			compatible = "maxim,max77836-battery";
+			interrupt-parent = <&gpx1>;
+			interrupts = <2 IRQ_TYPE_EDGE_RISING>;
+			reg = <0x36>;
 		};
 	};
 
@@ -636,12 +655,6 @@
 	samsung,i2c-max-bus-freq = <400000>;
 	status = "okay";
 
-	fuelgauge@36 {
-		compatible = "maxim,max77836-battery";
-		interrupt-parent = <&gpx1>;
-		interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-		reg = <0x36>;
-	};
 };
 
 &i2s2 {
