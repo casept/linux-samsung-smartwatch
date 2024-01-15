@@ -741,6 +741,39 @@
 	clock-frequency = <24000000>;
 };
 
+&spi_0 {
+	status = "okay";
+
+	/* Taken from artik5, let's hope they match */
+	cs-gpios = <&gpx3 4 GPIO_ACTIVE_LOW>, <0>;
+	assigned-clocks = <&cmu CLK_MOUT_SPI0>, <&cmu CLK_DIV_SPI0>,
+		<&cmu CLK_DIV_SPI0_PRE>, <&cmu CLK_SCLK_SPI0>;
+	assigned-clock-parents = <&cmu CLK_DIV_MPLL_PRE>, /* for: CLK_MOUT_SPI0 */
+		<&cmu CLK_MOUT_SPI0>,    /* for: CLK_DIV_SPI0 */
+		<&cmu CLK_DIV_SPI0>,     /* for: CLK_DIV_SPI0_PRE */
+		<&cmu CLK_DIV_SPI0_PRE>; /* for: CLK_SCLK_SPI0 */
+
+	/* Taken pretty much straight from binding description */
+	sensorhub@0 {
+		status = "disabled";
+		compatible = "samsung,sensorhub-rinato";
+		reg = <0>;
+		spi-max-frequency = <5000000>;
+		interrupt-parent = <&gpx0>;
+		interrupts = <2 0>;
+		ap-mcu-gpios = <&gpx0 0 GPIO_ACTIVE_HIGH>;
+		mcu-ap-gpios = <&gpx0 4 GPIO_ACTIVE_HIGH>;
+		mcu-reset-gpios = <&gpx0 5 GPIO_ACTIVE_HIGH>;
+
+		/* Also taken from artik5, not sure if needed */
+		controller-data {
+			samsung,spi-feedback-delay = <2>;
+		};
+	};
+};
+
+
+
 &pinctrl_0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&initial0 &sleep0>;
