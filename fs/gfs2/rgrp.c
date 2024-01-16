@@ -2452,7 +2452,7 @@ int gfs2_alloc_blocks(struct gfs2_inode *ip, u64 *bn, unsigned int *nblocks,
 	rbm.rgd->rd_last_alloc = block - rbm.rgd->rd_data0;
 	if (!dinode) {
 		ip->i_goal = block + *nblocks - 1;
-		error = gfs2_meta_inode_buffer(ip, &dibh);
+		error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 		if (error == 0) {
 			struct gfs2_dinode *di =
 				(struct gfs2_dinode *)dibh->b_data;

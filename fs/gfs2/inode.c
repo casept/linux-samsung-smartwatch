@@ -1027,7 +1027,7 @@ static int gfs2_link(struct dentry *old_dentry, struct inode *dir,
 			goto out_ipres;
 	}
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error)
 		goto out_end_trans;
 
@@ -1833,7 +1833,7 @@ static const char *gfs2_get_link(struct dentry *dentry,
 		goto out;
 	}
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error) {
 		buf = ERR_PTR(error);
 		goto out;

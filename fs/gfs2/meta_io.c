@@ -500,13 +500,16 @@ void gfs2_journal_wipe(struct gfs2_inode *ip, u64 bstart, u32 blen)
  * @ip: The GFS2 inode
  * @mtype: The block type (GFS2_METATYPE_*)
  * @num: The block number (device relative) of the buffer
+ * @fgp_flags: FGP_NOWAIT if sleeping is prohibited
  * @bhp: the buffer is returned here
+ *
+ * Returns -EAGAIN if the FGP_NOWAIT flag is set and the function would sleep.
  *
  * Returns: errno
  */
 
 int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
-		     struct buffer_head **bhp)
+		     fgf_t fgp_flags, struct buffer_head **bhp)
 {
 	struct gfs2_sbd *sdp = GFS2_SB(&ip->i_inode);
 	struct gfs2_glock *gl = ip->i_gl;
@@ -517,7 +520,7 @@ int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
 	if (num == ip->i_no_addr)
 		rahead = ip->i_rahead;
 
-	ret = gfs2_meta_read(gl, num, 0, rahead, &bh);
+	ret = gfs2_meta_read(gl, num, fgp_flags, rahead, &bh);
 	if (ret == 0 && gfs2_metatype_check(sdp, bh, mtype)) {
 		brelse(bh);
 		ret = -EIO;

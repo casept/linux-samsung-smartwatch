@@ -1360,7 +1360,7 @@ static int ea_dealloc_indirect(struct gfs2_inode *ip)
 
 	ip->i_diskflags &= ~GFS2_DIF_EA_INDIRECT;
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (!error) {
 		gfs2_trans_add_meta(ip->i_gl, dibh);
 		gfs2_dinode_out(ip, dibh->b_data);
@@ -1412,7 +1412,7 @@ static int ea_dealloc_block(struct gfs2_inode *ip)
 	gfs2_add_inode_blocks(&ip->i_inode, -1);
 
 	if (likely(!test_bit(GIF_ALLOC_FAILED, &ip->i_flags))) {
-		error = gfs2_meta_inode_buffer(ip, &dibh);
+		error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 		if (!error) {
 			gfs2_trans_add_meta(ip->i_gl, dibh);
 			gfs2_dinode_out(ip, dibh->b_data);

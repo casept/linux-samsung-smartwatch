@@ -122,7 +122,7 @@ static int gfs2_dir_write_stuffed(struct gfs2_inode *ip, const char *buf,
 	struct buffer_head *dibh;
 	int error;
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error)
 		return error;
 
@@ -221,7 +221,7 @@ static int gfs2_dir_write_data(struct gfs2_inode *ip, const char *buf,
 	}
 
 out:
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error)
 		return error;
 
@@ -246,7 +246,7 @@ static int gfs2_dir_read_stuffed(struct gfs2_inode *ip, __be64 *buf,
 	struct buffer_head *dibh;
 	int error;
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (!error) {
 		memcpy(buf, dibh->b_data + sizeof(struct gfs2_dinode), size);
 		brelse(dibh);
@@ -844,7 +844,7 @@ static struct gfs2_dirent *gfs2_dirent_search(struct inode *inode,
 	}
 
 
-	error = gfs2_meta_inode_buffer(ip, &bh);
+	error = gfs2_meta_inode_buffer(ip, 0, &bh);
 	if (error)
 		return ERR_PTR(error);
 	dent = gfs2_dirent_scan(inode, bh->b_data, bh->b_size, scan, name, NULL);
@@ -915,7 +915,7 @@ static int dir_make_exhash(struct inode *inode)
 	u64 bn;
 	int error;
 
-	error = gfs2_meta_inode_buffer(dip, &dibh);
+	error = gfs2_meta_inode_buffer(dip, 0, &dibh);
 	if (error)
 		return error;
 
@@ -1115,7 +1115,7 @@ static int dir_split_leaf(struct inode *inode, const struct qstr *name)
 
 	oleaf->lf_depth = nleaf->lf_depth;
 
-	error = gfs2_meta_inode_buffer(dip, &dibh);
+	error = gfs2_meta_inode_buffer(dip, 0, &dibh);
 	if (!gfs2_assert_withdraw(GFS2_SB(&dip->i_inode), !error)) {
 		gfs2_trans_add_meta(dip->i_gl, dibh);
 		gfs2_add_inode_blocks(&dip->i_inode, 1);
@@ -1169,7 +1169,7 @@ static int dir_double_exhash(struct gfs2_inode *dip)
 		return -ENOMEM;
 
 	h = hc2;
-	error = gfs2_meta_inode_buffer(dip, &dibh);
+	error = gfs2_meta_inode_buffer(dip, 0, &dibh);
 	if (error)
 		goto out_kfree;
 
@@ -1586,7 +1586,7 @@ int gfs2_dir_read(struct inode *inode, struct dir_context *ctx,
 		return -EIO;
 	}
 
-	error = gfs2_meta_inode_buffer(dip, &dibh);
+	error = gfs2_meta_inode_buffer(dip, 0, &dibh);
 	if (error)
 		return error;
 
@@ -1758,7 +1758,7 @@ static int dir_new_leaf(struct inode *inode, const struct qstr *name)
 	brelse(bh);
 	brelse(obh);
 
-	error = gfs2_meta_inode_buffer(ip, &bh);
+	error = gfs2_meta_inode_buffer(ip, 0, &bh);
 	if (error)
 		return error;
 	gfs2_trans_add_meta(ip->i_gl, bh);
@@ -2063,7 +2063,7 @@ static int leaf_dealloc(struct gfs2_inode *dip, u32 index, u32 len,
 		goto out_end_trans;
 	}
 
-	error = gfs2_meta_inode_buffer(dip, &dibh);
+	error = gfs2_meta_inode_buffer(dip, 0, &dibh);
 	if (error)
 		goto out_end_trans;
 

@@ -66,12 +66,13 @@ enum {
 void gfs2_remove_from_journal(struct buffer_head *bh, int meta);
 void gfs2_journal_wipe(struct gfs2_inode *ip, u64 bstart, u32 blen);
 int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
-		     struct buffer_head **bhp);
+		     fgf_t fgp_flags, struct buffer_head **bhp);
 
-static inline int gfs2_meta_inode_buffer(struct gfs2_inode *ip,
+static inline int gfs2_meta_inode_buffer(struct gfs2_inode *ip, fgf_t fgp_flags,
 					 struct buffer_head **bhp)
 {
-	return gfs2_meta_buffer(ip, GFS2_METATYPE_DI, ip->i_no_addr, bhp);
+	return gfs2_meta_buffer(ip, GFS2_METATYPE_DI, ip->i_no_addr, fgp_flags,
+				bhp);
 }
 
 struct buffer_head *gfs2_meta_ra(struct gfs2_glock *gl, u64 dblock, u32 extlen);

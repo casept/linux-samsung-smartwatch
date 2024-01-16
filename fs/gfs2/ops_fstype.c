@@ -698,7 +698,7 @@ static int init_statfs(struct gfs2_sbd *sdp)
 		goto free_local;
 	}
 	/* read in the local statfs buffer - other nodes don't change it. */
-	error = gfs2_meta_inode_buffer(ip, &sdp->sd_sc_bh);
+	error = gfs2_meta_inode_buffer(ip, 0, &sdp->sd_sc_bh);
 	if (error) {
 		fs_err(sdp, "Cannot read in local statfs: %d\n", error);
 		goto unlock_sd_gh;
