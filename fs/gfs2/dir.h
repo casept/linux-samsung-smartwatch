@@ -27,7 +27,7 @@ struct inode *gfs2_dir_search(struct inode *dir,
 			      const struct qstr *filename,
 			      bool fail_on_exist);
 int gfs2_dir_check(struct inode *dir, const struct qstr *filename,
-		   const struct gfs2_inode *ip);
+		   const struct gfs2_inode *ip, fgf_t fgp_flags);
 int gfs2_dir_add(struct inode *inode, const struct qstr *filename,
 		 const struct gfs2_inode *ip, struct gfs2_diradd *da);
 static inline void gfs2_dir_no_add(struct gfs2_diradd *da)

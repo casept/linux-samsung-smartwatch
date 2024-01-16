@@ -1676,13 +1676,13 @@ struct inode *gfs2_dir_search(struct inode *dir, const struct qstr *name,
 }
 
 int gfs2_dir_check(struct inode *dir, const struct qstr *name,
-		   const struct gfs2_inode *ip)
+		   const struct gfs2_inode *ip, fgf_t fgp_flags)
 {
 	struct buffer_head *bh;
 	struct gfs2_dirent *dent;
 	int ret = -ENOENT;
 
-	dent = gfs2_dirent_search(dir, name, gfs2_dirent_find, 0, &bh);
+	dent = gfs2_dirent_search(dir, name, gfs2_dirent_find, fgp_flags, &bh);
 	if (dent) {
 		if (IS_ERR(dent))
 			return PTR_ERR(dent);

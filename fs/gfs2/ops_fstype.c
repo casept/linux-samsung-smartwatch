@@ -584,7 +584,7 @@ static int gfs2_jindex_hold(struct gfs2_sbd *sdp, struct gfs2_holder *ji_gh)
 		name.len = sprintf(buf, "journal%u", sdp->sd_journals);
 		name.hash = gfs2_disk_hash(name.name, name.len);
 
-		error = gfs2_dir_check(sdp->sd_jindex, &name, NULL);
+		error = gfs2_dir_check(sdp->sd_jindex, &name, NULL, 0);
 		if (error == -ENOENT) {
 			error = 0;
 			break;

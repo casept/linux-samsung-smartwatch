@@ -72,7 +72,7 @@ static int gfs2_drevalidate(struct dentry *dentry, unsigned int flags)
 			goto out;
 	}
 
-	error = gfs2_dir_check(dinode, &dentry->d_name, ip);
+	error = gfs2_dir_check(dinode, &dentry->d_name, ip, 0);
 	valid = inode ? !error : (error == -ENOENT);
 
 	if (!had_lock)
