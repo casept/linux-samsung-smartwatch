@@ -805,6 +805,7 @@ static int get_first_leaf(struct gfs2_inode *dip, u32 index,
 static struct gfs2_dirent *gfs2_dirent_search(struct inode *inode,
 					      const struct qstr *name,
 					      gfs2_dscan_t scan,
+					      fgf_t fgp_flags,
 					      struct buffer_head **pbh)
 {
 	struct buffer_head *bh;
@@ -817,6 +818,11 @@ static struct gfs2_dirent *gfs2_dirent_search(struct inode *inode,
 		unsigned int hsize = BIT(ip->i_depth);
 		unsigned int index;
 		u64 ln;
+
+		/* no lockless lookup inside ExHash directories */
+		if (fgp_flags & FGP_NOWAIT)
+			return ERR_PTR(-EAGAIN);
+
 		if (hsize * sizeof(u64) != i_size_read(inode)) {
 			gfs2_consist_inode(ip);
 			return ERR_PTR(-EIO);
@@ -843,8 +849,7 @@ static struct gfs2_dirent *gfs2_dirent_search(struct inode *inode,
 		return error ? ERR_PTR(error) : NULL;
 	}
 
-
-	error = gfs2_meta_inode_buffer(ip, 0, &bh);
+	error = gfs2_meta_inode_buffer(ip, fgp_flags, &bh);
 	if (error)
 		return ERR_PTR(error);
 	dent = gfs2_dirent_scan(inode, bh->b_data, bh->b_size, scan, name, NULL);
@@ -1647,7 +1652,7 @@ struct inode *gfs2_dir_search(struct inode *dir, const struct qstr *name,
 	u64 addr, formal_ino;
 	u16 dtype;
 
-	dent = gfs2_dirent_search(dir, name, gfs2_dirent_find, &bh);
+	dent = gfs2_dirent_search(dir, name, gfs2_dirent_find, 0, &bh);
 	if (dent) {
 		struct inode *inode;
 		u16 rahead;
@@ -1677,7 +1682,7 @@ int gfs2_dir_check(struct inode *dir, const struct qstr *name,
 	struct gfs2_dirent *dent;
 	int ret = -ENOENT;
 
-	dent = gfs2_dirent_search(dir, name, gfs2_dirent_find, &bh);
+	dent = gfs2_dirent_search(dir, name, gfs2_dirent_find, 0, &bh);
 	if (dent) {
 		if (IS_ERR(dent))
 			return PTR_ERR(dent);
@@ -1805,7 +1810,8 @@ int gfs2_dir_add(struct inode *inode, const struct qstr *name,
 	while(1) {
 		if (da->bh == NULL) {
 			dent = gfs2_dirent_search(inode, name,
-						  gfs2_dirent_find_space, &bh);
+						  gfs2_dirent_find_space, 0,
+						  &bh);
 		}
 		if (dent) {
 			if (IS_ERR(dent))
@@ -1880,7 +1886,8 @@ int gfs2_dir_del(struct gfs2_inode *dip, const struct dentry *dentry)
 
 	/* Returns _either_ the entry (if its first in block) or the
 	   previous entry otherwise */
-	dent = gfs2_dirent_search(&dip->i_inode, name, gfs2_dirent_prev, &bh);
+	dent = gfs2_dirent_search(&dip->i_inode, name, gfs2_dirent_prev, 0,
+				  &bh);
 	if (!dent) {
 		gfs2_consist_inode(dip);
 		return -EIO;
@@ -1939,7 +1946,8 @@ int gfs2_dir_mvino(struct gfs2_inode *dip, const struct qstr *filename,
 	struct buffer_head *bh;
 	struct gfs2_dirent *dent;
 
-	dent = gfs2_dirent_search(&dip->i_inode, filename, gfs2_dirent_find, &bh);
+	dent = gfs2_dirent_search(&dip->i_inode, filename, gfs2_dirent_find, 0,
+				  &bh);
 	if (!dent) {
 		gfs2_consist_inode(dip);
 		return -EIO;
@@ -2166,7 +2174,7 @@ int gfs2_diradd_alloc_required(struct inode *inode, const struct qstr *name,
 	da->bh = NULL;
 	da->dent = NULL;
 
-	dent = gfs2_dirent_search(inode, name, gfs2_dirent_find_space, &bh);
+	dent = gfs2_dirent_search(inode, name, gfs2_dirent_find_space, 0, &bh);
 	if (!dent) {
 		da->nr_blocks = sdp->sd_max_dirres;
 		if (!(ip->i_diskflags & GFS2_DIF_EXHASH) &&
