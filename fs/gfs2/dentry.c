@@ -74,12 +74,20 @@ static int gfs2_drevalidate(struct dentry *dentry, unsigned int flags)
 			goto out;
 	}
 
-	error = gfs2_dir_check(dinode, &dentry->d_name, ip, 0);
+	if (flags & LOOKUP_RCU) {
+		error = gfs2_dir_check(dinode, &dentry->d_name, ip, FGP_NOWAIT);
+		if (error == -EAGAIN) {
+			error = -ECHILD;
+			goto out;
+		}
+	} else {
+		error = gfs2_dir_check(dinode, &dentry->d_name, ip, 0);
+	}
 	error = inode ? !error : (error == -ENOENT);
 
+out:
 	if (gfs2_holder_initialized(&d_gh))
 		gfs2_glock_dq_uninit(&d_gh);
-out:
 	dput(parent);
 	return error;
 }
