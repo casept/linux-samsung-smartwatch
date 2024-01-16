@@ -23,6 +23,7 @@
 	chassis-type = "watch";
 
 	aliases {
+		i2c0 = &i2c_pmic;
 		i2c7 = &i2c_max77836;
 		i2c14 = &i2c_fuelgauge;
 		mmc0 = &mshc_0;
@@ -164,6 +165,410 @@
 		};
 	};
 
+	/* For whatever reason, the builtin I2C master doesn't work at all */
+	i2c_pmic: i2c-gpio-2 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&gpd1 0 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpd1 1 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		/* TODO: Unknown peripheral on this bus at addr 0x06 */
+
+		pmic@66 {
+			status = "okay";
+			compatible = "samsung,s2mps14-pmic";
+			interrupt-parent = <&gpx0>;
+			interrupts = <7 IRQ_TYPE_LEVEL_LOW>;
+			reg = <0x66>;
+			wakeup-source;
+
+			s2mps14_osc: clocks {
+				compatible = "samsung,s2mps14-clk";
+				#clock-cells = <1>;
+				clock-output-names = "s2mps14_ap", "unused",
+					"s2mps14_bt";
+				status = "okay";
+			};
+
+			regulators {
+				// This is unused in downstream, but having it on at low voltage *probably* doesn't hurt, nothing in dtree uses it
+				ldo1_reg: LDO1 {
+					status = "okay";
+					regulator-name = "VAP_ALIVE_1.0V";
+					regulator-min-microvolt = <1000000>;
+					regulator-max-microvolt = <1000000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-on-in-suspend;
+					};
+				};
+
+				// Is vdd_ldo2_range dowstream (1.2 volts)
+				ldo2_reg: LDO2 {
+					status = "okay";
+					regulator-name = "VAP_M1_1.2V";
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo3_reg: LDO3 {
+					status = "okay";
+					regulator-name = "VCC_AP_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Is vddq_mmc range downstream, delivers 1.8V
+				ldo4_reg: LDO4 {
+					status = "okay";
+					regulator-name = "VAP_AVDD_PLL1";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Is vdd_pll_1v8 downstream, delivers 1.0V
+				ldo5_reg: LDO5 {
+					status = "okay";
+					regulator-name = "VAP_PLL_ISO_1.0V";
+					regulator-min-microvolt = <1000000>;
+					regulator-max-microvolt = <1000000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Is vap_mipi_1.0v downstream
+				ldo6_reg: LDO6 {
+					status = "okay";
+					regulator-name = "VAP_VMIPI_1.0V";
+					regulator-min-microvolt = <1000000>;
+					regulator-max-microvolt = <1000000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Is vdd_ldo7 range downstream, delivers 1.8V
+				ldo7_reg: LDO7 {
+					status = "okay";
+					regulator-name = "VAP_AVDD_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo8_reg: LDO8 {
+					status = "okay";
+					regulator-name = "VAP_USB_3.0V";
+					regulator-min-microvolt = <3000000>;
+					regulator-max-microvolt = <3000000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo9_reg: LDO9 {
+					status = "okay";
+					regulator-name = "V_LPDDR_1.2V";
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-on-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo10_reg: LDO10 {
+					status = "okay";
+					regulator-name = "UNUSED_LDO10";
+					regulator-min-microvolt = <1000000>;
+					regulator-max-microvolt = <1000000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Unused downstream
+				ldo11_reg: LDO11 {
+					status = "okay";
+					regulator-name = "V_EMMC_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					samsung,ext-control-gpios = <&gpk0 2 GPIO_ACTIVE_HIGH>;
+				};
+
+				// Unused downstream
+				ldo12_reg: LDO12 {
+					status = "okay";
+					regulator-name = "V_EMMC_2.8V";
+					regulator-min-microvolt = <2800000>;
+					regulator-max-microvolt = <2800000>;
+					samsung,ext-control-gpios = <&gpk0 2 GPIO_ACTIVE_HIGH>;
+				};
+
+				// Matches downstream
+				ldo13_reg: LDO13 {
+					status = "okay";
+					regulator-name = "CAM_AVDD_2.8V";
+					regulator-min-microvolt = <2800000>;
+					regulator-max-microvolt = <2800000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Is regulator-haptic downstream, delivers 1.1V to 2.7V, but seems unused on production revision
+				ldo14_reg: LDO14 {
+					status = "okay";
+					regulator-name = "UNUSED_LDO14";
+					regulator-min-microvolt = <2700000>;
+					regulator-max-microvolt = <2700000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo15_reg: LDO15 {
+					status = "okay";
+					regulator-name = "TSP_AVDD_3.3V";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-always-on;
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Delivers only 3.0V downstream
+				ldo16_reg: LDO16 {
+					status = "okay";
+					regulator-name = "LCD_VDD_3.3V";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo17_reg: LDO17 {
+					status = "okay";
+					regulator-name = "V_IRLED_3.3V";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo18_reg: LDO18 {
+					status = "okay";
+					regulator-name = "CAM_AF_2.8V";
+					regulator-min-microvolt = <2800000>;
+					regulator-max-microvolt = <2800000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo19_reg: LDO19 {
+					status = "okay";
+					regulator-name = "TSP_VDD_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo20_reg: LDO20 {
+					status = "okay";
+					regulator-name = "LCD_VDD_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo21_reg: LDO21 {
+					status = "okay";
+					regulator-name = "CAM_IO_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo22_reg: LDO22 {
+					status = "okay";
+					regulator-name = "CAM_DVDD_1.2V";
+					regulator-min-microvolt = <1200000>;
+					regulator-max-microvolt = <1200000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo23_reg: LDO23 {
+					status = "okay";
+					regulator-name = "HRM_VCC_1.8V";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
+				};
+
+				// Delivers 3.3V downstream
+				ldo24_reg: LDO24 {
+					status = "okay";
+					regulator-name = "HRM_VCC_3.3V";
+					regulator-min-microvolt = <3000000>;
+					regulator-max-microvolt = <3000000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Matches downstream
+				ldo25_reg: LDO25 {
+					status = "okay";
+					regulator-name = "UNUSED_LDO25";
+					regulator-min-microvolt = <3000000>;
+					regulator-max-microvolt = <3000000>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// vdd_mif range downstream, delivers 0.6 to 1.6V, seems like nothing is connected downstream
+				buck1_reg: BUCK1 {
+					status = "okay";
+					regulator-name = "VAP_MIF_1.0V";
+					regulator-min-microvolt = <800000>;
+					regulator-max-microvolt = <900000>;
+					regulator-always-on;
+					// Set by downstream
+					regulator-ramp-delay = <12>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Delivers 0.6V to 1.6V downstream
+				buck2_reg: BUCK2 {
+					status = "okay";
+					regulator-name = "VAP_ARM_1.0V";
+					regulator-min-microvolt = <850000>;
+					regulator-max-microvolt = <1150000>;
+					regulator-always-on;
+					regulator-ramp-delay = <12>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Delivers 0.6V to 1.6V downstream
+				buck3_reg: BUCK3 {
+					status = "okay";
+					regulator-name = "VAP_INT3D_1.0V";
+					regulator-min-microvolt = <850000>;
+					regulator-max-microvolt = <1000000>;
+					regulator-always-on;
+					regulator-ramp-delay = <12>;
+
+					regulator-state-mem {
+						regulator-off-in-suspend;
+					};
+				};
+
+				// Unused downstream
+				buck4_reg: BUCK4 {
+					status = "okay";
+					regulator-name = "VCC_SUB_1.95V";
+					regulator-min-microvolt = <1950000>;
+					regulator-max-microvolt = <1950000>;
+					regulator-always-on;
+					regulator-ramp-delay = <12>;
+
+					regulator-state-mem {
+						regulator-on-in-suspend;
+					};
+				};
+
+				// Unused downstream
+				buck5_reg: BUCK5 {
+					status = "okay";
+					regulator-name = "VCC_SUB_1.35V";
+					regulator-min-microvolt = <1350000>;
+					regulator-max-microvolt = <1350000>;
+					regulator-always-on;
+					regulator-ramp-delay = <12>;
+
+					regulator-state-mem {
+						regulator-on-in-suspend;
+					};
+				};
+			};
+		};
+	};
+
 	haptics {
 		compatible = "regulator-haptic";
 		haptic-supply = <&motor_reg>;
@@ -273,11 +678,8 @@
 };
 
 &hsotg {
-	/*
-	 * With these commented-in, USB doesn't work
-	 * vusb_d-supply = <&ldo15_reg>;
-	 * vusb_a-supply = <&ldo12_reg>;
-	 */
+	vusb_d-supply = <&ldo15_reg>;
+	vusb_a-supply = <&ldo12_reg>;
 	dr_mode = "peripheral";
 	status = "okay";
 };
@@ -316,336 +718,9 @@
 	status = "okay";
 };
 
-&i2c_0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	samsung,i2c-sda-delay = <100>;
-	samsung,i2c-slave-addr = <0x10>;
-	samsung,i2c-max-bus-freq = <100000>;
-	status = "okay";
 
-	pmic@66 {
-		compatible = "samsung,s2mps14-pmic";
-		interrupt-parent = <&gpx0>;
-		interrupts = <7 IRQ_TYPE_LEVEL_LOW>;
-		reg = <0x66>;
-		wakeup-source;
 
-		s2mps14_osc: clocks {
-			compatible = "samsung,s2mps14-clk";
-			#clock-cells = <1>;
-			clock-output-names = "s2mps14_ap", "unused",
-				"s2mps14_bt";
-		};
 
-		regulators {
-			ldo1_reg: LDO1 {
-				regulator-name = "VAP_ALIVE_1.0V";
-				regulator-min-microvolt = <1000000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-on-in-suspend;
-				};
-			};
-
-			ldo2_reg: LDO2 {
-				regulator-name = "VAP_M1_1.2V";
-				regulator-min-microvolt = <1200000>;
-				regulator-max-microvolt = <1200000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo3_reg: LDO3 {
-				regulator-name = "VCC_AP_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo4_reg: LDO4 {
-				regulator-name = "VAP_AVDD_PLL1";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo5_reg: LDO5 {
-				regulator-name = "VAP_PLL_ISO_1.0V";
-				regulator-min-microvolt = <1000000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo6_reg: LDO6 {
-				regulator-name = "VAP_VMIPI_1.0V";
-				regulator-min-microvolt = <1000000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo7_reg: LDO7 {
-				regulator-name = "VAP_AVDD_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo8_reg: LDO8 {
-				regulator-name = "VAP_USB_3.0V";
-				regulator-min-microvolt = <3000000>;
-				regulator-max-microvolt = <3000000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo9_reg: LDO9 {
-				regulator-name = "V_LPDDR_1.2V";
-				regulator-min-microvolt = <1200000>;
-				regulator-max-microvolt = <1200000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-on-in-suspend;
-				};
-			};
-
-			ldo10_reg: LDO10 {
-				regulator-name = "UNUSED_LDO10";
-				regulator-min-microvolt = <1000000>;
-				regulator-max-microvolt = <1000000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo11_reg: LDO11 {
-				regulator-name = "V_EMMC_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				samsung,ext-control-gpios = <&gpk0 2 GPIO_ACTIVE_HIGH>;
-			};
-
-			ldo12_reg: LDO12 {
-				regulator-name = "V_EMMC_2.8V";
-				regulator-min-microvolt = <2800000>;
-				regulator-max-microvolt = <2800000>;
-				samsung,ext-control-gpios = <&gpk0 2 GPIO_ACTIVE_HIGH>;
-			};
-
-			ldo13_reg: LDO13 {
-				regulator-name = "CAM_AVDD_2.8V";
-				regulator-min-microvolt = <2800000>;
-				regulator-max-microvolt = <2800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo14_reg: LDO14 {
-				regulator-name = "UNUSED_LDO14";
-				regulator-min-microvolt = <2700000>;
-				regulator-max-microvolt = <2700000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo15_reg: LDO15 {
-				regulator-name = "TSP_AVDD_3.3V";
-				regulator-min-microvolt = <3300000>;
-				regulator-max-microvolt = <3300000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo16_reg: LDO16 {
-				regulator-name = "LCD_VDD_3.3V";
-				regulator-min-microvolt = <3300000>;
-				regulator-max-microvolt = <3300000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo17_reg: LDO17 {
-				regulator-name = "V_IRLED_3.3V";
-				regulator-min-microvolt = <3300000>;
-				regulator-max-microvolt = <3300000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo18_reg: LDO18 {
-				regulator-name = "CAM_AF_2.8V";
-				regulator-min-microvolt = <2800000>;
-				regulator-max-microvolt = <2800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo19_reg: LDO19 {
-				regulator-name = "TSP_VDD_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo20_reg: LDO20 {
-				regulator-name = "LCD_VDD_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo21_reg: LDO21 {
-				regulator-name = "CAM_IO_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo22_reg: LDO22 {
-				regulator-name = "CAM_DVDD_1.2V";
-				regulator-min-microvolt = <1200000>;
-				regulator-max-microvolt = <1200000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo23_reg: LDO23 {
-				regulator-name = "HRM_VCC_1.8V";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-			};
-
-			ldo24_reg: LDO24 {
-				regulator-name = "HRM_VCC_3.3V";
-				regulator-min-microvolt = <3000000>;
-				regulator-max-microvolt = <3000000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			ldo25_reg: LDO25 {
-				regulator-name = "UNUSED_LDO25";
-				regulator-min-microvolt = <3000000>;
-				regulator-max-microvolt = <3000000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			buck1_reg: BUCK1 {
-				regulator-name = "VAP_MIF_1.0V";
-				regulator-min-microvolt = <800000>;
-				regulator-max-microvolt = <900000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			buck2_reg: BUCK2 {
-				regulator-name = "VAP_ARM_1.0V";
-				regulator-min-microvolt = <850000>;
-				regulator-max-microvolt = <1150000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			buck3_reg: BUCK3 {
-				regulator-name = "VAP_INT3D_1.0V";
-				regulator-min-microvolt = <850000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-
-			buck4_reg: BUCK4 {
-				regulator-name = "VCC_SUB_1.95V";
-				regulator-min-microvolt = <1950000>;
-				regulator-max-microvolt = <1950000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-on-in-suspend;
-				};
-			};
-
-			buck5_reg: BUCK5 {
-				regulator-name = "VCC_SUB_1.35V";
-				regulator-min-microvolt = <1350000>;
-				regulator-max-microvolt = <1350000>;
-				regulator-always-on;
-
-				regulator-state-mem {
-					regulator-on-in-suspend;
-				};
-			};
-		};
-	};
-};
 
 &i2c_1 {
 	#address-cells = <1>;
