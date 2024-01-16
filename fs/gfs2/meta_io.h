@@ -51,10 +51,10 @@ static inline struct gfs2_sbd *gfs2_mapping2sbd(struct address_space *mapping)
 }
 
 struct buffer_head *gfs2_meta_new(struct gfs2_glock *gl, u64 blkno);
-int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno,
+int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno, fgf_t fgp_flags,
 			 int rahead, struct buffer_head **bhp);
 int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh);
-int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno,
+int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, fgf_t fgp_flags,
 		   int rahead, struct buffer_head **bhp);
 struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno,
 				fgf_t fgp_flags);

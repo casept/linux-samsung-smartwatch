@@ -1210,7 +1210,7 @@ int gfs2_rgrp_go_instantiate(struct gfs2_glock *gl)
 
 	for (x = 0; x < length; x++) {
 		bi = rgd->rd_bits + x;
-		error = gfs2_meta_read_async(gl, rgd->rd_addr + x, 0,
+		error = gfs2_meta_read_async(gl, rgd->rd_addr + x, 0, 0,
 					     &bi->bi_bh);
 		if (error)
 			goto fail;

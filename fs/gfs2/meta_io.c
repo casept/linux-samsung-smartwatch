@@ -243,13 +243,16 @@ static void gfs2_submit_bhs(blk_opf_t opf, struct buffer_head *bhs[], int num)
  * gfs2_meta_read_async - Read a block from disk
  * @gl: The glock covering the block
  * @blkno: The block number
+ * @fgp_flags: FGP_NOWAIT if sleeping is prohibited
  * @rahead: Do read-ahead
  * @bhp: the place where the buffer is returned (NULL on failure)
+ *
+ * Returns -EAGAIN if the FGP_NOWAIT flag is set and the function would sleep.
  *
  * Returns: errno
  */
 
-int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno,
+int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno, fgf_t fgp_flags,
 			 int rahead, struct buffer_head **bhp)
 {
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
@@ -262,7 +265,29 @@ int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno,
 		return -EIO;
 	}
 
-	*bhp = bh = gfs2_getbuf(gl, blkno, FGP_CREAT);
+	fgp_flags |= FGP_CREAT;
+	*bhp = bh = gfs2_getbuf(gl, blkno, fgp_flags);
+	if (IS_ERR(bh)) {
+		*bhp = NULL;
+		return PTR_ERR(bh);
+	}
+
+	if (fgp_flags & FGP_NOWAIT) {
+		bool uptodate = false;
+
+		/* skips readahead entirely. */
+
+		if (trylock_buffer(bh)) {
+			uptodate = buffer_uptodate(bh);
+			unlock_buffer(bh);
+		}
+		if (!uptodate) {
+			brelse(bh);
+			*bhp = NULL;
+			return -EAGAIN;
+		}
+		return 0;
+	}
 
 	lock_buffer(bh);
 	if (buffer_uptodate(bh)) {
@@ -274,7 +299,9 @@ int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno,
 	}
 
 	if (rahead) {
-		bh = gfs2_getbuf(gl, blkno + 1, FGP_CREAT);
+		bh = gfs2_getbuf(gl, blkno + 1, fgp_flags);
+		if (IS_ERR(bh))
+			goto out;
 
 		lock_buffer(bh);
 		if (buffer_uptodate(bh)) {
@@ -286,6 +313,7 @@ int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno,
 		}
 	}
 
+out:
 	gfs2_submit_bhs(REQ_OP_READ | REQ_META | REQ_PRIO, bhs, num);
 	return 0;
 }
@@ -315,13 +343,13 @@ int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh)
 	return 0;
 }
 
-int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno,
+int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, fgf_t fgp_flags,
 		   int rahead, struct buffer_head **bhp)
 {
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
 	int ret;
 
-	ret = gfs2_meta_read_async(gl, blkno, rahead, bhp);
+	ret = gfs2_meta_read_async(gl, blkno, fgp_flags, rahead, bhp);
 	if (ret)
 		return ret;
 
@@ -489,7 +517,7 @@ int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
 	if (num == ip->i_no_addr)
 		rahead = ip->i_rahead;
 
-	ret = gfs2_meta_read(gl, num, rahead, &bh);
+	ret = gfs2_meta_read(gl, num, 0, rahead, &bh);
 	if (ret == 0 && gfs2_metatype_check(sdp, bh, mtype)) {
 		brelse(bh);
 		ret = -EIO;
