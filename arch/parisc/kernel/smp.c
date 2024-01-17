@@ -330,10 +330,11 @@ void smp_callin(unsigned long pdce_proc)
 /*
  * Bring one cpu online.
  */
-static int smp_boot_one_cpu(int cpuid, struct task_struct *idle)
+static int noinline smp_boot_one_cpu(int cpuid, struct task_struct *idle)
 {
 	const struct cpuinfo_parisc *p = &per_cpu(cpu_data, cpuid);
 	long timeout;
+	long t2[2];
 
 #ifdef CONFIG_HOTPLUG_CPU
 	int i;
@@ -364,7 +365,19 @@ static int smp_boot_one_cpu(int cpuid, struct task_struct *idle)
 	smp_init_current_idle_task = idle ;
 	mb();
 
-	printk(KERN_INFO "Releasing cpu %d now, hpa=%lx\n", cpuid, p->hpa);
+	printk(KERN_INFO "Releasing cpu %d now, hpa=%lx  vector %x\n", cpuid, p->hpa, PAGE0->vec_rendz);
+	t2[0] = 0xaabbccdd11223344;
+	t2[1] = 0x0a0b0c0d01020304;
+	asm("nop ! nop ! nop" : : : "memory");
+	asm volatile("ldw 1(%1),%0" : "=r" (i) : "r"(&t2) : "memory");
+	printk("VAL1 %04x\n", i);
+	asm volatile("ldw 2(%1),%0" : "=r" (i) : "r"(&t2) : "memory");
+	printk("VAL2 %04x\n", i);
+	asm volatile("ldw 3(%1),%0" : "=r" (i) : "r"(&t2) : "memory");
+	printk("VAL3 %04x\n", i);
+	asm volatile("ldw 4(%1),%0" : "=r" (i) : "r"(&t2) : "memory");
+	printk("VAL4 %04x\n", i);
+	// asm("b,n ." : : : "memory");
 
 	/*
 	** This gets PDC to release the CPU from a very tight loop.
