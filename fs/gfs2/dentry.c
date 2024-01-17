@@ -38,8 +38,9 @@ static int gfs2_drevalidate(struct dentry *dentry, unsigned int flags)
 	struct inode *dinode, *inode;
 	struct gfs2_holder d_gh;
 	struct gfs2_inode *ip = NULL;
-	int error, valid = 0;
-	int had_lock = 0;
+	int error;
+
+	gfs2_holder_mark_uninitialized(&d_gh);
 
 	if (flags & LOOKUP_RCU) {
 		dinode = d_inode_rcu(READ_ONCE(dentry->d_parent));
@@ -54,18 +55,19 @@ static int gfs2_drevalidate(struct dentry *dentry, unsigned int flags)
 	inode = d_inode(dentry);
 
 	if (inode) {
-		if (is_bad_inode(inode))
+		if (is_bad_inode(inode)) {
+			error = 0;
 			goto out;
+		}
 		ip = GFS2_I(inode);
 	}
 
 	if (sdp->sd_lockstruct.ls_ops->lm_mount == NULL) {
-		valid = 1;
+		error = 1;
 		goto out;
 	}
 
-	had_lock = (gfs2_glock_is_locked_by_me(dip->i_gl) != NULL);
-	if (!had_lock) {
+	if (!gfs2_glock_is_locked_by_me(dip->i_gl)) {
 		error = gfs2_glock_nq_init(dip->i_gl, LM_ST_SHARED,
 					   flags & LOOKUP_RCU ? GL_NOBLOCK : 0, &d_gh);
 		if (error)
@@ -73,13 +75,13 @@ static int gfs2_drevalidate(struct dentry *dentry, unsigned int flags)
 	}
 
 	error = gfs2_dir_check(dinode, &dentry->d_name, ip, 0);
-	valid = inode ? !error : (error == -ENOENT);
+	error = inode ? !error : (error == -ENOENT);
 
-	if (!had_lock)
+	if (gfs2_holder_initialized(&d_gh))
 		gfs2_glock_dq_uninit(&d_gh);
 out:
 	dput(parent);
-	return valid;
+	return error;
 }
 
 static int gfs2_dhash(const struct dentry *dentry, struct qstr *str)
