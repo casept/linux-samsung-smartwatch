@@ -1210,7 +1210,8 @@ int gfs2_rgrp_go_instantiate(struct gfs2_glock *gl)
 
 	for (x = 0; x < length; x++) {
 		bi = rgd->rd_bits + x;
-		error = gfs2_meta_read(gl, rgd->rd_addr + x, 0, 0, &bi->bi_bh);
+		error = gfs2_meta_read_async(gl, rgd->rd_addr + x, 0, 0,
+					     &bi->bi_bh);
 		if (error)
 			goto fail;
 	}
@@ -2451,7 +2452,7 @@ int gfs2_alloc_blocks(struct gfs2_inode *ip, u64 *bn, unsigned int *nblocks,
 	rbm.rgd->rd_last_alloc = block - rbm.rgd->rd_data0;
 	if (!dinode) {
 		ip->i_goal = block + *nblocks - 1;
-		error = gfs2_meta_inode_buffer(ip, &dibh);
+		error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 		if (error == 0) {
 			struct gfs2_dinode *di =
 				(struct gfs2_dinode *)dibh->b_data;

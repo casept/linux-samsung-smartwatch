@@ -584,7 +584,7 @@ static int gfs2_jindex_hold(struct gfs2_sbd *sdp, struct gfs2_holder *ji_gh)
 		name.len = sprintf(buf, "journal%u", sdp->sd_journals);
 		name.hash = gfs2_disk_hash(name.name, name.len);
 
-		error = gfs2_dir_check(sdp->sd_jindex, &name, NULL);
+		error = gfs2_dir_check(sdp->sd_jindex, &name, NULL, 0);
 		if (error == -ENOENT) {
 			error = 0;
 			break;
@@ -698,7 +698,7 @@ static int init_statfs(struct gfs2_sbd *sdp)
 		goto free_local;
 	}
 	/* read in the local statfs buffer - other nodes don't change it. */
-	error = gfs2_meta_inode_buffer(ip, &sdp->sd_sc_bh);
+	error = gfs2_meta_inode_buffer(ip, 0, &sdp->sd_sc_bh);
 	if (error) {
 		fs_err(sdp, "Cannot read in local statfs: %d\n", error);
 		goto unlock_sd_gh;

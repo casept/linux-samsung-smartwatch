@@ -192,7 +192,7 @@ int gfs2_statfs_init(struct gfs2_sbd *sdp)
 	if (error)
 		return error;
 
-	error = gfs2_meta_inode_buffer(m_ip, &m_bh);
+	error = gfs2_meta_inode_buffer(m_ip, 0, &m_bh);
 	if (error)
 		goto out;
 
@@ -282,7 +282,7 @@ int gfs2_statfs_sync(struct super_block *sb, int type)
 	if (error)
 		goto out;
 
-	error = gfs2_meta_inode_buffer(m_ip, &m_bh);
+	error = gfs2_meta_inode_buffer(m_ip, 0, &m_bh);
 	if (error)
 		goto out_unlock;
 
@@ -521,7 +521,7 @@ static void gfs2_dirty_inode(struct inode *inode, int flags)
 		need_endtrans = 1;
 	}
 
-	ret = gfs2_meta_inode_buffer(ip, &bh);
+	ret = gfs2_meta_inode_buffer(ip, 0, &bh);
 	if (ret == 0) {
 		gfs2_trans_add_meta(ip->i_gl, bh);
 		gfs2_dinode_out(ip, bh->b_data);

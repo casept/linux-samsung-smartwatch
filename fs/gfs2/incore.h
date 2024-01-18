@@ -22,7 +22,6 @@
 #include <linux/rhashtable.h>
 #include <linux/mutex.h>
 
-#define DIO_WAIT	0x00000010
 #define DIO_METADATA	0x00000020
 
 struct gfs2_log_operations;

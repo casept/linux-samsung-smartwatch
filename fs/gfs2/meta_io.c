@@ -106,12 +106,15 @@ const struct address_space_operations gfs2_rgrp_aops = {
  * gfs2_getbuf - Get a buffer with a given address space
  * @gl: the glock
  * @blkno: the block number (filesystem scope)
- * @create: 1 if the buffer should be created
+ * @fgp_flags: Flags like FGP_CREAT and FGP_NOWAIT
+ *
+ * Returns ERR_PTR(-EAGAIN) if the FGP_NOWAIT flag is set and the function
+ * would sleep.
  *
  * Returns: the buffer
  */
-
-struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
+struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno,
+				fgf_t fgp_flags)
 {
 	struct address_space *mapping = gfs2_glock2aspace(gl);
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
@@ -128,17 +131,19 @@ struct buffer_head *gfs2_getbuf(struct gfs2_glock *gl, u64 blkno, int create)
 	index = blkno >> shift;             /* convert block to page */
 	bufnum = blkno - (index << shift);  /* block buf index within page */
 
-	if (create) {
+	fgp_flags |= FGP_LOCK | FGP_ACCESSED;
+	if (fgp_flags & FGP_CREAT) {
 		folio = __filemap_get_folio(mapping, index,
-				FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
+				fgp_flags,
 				mapping_gfp_mask(mapping) | __GFP_NOFAIL);
+		if (IS_ERR(folio))
+			return ERR_CAST(folio);
 		bh = folio_buffers(folio);
-		if (!bh)
+		if (!bh && !(fgp_flags & FGP_NOWAIT))
 			bh = create_empty_buffers(folio,
 				sdp->sd_sb.sb_bsize, 0);
 	} else {
-		folio = __filemap_get_folio(mapping, index,
-				FGP_LOCK | FGP_ACCESSED, 0);
+		folio = __filemap_get_folio(mapping, index, fgp_flags, 0);
 		if (IS_ERR(folio))
 			return NULL;
 		bh = folio_buffers(folio);
@@ -181,7 +186,7 @@ static void meta_prep_new(struct buffer_head *bh)
 struct buffer_head *gfs2_meta_new(struct gfs2_glock *gl, u64 blkno)
 {
 	struct buffer_head *bh;
-	bh = gfs2_getbuf(gl, blkno, CREATE);
+	bh = gfs2_getbuf(gl, blkno, FGP_CREAT);
 	meta_prep_new(bh);
 	return bh;
 }
@@ -235,18 +240,20 @@ static void gfs2_submit_bhs(blk_opf_t opf, struct buffer_head *bhs[], int num)
 }
 
 /**
- * gfs2_meta_read - Read a block from disk
+ * gfs2_meta_read_async - Read a block from disk
  * @gl: The glock covering the block
  * @blkno: The block number
- * @flags: flags
+ * @fgp_flags: FGP_NOWAIT if sleeping is prohibited
  * @rahead: Do read-ahead
  * @bhp: the place where the buffer is returned (NULL on failure)
+ *
+ * Returns -EAGAIN if the FGP_NOWAIT flag is set and the function would sleep.
  *
  * Returns: errno
  */
 
-int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
-		   int rahead, struct buffer_head **bhp)
+int gfs2_meta_read_async(struct gfs2_glock *gl, u64 blkno, fgf_t fgp_flags,
+			 int rahead, struct buffer_head **bhp)
 {
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
 	struct buffer_head *bh, *bhs[2];
@@ -258,12 +265,33 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 		return -EIO;
 	}
 
-	*bhp = bh = gfs2_getbuf(gl, blkno, CREATE);
+	fgp_flags |= FGP_CREAT;
+	*bhp = bh = gfs2_getbuf(gl, blkno, fgp_flags);
+	if (IS_ERR(bh)) {
+		*bhp = NULL;
+		return PTR_ERR(bh);
+	}
+
+	if (fgp_flags & FGP_NOWAIT) {
+		bool uptodate = false;
+
+		/* skips readahead entirely. */
+
+		if (trylock_buffer(bh)) {
+			uptodate = buffer_uptodate(bh);
+			unlock_buffer(bh);
+		}
+		if (!uptodate) {
+			brelse(bh);
+			*bhp = NULL;
+			return -EAGAIN;
+		}
+		return 0;
+	}
 
 	lock_buffer(bh);
 	if (buffer_uptodate(bh)) {
 		unlock_buffer(bh);
-		flags &= ~DIO_WAIT;
 	} else {
 		bh->b_end_io = end_buffer_read_sync;
 		get_bh(bh);
@@ -271,7 +299,9 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 	}
 
 	if (rahead) {
-		bh = gfs2_getbuf(gl, blkno + 1, CREATE);
+		bh = gfs2_getbuf(gl, blkno + 1, fgp_flags);
+		if (IS_ERR(bh))
+			goto out;
 
 		lock_buffer(bh);
 		if (buffer_uptodate(bh)) {
@@ -283,21 +313,8 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 		}
 	}
 
+out:
 	gfs2_submit_bhs(REQ_OP_READ | REQ_META | REQ_PRIO, bhs, num);
-	if (!(flags & DIO_WAIT))
-		return 0;
-
-	bh = *bhp;
-	wait_on_buffer(bh);
-	if (unlikely(!buffer_uptodate(bh))) {
-		struct gfs2_trans *tr = current->journal_info;
-		if (tr && test_bit(TR_TOUCHED, &tr->tr_flags))
-			gfs2_io_error_bh_wd(sdp, bh);
-		brelse(bh);
-		*bhp = NULL;
-		return -EIO;
-	}
-
 	return 0;
 }
 
@@ -311,10 +328,6 @@ int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, int flags,
 
 int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh)
 {
-	if (gfs2_withdrawing_or_withdrawn(sdp) &&
-	    !gfs2_withdraw_in_prog(sdp))
-		return -EIO;
-
 	wait_on_buffer(bh);
 
 	if (!buffer_uptodate(bh)) {
@@ -328,6 +341,24 @@ int gfs2_meta_wait(struct gfs2_sbd *sdp, struct buffer_head *bh)
 		return -EIO;
 
 	return 0;
+}
+
+int gfs2_meta_read(struct gfs2_glock *gl, u64 blkno, fgf_t fgp_flags,
+		   int rahead, struct buffer_head **bhp)
+{
+	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
+	int ret;
+
+	ret = gfs2_meta_read_async(gl, blkno, fgp_flags, rahead, bhp);
+	if (ret)
+		return ret;
+
+	ret = gfs2_meta_wait(sdp, *bhp);
+	if (ret) {
+		brelse(*bhp);
+		*bhp = NULL;
+	}
+	return ret;
 }
 
 void gfs2_remove_from_journal(struct buffer_head *bh, int meta)
@@ -443,7 +474,7 @@ void gfs2_journal_wipe(struct gfs2_inode *ip, u64 bstart, u32 blen)
 	gfs2_ail1_wipe(sdp, bstart, blen);
 	while (blen) {
 		ty = REMOVE_META;
-		bh = gfs2_getbuf(ip->i_gl, bstart, NO_CREATE);
+		bh = gfs2_getbuf(ip->i_gl, bstart, 0);
 		if (!bh && gfs2_is_jdata(ip)) {
 			bh = gfs2_getjdatabuf(ip, bstart);
 			ty = REMOVE_JDATA;
@@ -469,13 +500,16 @@ void gfs2_journal_wipe(struct gfs2_inode *ip, u64 bstart, u32 blen)
  * @ip: The GFS2 inode
  * @mtype: The block type (GFS2_METATYPE_*)
  * @num: The block number (device relative) of the buffer
+ * @fgp_flags: FGP_NOWAIT if sleeping is prohibited
  * @bhp: the buffer is returned here
+ *
+ * Returns -EAGAIN if the FGP_NOWAIT flag is set and the function would sleep.
  *
  * Returns: errno
  */
 
 int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
-		     struct buffer_head **bhp)
+		     fgf_t fgp_flags, struct buffer_head **bhp)
 {
 	struct gfs2_sbd *sdp = GFS2_SB(&ip->i_inode);
 	struct gfs2_glock *gl = ip->i_gl;
@@ -486,7 +520,7 @@ int gfs2_meta_buffer(struct gfs2_inode *ip, u32 mtype, u64 num,
 	if (num == ip->i_no_addr)
 		rahead = ip->i_rahead;
 
-	ret = gfs2_meta_read(gl, num, DIO_WAIT, rahead, &bh);
+	ret = gfs2_meta_read(gl, num, fgp_flags, rahead, &bh);
 	if (ret == 0 && gfs2_metatype_check(sdp, bh, mtype)) {
 		brelse(bh);
 		ret = -EIO;
@@ -519,7 +553,7 @@ struct buffer_head *gfs2_meta_ra(struct gfs2_glock *gl, u64 dblock, u32 extlen)
 	if (extlen > max_ra)
 		extlen = max_ra;
 
-	first_bh = gfs2_getbuf(gl, dblock, CREATE);
+	first_bh = gfs2_getbuf(gl, dblock, FGP_CREAT);
 
 	if (buffer_uptodate(first_bh))
 		goto out;
@@ -529,7 +563,7 @@ struct buffer_head *gfs2_meta_ra(struct gfs2_glock *gl, u64 dblock, u32 extlen)
 	extlen--;
 
 	while (extlen) {
-		bh = gfs2_getbuf(gl, dblock, CREATE);
+		bh = gfs2_getbuf(gl, dblock, FGP_CREAT);
 
 		bh_readahead(bh, REQ_RAHEAD | REQ_META | REQ_PRIO);
 		brelse(bh);

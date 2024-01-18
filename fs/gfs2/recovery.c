@@ -317,7 +317,7 @@ static int update_statfs_inode(struct gfs2_jdesc *jd,
 	BUG_ON(!inode);
 	ip = GFS2_I(inode);
 
-	error = gfs2_meta_inode_buffer(ip, &bh);
+	error = gfs2_meta_inode_buffer(ip, 0, &bh);
 	if (error)
 		goto out;
 

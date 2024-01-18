@@ -424,7 +424,7 @@ static int stuffed_read_folio(struct gfs2_inode *ip, struct folio *folio)
 	if (unlikely(folio->index)) {
 		dsize = 0;
 	} else {
-		error = gfs2_meta_inode_buffer(ip, &dibh);
+		error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 		if (error)
 			goto out;
 		from = dibh->b_data + sizeof(struct gfs2_dinode);
@@ -548,7 +548,7 @@ void adjust_fs_space(struct inode *inode)
 
 	/* Total up the file system space, according to the latest rindex. */
 	fs_total = gfs2_ri_total(sdp);
-	if (gfs2_meta_inode_buffer(m_ip, &m_bh) != 0)
+	if (gfs2_meta_inode_buffer(m_ip, 0, &m_bh) != 0)
 		goto out;
 
 	spin_lock(&sdp->sd_statfs_spin);

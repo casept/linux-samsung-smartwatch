@@ -483,7 +483,7 @@ int gfs2_inode_refresh(struct gfs2_inode *ip)
 	struct buffer_head *dibh;
 	int error;
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error)
 		return error;
 

@@ -980,7 +980,7 @@ static int gfs2_link(struct dentry *old_dentry, struct inode *dir,
 	if (error)
 		goto out_gunlock;
 
-	error = gfs2_dir_check(dir, &dentry->d_name, NULL);
+	error = gfs2_dir_check(dir, &dentry->d_name, NULL, 0);
 	switch (error) {
 	case -ENOENT:
 		break;
@@ -1027,7 +1027,7 @@ static int gfs2_link(struct dentry *old_dentry, struct inode *dir,
 			goto out_ipres;
 	}
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error)
 		goto out_end_trans;
 
@@ -1096,7 +1096,7 @@ static int gfs2_unlink_ok(struct gfs2_inode *dip, const struct qstr *name,
 	if (error)
 		return error;
 
-	return gfs2_dir_check(&dip->i_inode, name, ip);
+	return gfs2_dir_check(&dip->i_inode, name, ip, 0);
 }
 
 /**
@@ -1522,7 +1522,7 @@ static int gfs2_rename(struct inode *odir, struct dentry *odentry,
 		if (error)
 			goto out_gunlock;
 
-		error = gfs2_dir_check(ndir, &ndentry->d_name, NULL);
+		error = gfs2_dir_check(ndir, &ndentry->d_name, NULL, 0);
 		switch (error) {
 		case -ENOENT:
 			error = 0;
@@ -1833,7 +1833,7 @@ static const char *gfs2_get_link(struct dentry *dentry,
 		goto out;
 	}
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (error) {
 		buf = ERR_PTR(error);
 		goto out;

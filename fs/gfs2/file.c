@@ -257,7 +257,7 @@ static int do_gfs2_set_flags(struct inode *inode, u32 reqflags, u32 mask)
 	error = gfs2_trans_begin(sdp, RES_DINODE, 0);
 	if (error)
 		goto out;
-	error = gfs2_meta_inode_buffer(ip, &bh);
+	error = gfs2_meta_inode_buffer(ip, 0, &bh);
 	if (error)
 		goto out_trans_end;
 	inode_set_ctime_current(inode);
@@ -1179,7 +1179,7 @@ static int fallocate_chunk(struct inode *inode, loff_t offset, loff_t len,
 	struct buffer_head *dibh;
 	int error;
 
-	error = gfs2_meta_inode_buffer(ip, &dibh);
+	error = gfs2_meta_inode_buffer(ip, 0, &dibh);
 	if (unlikely(error))
 		return error;
 

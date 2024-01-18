@@ -424,7 +424,7 @@ static int bh_get(struct gfs2_quota_data *qd)
 		goto fail;
 
 	error = gfs2_meta_read(ip->i_gl, iomap.addr >> inode->i_blkbits,
-			       DIO_WAIT, 0, &bh);
+			       0, 0, &bh);
 	if (error)
 		goto fail;
 	error = -EIO;
