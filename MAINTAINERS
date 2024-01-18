@@ -8220,6 +8220,19 @@ S:	Supported
 F:	fs/iomap/
 F:	include/linux/iomap.h
 
+FILESYSTEMS [NETFS LIBRARY]
+M:	David Howells <dhowells@redhat.com>
+L:	linux-cachefs@redhat.com (moderated for non-subscribers)
+L:	linux-fsdevel@vger.kernel.org
+S:	Supported
+F:	Documentation/filesystems/caching/
+F:	Documentation/filesystems/netfs_library.rst
+F:	fs/netfs/
+F:	include/linux/fscache*.h
+F:	include/linux/netfs.h
+F:	include/trace/events/fscache.h
+F:	include/trace/events/netfs.h
+
 FILESYSTEMS [STACKABLE]
 M:	Miklos Szeredi <miklos@szeredi.hu>
 M:	Amir Goldstein <amir73il@gmail.com>
@@ -8664,14 +8677,6 @@ S:	Supported
 F:	Documentation/power/freezing-of-tasks.rst
 F:	include/linux/freezer.h
 F:	kernel/freezer.c
-
-FS-CACHE: LOCAL CACHING FOR NETWORK FILESYSTEMS
-M:	David Howells <dhowells@redhat.com>
-L:	linux-cachefs@redhat.com (moderated for non-subscribers)
-S:	Supported
-F:	Documentation/filesystems/caching/
-F:	fs/fscache/
-F:	include/linux/fscache*.h
 
 FSCRYPT: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
 M:	Eric Biggers <ebiggers@kernel.org>
@@ -15539,16 +15544,6 @@ S:	Supported
 W:	https://github.com/davejiang/linux/wiki
 T:	git https://github.com/davejiang/linux.git
 F:	drivers/ntb/hw/intel/
-
-NTFS FILESYSTEM
-M:	Anton Altaparmakov <anton@tuxera.com>
-R:	Namjae Jeon <linkinjeon@kernel.org>
-L:	linux-ntfs-dev@lists.sourceforge.net
-S:	Supported
-W:	http://www.tuxera.com/
-T:	git git://git.kernel.org/pub/scm/linux/kernel/git/aia21/ntfs.git
-F:	Documentation/filesystems/ntfs.rst
-F:	fs/ntfs/
 
 NTFS3 FILESYSTEM
 M:	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
