@@ -172,11 +172,15 @@ static int emulate_ldd(struct pt_regs *regs, int toreg, int flop)
 	__u64 val = 0;
 	ASM_EXCEPTIONTABLE_VAR(ret);
 
-	DPRINTF("load " RFMT ":" RFMT " to r%d for 8 bytes\n", 
+	if (0) printk("load " RFMT ":" RFMT " to r%d for 8 bytes\n",
 		regs->isr, regs->ior, toreg);
 
 	if (!IS_ENABLED(CONFIG_64BIT) && !flop)
 		return ERR_NOTHANDLED;
+
+#define ASM_EXCEPTIONTABLE_CHECK_RET(var)		\
+	"44: copy " var "," var "\n"	\
+	ASM_EXCEPTIONTABLE_ENTRY(44b, 44b + 2)
 
 #ifdef CONFIG_64BIT
 	__asm__ __volatile__  (
@@ -191,6 +195,7 @@ static int emulate_ldd(struct pt_regs *regs, int toreg, int flop)
 "3:	\n"
 	ASM_EXCEPTIONTABLE_ENTRY_EFAULT(1b, 3b)
 	ASM_EXCEPTIONTABLE_ENTRY_EFAULT(2b, 3b)
+	ASM_EXCEPTIONTABLE_CHECK_RET("%1")
 	: "=r" (val), "+r" (ret)
 	: "0" (val), "r" (saddr), "r" (regs->isr)
 	: "r19", "r20" );
@@ -217,7 +222,7 @@ static int emulate_ldd(struct pt_regs *regs, int toreg, int flop)
     }
 #endif
 
-	DPRINTF("val = 0x%llx\n", val);
+	printk("val = 0x%llx   ret = %ld\n", val, ret);
 
 	if (flop)
 		regs->fr[toreg] = val;
@@ -399,6 +404,11 @@ void handle_unaligned(struct pt_regs *regs)
 
 		if (!unaligned_enabled)
 			goto force_sigbus;
+	} else {
+			printk(KERN_WARNING "unaligned access to " RFMT
+				" at ip " RFMT " (iir " RFMT ")\n",
+				regs->ior,
+				regs->iaoq[0], regs->iir);
 	}
 
 	/* handle modification - OK, it's ugly, see the instruction manual */
