@@ -680,7 +680,7 @@ void dcn35_power_down_on_boot(struct dc *dc)
 bool dcn35_apply_idle_power_optimizations(struct dc *dc, bool enable)
 {
 	struct dc_link *edp_links[MAX_NUM_EDP];
-	int edp_num;
+	int i, edp_num;
 	if (dc->debug.dmcub_emulation)
 		return true;
 
@@ -688,6 +688,13 @@ bool dcn35_apply_idle_power_optimizations(struct dc *dc, bool enable)
 		dc_get_edp_links(dc, edp_links, &edp_num);
 		if (edp_num == 0 || edp_num > 1)
 			return false;
+
+		for (i = 0; i < dc->current_state->stream_count; ++i) {
+			struct dc_stream_state *stream = dc->current_state->streams[i];
+
+			if (!stream->dpms_off && !dc_is_embedded_signal(stream->signal))
+				return false;
+		}
 	}
 
 	// TODO: review other cases when idle optimization is allowed
@@ -700,8 +707,6 @@ void dcn35_z10_restore(const struct dc *dc)
 {
 	if (dc->debug.disable_z10)
 		return;
-
-	dc_dmub_srv_apply_idle_power_optimizations(dc, false);
 
 	dcn31_z10_restore(dc);
 }
