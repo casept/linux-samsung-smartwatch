@@ -587,7 +587,7 @@ int bch2_trigger_inode(struct btree_trans *trans,
 		}
 	}
 
-	if (!(flags & BTREE_TRIGGER_TRANSACTIONAL) && (flags & BTREE_TRIGGER_INSERT)) {
+	if ((flags & BTREE_TRIGGER_ATOMIC) && (flags & BTREE_TRIGGER_INSERT)) {
 		BUG_ON(!trans->journal_res.seq);
 
 		bkey_s_to_inode_v3(new).v->bi_journal_seq = cpu_to_le64(trans->journal_res.seq);
@@ -597,7 +597,7 @@ int bch2_trigger_inode(struct btree_trans *trans,
 		struct bch_fs *c = trans->c;
 
 		percpu_down_read(&c->mark_lock);
-		this_cpu_add(c->usage_gc->nr_inodes, nr);
+		this_cpu_add(c->usage_gc->b.nr_inodes, nr);
 		percpu_up_read(&c->mark_lock);
 	}
 
