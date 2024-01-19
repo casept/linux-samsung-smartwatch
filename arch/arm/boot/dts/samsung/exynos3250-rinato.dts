@@ -801,7 +801,7 @@
 	status = "okay";
 
 	bluetooth {
-		compatible = "brcm,bcm4330-bt";
+		compatible = "brcm,bcm4334-bt", "brcm,bcm4330-bt", "brcm,bcm4329-bt";
 		max-speed = <3000000>;
 		shutdown-gpios = <&gpe0 0 GPIO_ACTIVE_HIGH>;
 		device-wakeup-gpios = <&gpx3 1 GPIO_ACTIVE_HIGH>;
