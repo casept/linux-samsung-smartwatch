@@ -623,6 +623,20 @@
 				};
 			};
 		};
+
+		battery-thermal {
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&thermistor_battery>;
+
+			trips {
+				battery-crit-hi {
+					temperature = <70000>;
+					hysteresis = <2000>;
+					type = "critical";
+				};
+			};
+		};
 	};
 };
 
@@ -638,14 +652,16 @@
 		pullup-ohm = <100000>;
 		pulldown-ohm = <100000>;
 		io-channels = <&adc 0>;
+		#thermal-sensor-cells = <0>;
 	};
 
-	thermistor-battery {
+	thermistor_battery: thermistor-battery {
 		compatible = "murata,ncp15wb473";
 		pullup-uv = <1800000>;
 		pullup-ohm = <100000>;
 		pulldown-ohm = <100000>;
 		io-channels = <&adc 1>;
+		#thermal-sensor-cells = <0>;
 	};
 };
 
