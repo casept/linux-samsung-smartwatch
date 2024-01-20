@@ -24,6 +24,7 @@
 
 	aliases {
 		i2c0 = &i2c_pmic;
+		i2c1 = &i2c_touchscreen;
 		i2c7 = &i2c_max77836;
 		i2c14 = &i2c_fuelgauge;
 		mmc0 = &mshc_0;
@@ -566,6 +567,37 @@
 					};
 				};
 			};
+		};
+	};
+
+	/* For whatever reason, the builtin I2C master doesn't work at all */
+	i2c_touchscreen: i2c-gpio-3 {
+		compatible = "i2c-gpio";
+		sda-gpios = <&gpa0 6 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpa0 7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		/*
+		* Some sources online suggest that the chip is an MCS8000, which would be supported by the MIP4 driver.
+		* That's most likely incorrect, as the downstream kernel's driver code doesn't contain basic commands
+		* from the MIP4 protocol, and it generally looks much more like an extended MMS152 protocol.
+		* Samsung calls the model "Melfas W" in all their source code, no idea what the real model number is.
+		*/
+		touchscreen@48 {
+			compatible = "melfas,mms152";
+			reg = <0x48>;
+			interrupt-parent = <&gpx3>;
+			interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+			status = "okay";
+
+			/* Parameters are likely part of a configuration blob loaded by the driver and are ignored. Here for documentation purposes only. */
+			touchscreen-size-x = <320>;
+			touchscreen-size-y = <320>;
+
+			avdd-supply = <&ldo15_reg>;
+			vdd-supply = <&ldo19_reg>;
 		};
 	};
 
