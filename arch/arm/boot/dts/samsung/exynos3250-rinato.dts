@@ -579,25 +579,23 @@
 		#size-cells = <0>;
 		status = "okay";
 
-		/*
-		* Some sources online suggest that the chip is an MCS8000, which would be supported by the MIP4 driver.
-		* That's most likely incorrect, as the downstream kernel's driver code doesn't contain basic commands
-		* from the MIP4 protocol, and it generally looks much more like an extended MMS152 protocol.
-		* Samsung calls the model "Melfas W" in all their source code, no idea what the real model number is.
-		*/
 		touchscreen@48 {
-			compatible = "melfas,mms152";
+			compatible = "melfas,mms128s";
 			reg = <0x48>;
 			interrupt-parent = <&gpx3>;
 			interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
-			status = "okay";
-
-			/* Parameters are likely part of a configuration blob loaded by the driver and are ignored. Here for documentation purposes only. */
-			touchscreen-size-x = <320>;
-			touchscreen-size-y = <320>;
-
+			vddo-supply = <&ldo19_reg>;
 			avdd-supply = <&ldo15_reg>;
-			vdd-supply = <&ldo19_reg>;
+
+			melfas,max_x = <320>;
+			melfas,max_y = <320>;
+			melfas,gpio_int = <&gpx3 5 IRQ_TYPE_EDGE_FALLING>;
+			melfas,tsp_vendor = "MELFAS";
+			melfas,tsp_ic = "MMS128S";
+			melfas,tsp_tx = <7>;
+			melfas,tsp_rx = <7>;
+			/* Unsure about this */
+			melfas,config_fw_version = "V700_ME_0910";
 		};
 	};
 
