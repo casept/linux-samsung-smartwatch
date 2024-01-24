@@ -29,7 +29,7 @@
 #define SEC_TSP_FACTORY_TEST 0
 #define TSP_TA_CALLBACK 1
 #define TSP_ENABLE_SW_RESET 0
-#define SHOW_TSP_DEBUG_MSG 1
+#define SHOW_TSP_DEBUG_MSG 0
 #define ALWAYS_ON_TOUCH
 
 #include <linux/delay.h>
