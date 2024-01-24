@@ -608,6 +608,10 @@
 
 	thermal-zones {
 		cpu_thermal: cpu-thermal {
+			polling-delay = <2000>;
+			polling-delay-passive = <2000>;
+			thermal-sensors = <&thermistor_ap>;
+
 			cooling-maps {
 				map0 {
 					/* Corresponds to 500MHz */
@@ -644,7 +648,7 @@
 	assigned-clocks = <&cmu CLK_SCLK_TSADC>;
 	assigned-clock-rates = <6000000>;
 
-	thermistor-ap {
+	thermistor_ap: thermistor-ap {
 		compatible = "murata,ncp15wb473";
 		pullup-uv = <1800000>;
 		pullup-ohm = <100000>;
