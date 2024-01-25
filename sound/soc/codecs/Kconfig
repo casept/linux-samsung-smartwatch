@@ -337,6 +337,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_WSA881X
 	imply SND_SOC_WSA883X
 	imply SND_SOC_WSA884X
+	imply SND_SOC_YMU381
 	imply SND_SOC_ZL38060
 	help
 	  Normally ASoC codec drivers are only built if a machine driver which
@@ -2449,3 +2450,13 @@ config SND_SOC_LPASS_TX_MACRO
 	tristate "Qualcomm TX Macro in LPASS(Low Power Audio SubSystem)"
 
 endmenu
+
+config SND_SOC_YAMAHA_YMU831
+	tristate "YAMAHA_YMU831 Codec - SPI"
+	depends on SND_SOC && SPI_MASTER
+	select SND_HWDEP
+
+config SND_SOC_YAMAHA_YMU831_DEBUG
+	bool "YAMAHA_YMU831 verbose debug messages while core driver call"
+	select SND_DEBUG
+	depends on SND_SOC_YAMAHA_YMU831

@@ -678,6 +678,20 @@
 			};
 		};
 	};
+
+	sound {
+		compatible = "rinato,ymu831";
+		samsung,i2s-controller = <&i2s2>;
+		samsung,model = "ymu831";
+		samsung,audio-codec = <&ymu831>;
+
+		samsung,pmureg-phandle = <&pmu_system_controller>;
+
+		clocks = <&pmu_system_controller 0>, <&s2mps14_osc 2>;
+		clock-names = "mclk", "clk_32k";
+		assigned-clocks = <&pmu_system_controller 0>;
+		assigned-clock-parents = <&xusbxti>;
+	};
 };
 
 &adc {
