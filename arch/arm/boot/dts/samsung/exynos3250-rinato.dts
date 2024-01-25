@@ -76,6 +76,48 @@
 		reg = <0x0205f000 0x1000>;
 	};
 
+	charger-manager@0 {
+		compatible = "charger-manager";
+		status = "okay";
+		chg-reg-supply = <&charger_reg>;
+
+		cm-name = "cm-battery";
+		/* Polling only for external power source */
+		cm-poll-mode = <2>;
+		cm-poll-interval = <30000>;
+
+		cm-fullbatt-vchkdrop-ms = <30000>;
+		cm-fullbatt-vchkdrop-volt = <150000>;
+		cm-fullbatt-soc = <200>; /* For whatever reason, fuelgauge assumes full = 200 */
+
+		cm-battery-stat = <0>;
+		cm-fuel-gauge = "battery";
+
+		/* Something is still broken here - driver prints "Failed to get battery temperature" */
+		cm-thermal-zone = "thermal_zone2";
+		cm-battery-cold = <50>;
+		cm-battery-cold-in-minus;
+		cm-battery-hot = <600>;
+
+		/* Allow charging for 5hr */
+		cm-charging-max = <18000000>;
+		/* Allow discharging for 2hr */
+		cm-discharging-max = <7200000>;
+		cm-num-chargers = <1>;
+		cm-chargers = "max14577-charger";
+		charger@0 {
+			cm-regulator-name = "chg-reg";
+			cable@0 {
+				cm-cable-name = "USB";
+				cm-cable-extcon = "max77836-muic";
+			};
+			cable@1 {
+				cm-cable-name = "TA";
+				cm-cable-extcon = "max77836-muic";
+			};
+		};
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
@@ -663,7 +705,7 @@
 			};
 		};
 
-		battery-thermal {
+		battery_thermal: battery-thermal {
 			polling-delay = <2000>;
 			polling-delay-passive = <2000>;
 			thermal-sensors = <&thermistor_battery>;
