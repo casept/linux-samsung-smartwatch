@@ -949,10 +949,15 @@
 	status = "okay";
 };
 
+/*
+ * This RTC always resets after reboot and is broken. Another one is registered at runtime, so keep this one disabled.
+ * This is not registered in the device tree, but the kernel seems to create a "s5m-rtc s2mps14-rtc"-class RTC device.
+ * This device keeps the time correctly, so we just have to make sure it's rtc0 by disabling this one.
+ */
 &rtc {
 	clocks = <&cmu CLK_RTC>, <&s2mps14_osc S2MPS11_CLK_AP>;
 	clock-names = "rtc", "rtc_src";
-	status = "okay";
+	status = "disabled";
 };
 
 &xusbxti {
