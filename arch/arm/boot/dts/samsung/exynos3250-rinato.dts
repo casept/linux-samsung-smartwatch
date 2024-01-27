@@ -978,7 +978,7 @@
 
 	/* Taken pretty much straight from binding description */
 	sensorhub@0 {
-		status = "disabled";
+		status = "okay";
 		compatible = "samsung,sensorhub-rinato";
 		reg = <0>;
 		spi-max-frequency = <5000000>;
