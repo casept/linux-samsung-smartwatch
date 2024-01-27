@@ -57,6 +57,12 @@ static const struct mfd_cell sensorhub_sensor_devs[] = {
 	{
 		.name = "ssp-gyroscope",
 	},
+	{
+		.name = "ssp-hrm",
+	},
+	{
+		.name = "ssp-hrm-raw",
+	},
 };
 
 static void ssp_toggle_mcu_reset_gpio(struct ssp_data *data)
