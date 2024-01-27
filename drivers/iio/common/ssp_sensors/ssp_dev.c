@@ -37,7 +37,7 @@ static const u8 ssp_magnitude_table[] = {110, 85, 171, 71, 203, 195, 0, 67,
 static const struct ssp_sensorhub_info ssp_rinato_info = {
 	.fw_name = "ssp_B2.fw",
 	.fw_crashed_name = "ssp_crashed.fw",
-	.fw_rev = 14052300,
+	.fw_rev = 14031200,
 	.mag_table = ssp_magnitude_table,
 	.mag_length = ARRAY_SIZE(ssp_magnitude_table),
 };
