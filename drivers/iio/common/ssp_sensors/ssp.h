@@ -6,6 +6,8 @@
 #ifndef __SSP_SENSORHUB_H__
 #define __SSP_SENSORHUB_H__
 
+#define SSP_DBG
+
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/iio/common/ssp_sensors.h>
