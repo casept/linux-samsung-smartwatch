@@ -390,7 +390,7 @@ void bch2_accounting_mem_gc(struct bch_fs *c)
  */
 int bch2_fs_replicas_usage_read(struct bch_fs *c, darray_char *usage)
 {
-	struct bch_accounting_mem *acc = &c->accounting;
+	struct bch_accounting_mem *acc = &c->accounting[0];
 	int ret = 0;
 
 	darray_init(usage);
