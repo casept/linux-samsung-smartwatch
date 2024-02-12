@@ -1586,8 +1586,11 @@ static int mms_ts_fw_load(struct mms_ts_info *info)
 	dev_info(&client->dev, "tsp fw path : %s\n", fw_path);
 
 	ret = request_firmware(&fw, fw_path, &client->dev);
-	if (ret)
-		dev_err(&client->dev, "fail request_firmware[%s]\n", fw_path);
+	if (ret) {
+		dev_err(&client->dev, "failed to request_firmware[%s]\n",
+			fw_path);
+		return 1;
+	}
 
 	do {
 		ret = mms_flash_fw(fw->data, info, COMPARE_UPDATE);
