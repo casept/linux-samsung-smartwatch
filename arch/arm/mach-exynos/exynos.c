@@ -12,6 +12,7 @@
 #include <linux/of_fdt.h>
 #include <linux/platform_device.h>
 #include <linux/irqchip.h>
+#include <linux/reboot.h>
 #include <linux/soc/samsung/exynos-regs-pmu.h>
 
 #include <asm/cacheflush.h>
@@ -32,6 +33,36 @@ static struct platform_device exynos_cpuidle = {
 #endif
 	.id                = -1,
 };
+
+static struct platform_device exynos_power_off = {
+	.name              = "exynos_power_off",
+	.id                = -1,
+};
+
+static int exynos_power_off_probe(struct platform_device* pdev);
+
+static const struct of_device_id exynos_power_off_of_id[] = {
+	/*
+	 * Register power off handler for Rinato only.
+	 * Other Exynos3250-based machines may also be able to
+	 * use something like this, requires further digging in downstream sources.
+	 */
+  { .compatible = "samsung,rinato", },
+	/* sentinel */
+  { }
+};
+
+MODULE_DEVICE_TABLE(of, exynos_power_off_of_id);
+
+static struct platform_driver exynos_power_off_driver = {
+	.driver	= {
+		.name			= "exynos_power_off",
+		.of_match_table		= of_match_ptr(exynos_power_off_of_id),
+	},
+	.probe	= exynos_power_off_probe,
+	/* TODO: .remove */
+};
+builtin_platform_driver(exynos_power_off_driver);
 
 void __iomem *sysram_base_addr __ro_after_init;
 phys_addr_t sysram_base_phys __ro_after_init;
@@ -133,6 +164,43 @@ void exynos_set_delayed_reset_assertion(bool enable)
 	}
 }
 
+
+static int exynos_power_off_handler(struct sys_off_data *data)
+{
+	/* Magical registers written done by Rinato on downstream kernel when powering off */
+	/* Shutdown with reboot into LP charging if cable attached */
+	pmu_raw_writel(0x0, S5P_INFORM2);
+
+	pmu_raw_writel(0x1, EXYNOS_SWRESET);
+
+	/* Wait for magic to happen, kernel should be dead after this */
+	while (1)
+		;
+	return 0;
+}
+
+static int exynos_power_off_probe(struct platform_device *pdev)
+{
+	int err;
+
+	/* Only Rinato for now */
+	if (!of_machine_is_compatible("samsung,rinato"))
+		return 0;
+
+	// Not sure if actually handled by firmware
+	err = devm_register_sys_off_handler(&pdev->dev,
+					    SYS_OFF_MODE_POWER_OFF,
+					    SYS_OFF_PRIO_FIRMWARE,
+					    exynos_power_off_handler, NULL);
+	if (err) {
+		dev_err(&pdev->dev, "failed to register sys-off handler: %d\n",
+			err);
+		return err;
+	}
+
+	return err;
+}
+
 /*
  * Apparently, these SoCs are not able to wake-up from suspend using
  * the PMU. Too bad. Should they suddenly become capable of such a
@@ -188,6 +256,11 @@ static void __init exynos_dt_machine_init(void)
 	    of_machine_is_compatible("samsung,exynos3250") ||
 	    of_machine_is_compatible("samsung,exynos5250"))
 		platform_device_register(&exynos_cpuidle);
+
+	if (of_machine_is_compatible("samsung,rinato")) {
+		platform_device_register(&exynos_power_off);
+		platform_driver_register(&exynos_power_off_driver);
+	}
 }
 
 static char const *const exynos_dt_compat[] __initconst = {
