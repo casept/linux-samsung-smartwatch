@@ -5,6 +5,7 @@
 // Copyright (c) 2010-2014 Samsung Electronics Co., Ltd.
 //		http://www.samsung.com
 
+#include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/of.h>
@@ -164,18 +165,35 @@ void exynos_set_delayed_reset_assertion(bool enable)
 	}
 }
 
-
 static int exynos_power_off_handler(struct sys_off_data *data)
 {
-	/* Magical registers written done by Rinato on downstream kernel when powering off */
-	/* Shutdown with reboot into LP charging if cable attached */
-	pmu_raw_writel(0x0, S5P_INFORM2);
+	/* Sequence for entering LP charging mode (not a true power off).
+	 * Unused currently as there's no reasonable API to expose this, but here for posterity
+	 * pmu_raw_writel(0x0, S5P_INFORM2);
+	 * pmu_raw_writel(0x1, EXYNOS_SWRESET);
+	 * Wait for magic to happen, kernel should be dead after this
+	 *	while (1)
+	 *		;
+	 */
 
-	pmu_raw_writel(0x1, EXYNOS_SWRESET);
+	int reboot_try;
 
-	/* Wait for magic to happen, kernel should be dead after this */
-	while (1)
-		;
+	reboot_try = 0;
+	while (reboot_try < 5) {
+		/*
+		 * Magical register write done by Rinato on downstream kernel when powering off.
+		 * Might also be possible in DT via syscon-poweroff binding, but didn't work in my testing.
+		 *
+		 * PS_HOLD Out/High -->
+		 * Low PS_HOLD_CONTROL, R/W, 0x1002_330C
+		 */
+			pmu_raw_writel(pmu_raw_readl(S5P_PS_HOLD_CONTROL) & 0xFFFFFEFF,
+			       S5P_PS_HOLD_CONTROL);
+		msleep(1000);
+		reboot_try++;
+	}
+	/* If we get here, something's wrong */
+	panic("Reboot failed!");
 	return 0;
 }
 
