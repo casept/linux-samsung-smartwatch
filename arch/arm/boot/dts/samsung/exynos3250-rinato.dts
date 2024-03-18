@@ -15,6 +15,7 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/samsung,s2mps11.h>
+#include <dt-bindings/soc/samsung,sboot-boot-mode.h>
 
 / {
 	model = "Samsung Rinato board";
@@ -999,7 +1000,23 @@
 	};
 };
 
+&pmu_system_controller {
+	/* Reboot mode for S-Boot is set in S5P_INFORM3 register of PMU */
+	reboot-mode {
+		compatible = "syscon-reboot-mode";
+		offset = <0x080C>; /* S5P_INFORM3 */
 
+		mode-normal = <BOOT_NORMAL>;
+		mode-download = <BOOT_BL_DOWNLOAD>;
+		mode-upload = <BOOT_BL_UPLOAD>;
+		mode-charging = <BOOT_CHARGING>;
+		mode-recovery = <BOOT_RECOVERY>;
+		mode-fota = <BOOT_FOTA>;
+		mode-fota-bl = <BOOT_FOTA_BL>;
+		mode-secfail = <BOOT_SECFAIL>;
+		mode-emergency = <BOOT_EMERGENCY>;
+	};
+};
 
 &pinctrl_0 {
 	pinctrl-names = "default";
