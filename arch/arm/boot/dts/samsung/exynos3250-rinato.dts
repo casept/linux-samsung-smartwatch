@@ -98,8 +98,7 @@
 		cm-battery-stat = <0>;
 		cm-fuel-gauge = "battery";
 
-		/* Something is still broken here - driver prints "Failed to get battery temperature" */
-		cm-thermal-zone = "battery";
+		cm-thermal-zone = "tz-battery";
 		cm-battery-cold = <50>;
 		cm-battery-cold-in-minus;
 		cm-battery-hot = <600>;
@@ -710,7 +709,7 @@
 			};
 		};
 
-		battery {
+		tz-battery {
 			polling-delay = <2000>;
 			polling-delay-passive = <2000>;
 			thermal-sensors = <&thermistor_battery>;
