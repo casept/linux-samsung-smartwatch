@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/firmware/sboot-upload.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Samsung S-Boot debug functionality
+
+maintainers:
+  - Davids Paskevics <davids.paskevics@gmail.com>
+
+description:
+  The S-Boot bootloader typically used on retail Samsung devices
+  has the ability to provide useful debug information such as a crash cause
+  and a kernel panic message, as well as the ability to dump memory after a crash.
+
+properties:
+  compatible:
+    items:
+      - const: samsung,sboot-upload
+
+  reg:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    sboot-upload@40000000 {
+        compatible = "samsung,sboot-upload";
+        reg = <0x4000000 0x4000>; /* 16KiB at start of RAM */
+    };
