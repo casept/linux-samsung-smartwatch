@@ -55,6 +55,10 @@
 	};
 
 
+	sboot-upload@40000000 {
+		compatible = "samsung,sboot-upload";
+		reg = <0x40000000 0x4000>;
+	};
 
 	/*
 	 * Memory actually starts at 0x40000000,
