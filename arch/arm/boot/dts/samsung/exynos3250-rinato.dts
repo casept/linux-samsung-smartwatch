@@ -69,8 +69,6 @@
 	 * Just leaving them in the memory node would result in multiple mappings
 	 * and unpredictable behaviour when attempting access in the S-Boot
 	 * debug driver.
-	 *
-	 * Unfortunately, just reserving the memory range doesn't seem to work.
 	 */
 	memory@40004000 {
 		device_type = "memory";
@@ -254,7 +252,6 @@
 					};
 				};
 
-				// Is vdd_ldo2_range dowstream (1.2 volts)
 				ldo2_reg: LDO2 {
 					status = "okay";
 					regulator-name = "VAP_M1_1.2V";
@@ -267,7 +264,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo3_reg: LDO3 {
 					status = "okay";
 					regulator-name = "VCC_AP_1.8V";
@@ -280,7 +276,6 @@
 					};
 				};
 
-				// Is vddq_mmc range downstream, delivers 1.8V
 				ldo4_reg: LDO4 {
 					status = "okay";
 					regulator-name = "VAP_AVDD_PLL1";
@@ -292,8 +287,6 @@
 						regulator-off-in-suspend;
 					};
 				};
-
-				// Is vdd_pll_1v8 downstream, delivers 1.0V
 				ldo5_reg: LDO5 {
 					status = "okay";
 					regulator-name = "VAP_PLL_ISO_1.0V";
@@ -306,7 +299,6 @@
 					};
 				};
 
-				// Is vap_mipi_1.0v downstream
 				ldo6_reg: LDO6 {
 					status = "okay";
 					regulator-name = "VAP_VMIPI_1.0V";
@@ -319,7 +311,6 @@
 					};
 				};
 
-				// Is vdd_ldo7 range downstream, delivers 1.8V
 				ldo7_reg: LDO7 {
 					status = "okay";
 					regulator-name = "VAP_AVDD_1.8V";
@@ -332,7 +323,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo8_reg: LDO8 {
 					status = "okay";
 					regulator-name = "VAP_USB_3.0V";
@@ -345,7 +335,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo9_reg: LDO9 {
 					status = "okay";
 					regulator-name = "V_LPDDR_1.2V";
@@ -358,7 +347,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo10_reg: LDO10 {
 					status = "okay";
 					regulator-name = "UNUSED_LDO10";
@@ -370,7 +358,6 @@
 					};
 				};
 
-				// Unused downstream
 				ldo11_reg: LDO11 {
 					status = "okay";
 					regulator-name = "V_EMMC_1.8V";
@@ -379,7 +366,6 @@
 					samsung,ext-control-gpios = <&gpk0 2 GPIO_ACTIVE_HIGH>;
 				};
 
-				// Unused downstream
 				ldo12_reg: LDO12 {
 					status = "okay";
 					regulator-name = "V_EMMC_2.8V";
@@ -388,7 +374,6 @@
 					samsung,ext-control-gpios = <&gpk0 2 GPIO_ACTIVE_HIGH>;
 				};
 
-				// Matches downstream
 				ldo13_reg: LDO13 {
 					status = "okay";
 					regulator-name = "CAM_AVDD_2.8V";
@@ -400,7 +385,7 @@
 					};
 				};
 
-				// Is regulator-haptic downstream, delivers 1.1V to 2.7V, but seems unused on production revision
+				/* Is regulator-haptic downstream, delivers 1.1V to 2.7V, but seems unused on production revision */
 				ldo14_reg: LDO14 {
 					status = "okay";
 					regulator-name = "UNUSED_LDO14";
@@ -412,7 +397,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo15_reg: LDO15 {
 					status = "okay";
 					regulator-name = "TSP_AVDD_3.3V";
@@ -424,7 +408,6 @@
 					};
 				};
 
-				// Delivers only 3.0V downstream
 				ldo16_reg: LDO16 {
 					status = "okay";
 					regulator-name = "LCD_VDD_3.3V";
@@ -436,7 +419,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo17_reg: LDO17 {
 					status = "okay";
 					regulator-name = "V_IRLED_3.3V";
@@ -448,7 +430,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo18_reg: LDO18 {
 					status = "okay";
 					regulator-name = "CAM_AF_2.8V";
@@ -460,7 +441,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo19_reg: LDO19 {
 					status = "okay";
 					regulator-name = "TSP_VDD_1.8V";
@@ -473,7 +453,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo20_reg: LDO20 {
 					status = "okay";
 					regulator-name = "LCD_VDD_1.8V";
@@ -486,7 +465,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo21_reg: LDO21 {
 					status = "okay";
 					regulator-name = "CAM_IO_1.8V";
@@ -498,7 +476,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo22_reg: LDO22 {
 					status = "okay";
 					regulator-name = "CAM_DVDD_1.2V";
@@ -510,7 +487,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo23_reg: LDO23 {
 					status = "okay";
 					regulator-name = "HRM_VCC_1.8V";
@@ -531,7 +507,6 @@
 					};
 				};
 
-				// Matches downstream
 				ldo25_reg: LDO25 {
 					status = "okay";
 					regulator-name = "UNUSED_LDO25";
@@ -543,7 +518,6 @@
 					};
 				};
 
-				// vdd_mif range downstream, delivers 0.6 to 1.6V, seems like nothing is connected downstream
 				buck1_reg: BUCK1 {
 					status = "okay";
 					regulator-name = "VAP_MIF_1.0V";
@@ -558,7 +532,6 @@
 					};
 				};
 
-				// Delivers 0.6V to 1.6V downstream
 				buck2_reg: BUCK2 {
 					status = "okay";
 					regulator-name = "VAP_ARM_1.0V";
@@ -572,7 +545,6 @@
 					};
 				};
 
-				// Delivers 0.6V to 1.6V downstream
 				buck3_reg: BUCK3 {
 					status = "okay";
 					regulator-name = "VAP_INT3D_1.0V";
@@ -586,7 +558,6 @@
 					};
 				};
 
-				// Unused downstream
 				buck4_reg: BUCK4 {
 					status = "okay";
 					regulator-name = "VCC_SUB_1.95V";
@@ -600,7 +571,6 @@
 					};
 				};
 
-				// Unused downstream
 				buck5_reg: BUCK5 {
 					status = "okay";
 					regulator-name = "VCC_SUB_1.35V";
@@ -971,7 +941,6 @@
 &spi_0 {
 	status = "okay";
 
-	/* Taken from artik5, let's hope they match */
 	cs-gpios = <&gpx3 4 GPIO_ACTIVE_LOW>, <0>;
 	assigned-clocks = <&cmu CLK_MOUT_SPI0>, <&cmu CLK_DIV_SPI0>,
 		<&cmu CLK_DIV_SPI0_PRE>, <&cmu CLK_SCLK_SPI0>;
@@ -980,7 +949,6 @@
 		<&cmu CLK_DIV_SPI0>,     /* for: CLK_DIV_SPI0_PRE */
 		<&cmu CLK_DIV_SPI0_PRE>; /* for: CLK_SCLK_SPI0 */
 
-	/* Taken pretty much straight from binding description */
 	sensorhub@0 {
 		status = "okay";
 		compatible = "samsung,sensorhub-rinato";
@@ -992,7 +960,6 @@
 		mcu-ap-gpios = <&gpx0 4 GPIO_ACTIVE_HIGH>;
 		mcu-reset-gpios = <&gpx0 5 GPIO_ACTIVE_HIGH>;
 
-		/* Also taken from artik5, not sure if needed */
 		controller-data {
 			samsung,spi-feedback-delay = <2>;
 		};
