@@ -59,6 +59,8 @@ static int ice40_fpga_ops_write_init(struct fpga_manager *mgr,
 	};
 	int ret;
 
+	dev_info(&dev->dev, "Initializing FPGA write\n");
+	
 	if ((info->flags & FPGA_MGR_PARTIAL_RECONFIG)) {
 		dev_err(&dev->dev,
 			"Partial reconfiguration is not supported\n");
@@ -75,11 +77,14 @@ static int ice40_fpga_ops_write_init(struct fpga_manager *mgr,
 	ret = spi_sync_locked(dev, &message);
 
 	/* Come out of reset */
+	dev_err(&dev->dev, "Returning from FPGA reset!\n");
 	gpiod_set_value(priv->reset, 0);
 
 	/* Abort if the chip-select failed */
-	if (ret)
+	if (ret) {
+		dev_err(&dev->dev, "SPI CS failed!\n");
 		goto fail;
+	}
 
 	/* Check CDONE is de-asserted i.e. the FPGA is reset */
 	if (gpiod_get_value(priv->cdone)) {
@@ -104,6 +109,7 @@ static int ice40_fpga_ops_write(struct fpga_manager *mgr,
 {
 	struct ice40_fpga_priv *priv = mgr->priv;
 
+	dev_info(&mgr->dev, "Writing FPGA firmware of size %d", count);
 	return spi_write(priv->dev, buf, count);
 }
 

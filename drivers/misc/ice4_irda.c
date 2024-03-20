@@ -35,7 +35,6 @@
 #include <linux/bitops.h>
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
-#include "ice4_irda.h"
 
 #define IRDA_NAME "ice4-irda"
 /* TODO: Define as standard kernel IR transmitter, but this should suffice for testing */
@@ -54,10 +53,8 @@ struct ice4_fpga_data {
 	struct device *dev;
 	struct device *sys_dev;
 	struct regulator *ir_regulator;
-	struct regulator *fpga_regulator;
 	struct mutex mutex;
 	struct clk *mclk;
-	struct work_struct work_download;
 	struct cdev char_dev;
 	struct class *dev_class;
 	struct {
@@ -70,40 +67,13 @@ struct ice4_fpga_data {
 	int ir_sum;
 
 	int gpio_irda_irq;
-	int gpio_creset;
 	int gpio_fpga_rst_n;
-	int gpio_cdone;
-	int gpio_sda;
-	int gpio_scl;
 };
 
 static int ack_number;
 static int count_number;
 
 static struct class *ice4_irda_class;
-
-static int ice4_irda_check_cdone(struct ice4_fpga_data *data)
-{
-	int gpio_status = gpio_get_value(data->gpio_cdone);
-	/* Device in Operation when CDONE='1'; Device Failed when CDONE='0'. */
-
-	if (gpio_status != 1) {
-		dev_err(data->dev, "CDONE_FAIL %d\n", gpio_status);
-		return 0;
-	}
-
-	return 1;
-}
-
-/* When IR test does not work, we need to check some gpios' status */
-static void print_fpga_gpio_status(struct ice4_fpga_data *data)
-{
-	dev_info(data->dev, "CDONE : %d\n", gpio_get_value(data->gpio_cdone));
-	dev_info(data->dev, "RST_N : %d\n",
-		 gpio_get_value(data->gpio_fpga_rst_n));
-	dev_info(data->dev, "CRESET_B : %d\n",
-		 gpio_get_value(data->gpio_creset));
-}
 
 /* sysfs node ir_send */
 static void ir_remocon_work(struct ice4_fpga_data *data, int count)
@@ -140,7 +110,6 @@ static void ir_remocon_work(struct ice4_fpga_data *data, int count)
 			buf_size);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s: err2 %d\n", __func__, ret);
-			print_fpga_gpio_status(data);
 		}
 	}
 
@@ -193,6 +162,7 @@ static void ir_remocon_work(struct ice4_fpga_data *data, int count)
 static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t size)
 {
+	dev_info(dev, "remocon_store called!\n");
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
 	unsigned int value;
 	int count, i, ret;
@@ -253,6 +223,7 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 static ssize_t remocon_show(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
+	dev_info(dev, "remocon_show called!\n");
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
 	int i;
 	char *bufp = buf;
@@ -368,11 +339,6 @@ static ssize_t irda_test_store(struct device *dev,
 		0x3F
 	};
 
-	if (gpio_get_value(data->gpio_cdone) != 1) {
-		dev_err(data->dev, "cdone fail !!\n");
-		return 1;
-	}
-
 	dev_info(data->dev, "IRDA test code start\n");
 
 	/* make data for sending */
@@ -431,46 +397,10 @@ static int ice4_irda_parse_dt(struct device *dev)
 		return -ENODEV;
 	}
 
-	data->gpio_creset = of_get_named_gpio(node, "creset-gpio", 0);
-	if (!gpio_is_valid(data->gpio_creset)) {
-		dev_err(dev, "Cannot get creset-gpio\n");
-		return -ENODEV;
-	}
-
-	data->gpio_cdone = of_get_named_gpio(node, "cdone-gpio", 0);
-	if (!gpio_is_valid(data->gpio_cdone)) {
-		dev_err(dev, "Cannot get cdone-gpio\n");
-		return -ENODEV;
-	}
-
-	data->gpio_sda = of_get_named_gpio(node, "irda-sda-gpio", 0);
-	if (!gpio_is_valid(data->gpio_sda)) {
-		dev_err(dev, "Cannot get irda-sda-gpio\n");
-		return -ENODEV;
-	}
-
-	data->gpio_scl = of_get_named_gpio(node, "irda-scl-gpio", 0);
-	if (!gpio_is_valid(data->gpio_scl)) {
-		dev_err(dev, "Cannot get irda-scl-gpio\n");
-		return -ENODEV;
-	}
-
 	data->ir_regulator = devm_regulator_get(dev, "ir-supply");
 	if (IS_ERR(data->ir_regulator)) {
 		dev_err(dev, "Cannot get ir regulator\n");
 		data->ir_regulator = NULL;
-	}
-
-	data->fpga_regulator = devm_regulator_get(dev, "fpga-supply");
-	if (IS_ERR(data->fpga_regulator)) {
-		dev_err(dev, "Cannot get fpga regulator\n");
-		return PTR_ERR(data->fpga_regulator);
-	}
-
-	ret = regulator_enable(data->fpga_regulator);
-	if (ret) {
-		dev_err(dev, "Cannot enable fpga regulator\n");
-		return ret;
 	}
 
 	data->mclk = devm_clk_get(data->dev, "out");
@@ -507,89 +437,10 @@ static int ice4_irda_gpio_configuration(struct device *dev)
 		goto err_gpio_request;
 	}
 
-	ret = devm_gpio_request_one(dev, data->gpio_creset, GPIOF_OUT_INIT_HIGH,
-				    "creset-gpio");
-	if (ret) {
-		dev_err(dev, "Cannot request creset-gpio");
-		goto err_gpio_request;
-	}
-
-	ret = devm_gpio_request_one(dev, data->gpio_cdone, GPIOF_IN,
-				    "cdone-gpio");
-	if (ret) {
-		dev_err(dev, "Cannot request cdone-gpio");
-		goto err_gpio_request;
-	}
-
 	return 0;
 
 err_gpio_request:
 	return ret;
-}
-
-static void ice4_irda_firmware_download(struct device *dev,
-					unsigned char *firmware, int len)
-{
-	struct ice4_fpga_data *data = dev_get_drvdata(dev);
-	int i;
-
-	dev_info(dev, "firmware download start!\n");
-
-	/* fpga change download state */
-	gpio_set_value(data->gpio_fpga_rst_n, 0);
-	gpio_set_value(data->gpio_creset, 1);
-	msleep(10);
-
-	gpio_set_value(data->gpio_creset, 0);
-	usleep_range(30, 40);
-
-	gpio_set_value(data->gpio_creset, 1);
-	usleep_range(1000, 1100);
-
-	/* firmware download via bitbanged SPI */
-	/* Uses the same pins as bitbanged I2C on Rinato, gotta make sure there's no interference */
-	// struct i2c_adapter *adapter = to_i2c_adapter(dev->parent);
-
-	for (i = 0; i < len; i++) {
-		int bit;
-		unsigned char spibit = *firmware++;
-
-		for (bit = 0; bit < BITS_PER_BYTE; spibit <<= 1, bit++) {
-			gpio_set_value(data->gpio_scl, 0);
-			gpio_set_value(data->gpio_sda, !!(spibit & 0x80));
-			gpio_set_value(data->gpio_scl, 1);
-		}
-	}
-
-	for (i = 0; i < DUMMY_BIT_COUNT; i++) {
-		gpio_set_value(data->gpio_scl, 0);
-		udelay(1);
-		gpio_set_value(data->gpio_scl, 1);
-	}
-
-	/*
-	 * Uses the removed GPIO interface, probably not needed (why is this even exported to userspace?)
-	 * gpio_export(data->gpio_fpga_rst_n, false);
-	 */
-	gpio_set_value(data->gpio_fpga_rst_n, 1);
-	udelay(500); // Originally 1
-
-	dev_info(dev, "firmware download done!\n");
-}
-
-static void work_function_firmware_download(struct work_struct *work)
-{
-	struct ice4_fpga_data *data = container_of((struct work_struct *)work,
-						   struct ice4_fpga_data,
-						   work_download);
-
-	ice4_irda_firmware_download(&data->client->dev, fpga_irda_fw,
-				    ARRAY_SIZE(fpga_irda_fw));
-
-	if (ice4_irda_check_cdone(data))
-		dev_info(&data->client->dev, "FPGA FW is loaded!\n");
-	else
-		dev_err(&data->client->dev, "FPGA FW is NOT loaded!\n");
 }
 
 static int ice4_irda_probe(struct i2c_client *client)
@@ -600,6 +451,8 @@ static int ice4_irda_probe(struct i2c_client *client)
 
 	dev_info(&client->dev, "probe start!\n");
 
+	/* TODO: Wait until FPGA region has been initialized (fpga-region property)*/
+
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev,
 			"Failed to i2c functionality check err\n");
@@ -608,7 +461,7 @@ static int ice4_irda_probe(struct i2c_client *client)
 
 	data = devm_kzalloc(&client->dev, sizeof(*data), GFP_KERNEL);
 	if (NULL == data) {
-		dev_err(&client->dev, "Failed to data allocate\n");
+		dev_err(&client->dev, "Failed to allocate data\n");
 		return -ENOMEM;
 	}
 
@@ -666,12 +519,7 @@ static int ice4_irda_probe(struct i2c_client *client)
 	}
 	dev_info(&client->dev, "Created sysfs group!\n");
 
-	/* TODO: Proper FW download using kernel driver for this FPGA */
-	INIT_WORK(&data->work_download, work_function_firmware_download);
-	schedule_work(&data->work_download);
-
-	dev_info(&client->dev, "probe complete\n");
-
+	dev_info(&client->dev, "Probe complete!\n");
 	return 0;
 
 err_sysfs_create:

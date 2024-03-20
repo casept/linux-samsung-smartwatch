@@ -291,12 +291,16 @@ static int of_fpga_region_notify_pre_apply(struct fpga_region *region,
 	int ret;
 
 	info = of_fpga_region_parse_ov(region, nd->overlay);
-	if (IS_ERR(info))
+	if (IS_ERR(info)) {
+		dev_err(dev, "Failed to parse FPGA region: %ld\n", PTR_ERR(info));
 		return PTR_ERR(info);
+	}
 
 	/* If overlay doesn't program the FPGA, accept it anyway. */
-	if (!info)
+	if (!info) {
+		dev_info(dev, "Overlay doesn't program FPGA!\n");
 		return 0;
+	}
 
 	if (region->info) {
 		dev_err(dev, "Region already has overlay applied.\n");
@@ -306,6 +310,7 @@ static int of_fpga_region_notify_pre_apply(struct fpga_region *region,
 	region->info = info;
 	ret = fpga_region_program_fpga(region);
 	if (ret) {
+		dev_err(dev, "Programming the FPGA region for OF failed!\n");
 		/* error; reject overlay */
 		fpga_image_info_free(info);
 		region->info = NULL;

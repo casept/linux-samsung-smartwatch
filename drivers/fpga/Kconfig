@@ -12,6 +12,11 @@ menuconfig FPGA
 
 if FPGA
 
+config FPGA_PROG
+	tristate "User-space FPGA programming interface"
+	help
+	  User-space FPGA programming interface.
+
 config FPGA_MGR_SOCFPGA
 	tristate "Altera SOCFPGA FPGA Manager"
 	depends on ARCH_INTEL_SOCFPGA || COMPILE_TEST

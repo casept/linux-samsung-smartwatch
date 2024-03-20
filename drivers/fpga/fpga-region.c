@@ -100,6 +100,8 @@ int fpga_region_program_fpga(struct fpga_region *region)
 	struct fpga_image_info *info = region->info;
 	int ret;
 
+	dev_info(dev, "programming FPGA region\n");
+
 	region = fpga_region_get(region);
 	if (IS_ERR(region)) {
 		dev_err(dev, "failed to get FPGA region\n");
@@ -145,6 +147,7 @@ int fpga_region_program_fpga(struct fpga_region *region)
 	fpga_mgr_unlock(region->mgr);
 	fpga_region_put(region);
 
+	dev_info(dev, "FPGA programmed OK!\n");
 	return 0;
 
 err_put_br:

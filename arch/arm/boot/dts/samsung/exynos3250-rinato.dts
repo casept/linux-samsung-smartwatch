@@ -27,7 +27,7 @@
 		i2c0 = &i2c_pmic;
 		i2c1 = &i2c_touchscreen;
 		i2c7 = &i2c_max77836;
-		i2c8 = &i2c_ice4_irda;
+		// i2c8 = &i2c_ice4_irda;
 		i2c14 = &i2c_fuelgauge;
 		mmc0 = &mshc_0;
 		mmc1 = &mshc_1;
@@ -617,41 +617,84 @@
 	};
 
 	/* IR FPGA (iCE40LP640) */
-	i2c_ice4_irda: i2c-gpio-4 {
-		compatible = "i2c-gpio";
-		sda-gpios = <&gpa1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		scl-gpios = <&gpa1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		// i2c-gpio,delay-us = <2>;
+	ir-fpga-spi {
+		compatible = "spi-gpio";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		status = "okay";
 
-		ice4-irda@50 {
-			compatible = "samsung,ice4-irda";
-			reg = <0x50>;
-			interrupt-parent = <&gpx1>;
-			interrupts = <0 0>;
-			status = "okay";
+		sck-gpios = <&gpa1 3 (GPIO_ACTIVE_HIGH | GPIO_PULL_DISABLE)>;
+		mosi-gpios = <&gpa1 2 (GPIO_ACTIVE_LOW | GPIO_PULL_DISABLE)>;
+		// sck-gpios = <&gpa1 3 (GPIO_ACTIVE_HIGH)>;
+		// mosi-gpios = <&gpa1 2 (GPIO_ACTIVE_HIGH)>;
+		/* No known MISO line */
+		num-chipselects = <0>; /* No CS in use */
 
-			clocks = <&pmu_system_controller 0>;
-			clock-names = "out";
-			assigned-clocks = <&pmu_system_controller 0>;
-			assigned-clock-parents = <&xusbxti>;
-
-			ir-supply = <&ldo17_reg>;
-			/* fpga-supply seems not controlled in downstream */
-
-			irda-gpio = <&gpx1 0 GPIO_ACTIVE_HIGH>;
-			creset-gpio = <&gpx2 5 GPIO_ACTIVE_HIGH>;
-			cdone-gpio = <&gpx2 4 GPIO_ACTIVE_HIGH>;
-			fpga-reset-gpio = <&gpe0 6 GPIO_ACTIVE_HIGH>;
-			/* Why does the driver do it's own I2C master emulation? */
-			//irda-sda-gpio = <&gpa1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-			//irda-scl-gpio = <&gpa1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-			irda-sda-gpio = <&gpa1 2 GPIO_ACTIVE_HIGH>;
-			irda-scl-gpio = <&gpa1 3 GPIO_ACTIVE_HIGH>;
+		ir_fpga_mgr: ice40lp640@0 {
+			compatible = "lattice,ice40-fpga-mgr";
+			reg = <0>;
+			spi-max-frequency = <1000000>;
+			cdone-gpios = <&gpx2 4 GPIO_PULL_DISABLE>; /* What is LEVEL_NONE? */
+			reset-gpios = <&gpx2 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_DISABLE)>;
 		};
 	};
+
+	/*
+	ir_fpga_region: fpga-region@0 {
+		compatible = "fpga-region";
+		fpga-mgr = <&ir_fpga_mgr>;
+		firmware-name = "ice40_irda.bin";
+	};
+	*/
+
+	prog_fpga0: prog-fpga0 {
+		compatible = "tills,fpga-programmer-1.0";
+		fpga-mgr = <&ir_fpga_mgr>;
+		autoload = <0>;
+	};
+
+
+	/*
+	FIXME: We need some sort of runtime mux to implement switching between SPI and I2C,
+	as otherwise i2c-gpio steals the pins from spi-gpio and it can't claim them.
+	We could e.g. pass in a GPIO to the mux, as the FPGA toggles it's state after programming.
+	*/
+	/*
+	i2c_ice4_irda: i2c-gpio-4 {
+		compatible = "i2c-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		// These are shared with SPI for programming
+		sda-gpios = <&gpa1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&gpa1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+		status = "okay";
+
+		i2c-gpio,delay-us = <2>;
+
+		// Controlled by I2C after programming
+		ice4-irda@50 {
+			compatible = "samsung,ice4-irda";
+            status = "okay";
+
+			fpga-region = <&ir_fpga_region>;
+
+			reg = <0x50>;
+
+			interrupt-parent = <&gpx1>;
+            interrupts = <0 0>;
+
+            clocks = <&pmu_system_controller 0>;
+            clock-names = "out";
+            assigned-clocks = <&pmu_system_controller 0>;
+            assigned-clock-parents = <&xusbxti>;
+
+            ir-supply = <&ldo17_reg>;
+
+            irda-gpio = <&gpx1 0 GPIO_PULL_DOWN>;
+            fpga-reset-gpio = <&gpe0 6 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		};
+	};
+	*/
 
 	haptics {
 		compatible = "regulator-haptic";
