@@ -91,6 +91,7 @@ static ssize_t profiling_store(struct kobject *kobj,
 				   struct kobj_attribute *attr,
 				   const char *buf, size_t count)
 {
+	static DEFINE_MUTEX(lock);
 	int ret;
 	static DEFINE_MUTEX(lock);
 
@@ -109,11 +110,15 @@ static ssize_t profiling_store(struct kobject *kobj,
 	 */
 	profile_setup((char *)buf);
 	ret = profile_init();
-	if (ret)
-		return ret;
+	if (ret) {
+		count = ret;
+		goto out;
+	}
 	ret = create_proc_profile();
 	if (ret)
-		return ret;
+		count = ret;
+out:
+	mutex_unlock(&lock);
 	return count;
 }
 KERNEL_ATTR_RW(profiling);
