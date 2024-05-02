@@ -662,7 +662,7 @@ int filename_setxattr(int dfd, struct filename *filename,
 
 	lookup_flags = (at_flags & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW;
 	if (at_flags & AT_EMPTY_PATH)
-		lookup_flags |= LOOKUP_EMPTY;
+		lookup_flags |= LOOKUP_EMPTY | LOOKUP_NO_FMODE_PATH;
 retry:
 	error = filename_lookup(dfd, filename, lookup_flags, &path, NULL);
 	if (error)
@@ -824,7 +824,7 @@ ssize_t filename_getxattr(int dfd, struct filename *filename,
 
 	lookup_flags = (at_flags & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW;
 	if (at_flags & AT_EMPTY_PATH)
-		lookup_flags |= LOOKUP_EMPTY;
+		lookup_flags |= LOOKUP_EMPTY | LOOKUP_NO_FMODE_PATH;
 retry:
 	error = filename_lookup(dfd, filename, lookup_flags, &path, NULL);
 	if (error)
@@ -973,7 +973,7 @@ ssize_t filename_listxattr(int dfd, struct filename *filename,
 
 	lookup_flags = (at_flags & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW;
 	if (at_flags & AT_EMPTY_PATH)
-		lookup_flags |= LOOKUP_EMPTY;
+		lookup_flags |= LOOKUP_EMPTY | LOOKUP_NO_FMODE_PATH;
 retry:
 	error = filename_lookup(dfd, filename, lookup_flags, &path, NULL);
 	if (error)
