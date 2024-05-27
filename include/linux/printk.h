@@ -291,6 +291,10 @@ static inline void printk_legacy_allow_panic_sync(void)
 {
 }
 
+static inline void printk_legacy_allow_panic_sync(void)
+{
+}
+
 static inline bool nbcon_device_try_acquire(struct console *con)
 {
 	return false;

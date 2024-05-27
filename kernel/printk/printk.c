@@ -479,7 +479,9 @@ bool have_legacy_console;
 bool have_nbcon_console;
 
 /*
- * Specifies if an nbcon console is registered.
+ * Specifies if an nbcon console is registered. If nbcon consoles are present,
+ * synchronous printing of legacy consoles will not occur during panic until
+ * the backtrace has been stored to the ringbuffer.
  */
 static bool have_nbcon_console;
 
@@ -2443,6 +2445,8 @@ asmlinkage int vprintk_emit(int facility, int level,
 		defer_console_output();
 	else
 		wake_up_klogd();
+	else
+		defer_console_output();
 
 	return printed_len;
 }
