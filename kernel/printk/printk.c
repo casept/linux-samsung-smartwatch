@@ -479,6 +479,11 @@ bool have_legacy_console;
 bool have_nbcon_console;
 
 /*
+ * Specifies if an nbcon console is registered.
+ */
+static bool have_nbcon_console;
+
+/*
  * Specifies if a boot console is registered. If boot consoles are present,
  * nbcon consoles cannot print simultaneously and must be synchronized by
  * the console lock. This is because boot consoles and nbcon consoles may
