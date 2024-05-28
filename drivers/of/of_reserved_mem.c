@@ -14,6 +14,7 @@
 #include <linux/err.h>
 #include <linux/libfdt.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/of_fdt.h>
 #include <linux/of_platform.h>
 #include <linux/mm.h>
@@ -105,7 +106,7 @@ static void __init fdt_init_reserved_mem_node(struct reserved_mem *rmem);
 /*
  * fdt_reserved_mem_save_node() - save fdt node for second pass initialization
  */
-static void __init fdt_reserved_mem_save_node(unsigned long node, const char *uname,
+static void __init fdt_reserved_mem_save_node(struct device_node *node, const char *uname,
 					      phys_addr_t base, phys_addr_t size)
 {
 	struct reserved_mem *rmem = &reserved_mem[reserved_mem_count];
@@ -115,7 +116,7 @@ static void __init fdt_reserved_mem_save_node(unsigned long node, const char *un
 		return;
 	}
 
-	rmem->fdt_node = node;
+	rmem->dev_node = node;
 	rmem->name = uname;
 	rmem->base = base;
 	rmem->size = size;
@@ -187,11 +188,11 @@ static int __init __reserved_mem_reserve_reg(unsigned long node,
 }
 
 /*
- * __reserved_mem_check_root() - check if #size-cells, #address-cells provided
+ * __fdt_reserved_mem_check_root() - check if #size-cells, #address-cells provided
  * in /reserved-memory matches the values supported by the current implementation,
  * also check if ranges property has been provided
  */
-static int __init __reserved_mem_check_root(unsigned long node)
+static int __init __fdt_reserved_mem_check_root(unsigned long node)
 {
 	const __be32 *prop;
 
@@ -223,12 +224,8 @@ static void __init __rmem_check_for_overlap(void);
  */
 void __init fdt_scan_reserved_mem_reg_nodes(void)
 {
-	int t_len = (dt_root_addr_cells + dt_root_size_cells) * sizeof(__be32);
-	const void *fdt = initial_boot_params;
+	struct device_node *node, *child;
 	phys_addr_t base, size;
-	const __be32 *prop;
-	int node, child;
-	int len;
 
 	if (!fdt)
 		return;
@@ -249,21 +246,23 @@ void __init fdt_scan_reserved_mem_reg_nodes(void)
 
 	fdt_for_each_subnode(child, fdt, node) {
 		const char *uname;
+		struct resource res;
+		struct reserved_mem *rmem;
 
-		prop = of_get_flat_dt_prop(child, "reg", &len);
-		if (!prop)
-			continue;
-		if (!of_fdt_device_is_available(fdt, child))
+		if (!of_device_is_available(child))
 			continue;
 
-		uname = fdt_get_name(fdt, child, NULL);
-		if (len && len % t_len != 0) {
-			pr_err("Reserved memory: invalid reg property in '%s', skipping node.\n",
-			       uname);
+		ret = of_address_to_resource(child, 0, &res);
+		if (ret) {
+			rmem = of_reserved_mem_lookup(child);
+			if (rmem)
+				rmem->dev_node = child;
 			continue;
 		}
-		base = dt_mem_next_cell(dt_root_addr_cells, &prop);
-		size = dt_mem_next_cell(dt_root_size_cells, &prop);
+		uname = of_node_full_name(child);
+
+		base = res.start;
+		size = res.end - res.start + 1;
 
 		if (size)
 			fdt_reserved_mem_save_node(child, uname, base, size);
@@ -289,7 +288,7 @@ int __init fdt_scan_reserved_mem(void)
 	if (node < 0)
 		return -ENODEV;
 
-	if (__reserved_mem_check_root(node) != 0) {
+	if (__fdt_reserved_mem_check_root(node) != 0) {
 		pr_err("Reserved memory: unsupported node format, ignoring\n");
 		return -EINVAL;
 	}
@@ -488,7 +487,7 @@ static int __init __reserved_mem_init_node(struct reserved_mem *rmem)
 		reservedmem_of_init_fn initfn = i->data;
 		const char *compat = i->compatible;
 
-		if (!of_flat_dt_is_compatible(rmem->fdt_node, compat))
+		if (!of_device_is_compatible(rmem->dev_node, compat))
 			continue;
 
 		ret = initfn(rmem);
@@ -519,11 +518,6 @@ static int __init __rmem_cmp(const void *a, const void *b)
 	if (ra->size < rb->size)
 		return -1;
 	if (ra->size > rb->size)
-		return 1;
-
-	if (ra->fdt_node < rb->fdt_node)
-		return -1;
-	if (ra->fdt_node > rb->fdt_node)
 		return 1;
 
 	return 0;
