@@ -1093,12 +1093,29 @@ static int bcm_get_resources(struct bcm_device *dev)
 		return 0;
 
 	dev->txco_clk = bcm_get_txco(dev->dev);
-	if (IS_ERR(dev->txco_clk))
-		return PTR_ERR(dev->txco_clk);
 
-	dev->lpo_clk = devm_clk_get_optional(dev->dev, "lpo");
-	if (IS_ERR(dev->lpo_clk))
+	/* Handle deferred probing */
+	if (dev->txco_clk == ERR_PTR(-EPROBE_DEFER)) {
+		dev_info(dev->dev, "Deferring probe due to missing TXCO clk\n");
+		return PTR_ERR(dev->txco_clk);
+	}
+
+	/* Ignore all other errors as before */
+	if (IS_ERR(dev->txco_clk)) {
+		dev_info(dev->dev, "Ignoring TXCO clk error, code %ld\n", PTR_ERR(dev->txco_clk));
+		dev->txco_clk = NULL;
+	}
+
+	dev->lpo_clk = devm_clk_get(dev->dev, "lpo");
+	if (dev->lpo_clk == ERR_PTR(-EPROBE_DEFER)) {
+		dev_info(dev->dev, "Deferring probe due to missing LPO clk\n");
 		return PTR_ERR(dev->lpo_clk);
+	}
+
+	if (IS_ERR(dev->lpo_clk)) {
+		dev_info(dev->dev, "Ignoring LPO clk error, code %ld\n", PTR_ERR(dev->lpo_clk));
+		dev->lpo_clk = NULL;
+	}
 
 	/* Check if we accidentally fetched the lpo clock twice */
 	if (dev->lpo_clk && clk_is_match(dev->lpo_clk, dev->txco_clk)) {
@@ -1108,18 +1125,24 @@ static int bcm_get_resources(struct bcm_device *dev)
 
 	dev->device_wakeup = devm_gpiod_get_optional(dev->dev, "device-wakeup",
 						     GPIOD_OUT_LOW);
-	if (IS_ERR(dev->device_wakeup))
+	if (IS_ERR(dev->device_wakeup)) {
+		dev_err(dev->dev, "Failed to acquire device-wakeup GPIO, code %ld\n", PTR_ERR(dev->device_wakeup));
 		return PTR_ERR(dev->device_wakeup);
+	}
 
 	dev->shutdown = devm_gpiod_get_optional(dev->dev, "shutdown",
 						GPIOD_OUT_LOW);
-	if (IS_ERR(dev->shutdown))
+	if (IS_ERR(dev->shutdown)) {
+		dev_err(dev->dev, "Failed to acquire shutdown GPIO, code %ld\n", PTR_ERR(dev->shutdown));
 		return PTR_ERR(dev->shutdown);
+	}
 
 	dev->reset = devm_gpiod_get_optional(dev->dev, "reset",
 					     GPIOD_OUT_LOW);
-	if (IS_ERR(dev->reset))
+	if (IS_ERR(dev->reset)) {
+		dev_err(dev->dev, "Failed to acquire reset GPIO, code %ld\n", PTR_ERR(dev->reset));
 		return PTR_ERR(dev->reset);
+	}
 
 	dev->set_device_wakeup = bcm_gpio_set_device_wakeup;
 	dev->set_shutdown = bcm_gpio_set_shutdown;
@@ -1128,8 +1151,10 @@ static int bcm_get_resources(struct bcm_device *dev)
 	dev->supplies[1].supply = "vddio";
 	err = devm_regulator_bulk_get(dev->dev, BCM_NUM_SUPPLIES,
 				      dev->supplies);
-	if (err)
+	if (err) {
+		dev_err(dev->dev, "Failed to acquire a power supply, code %d\n", err);
 		return err;
+	}
 
 	broken_irq_dmi_id = dmi_first_match(bcm_broken_irq_dmi_table);
 	if (broken_irq_dmi_id && broken_irq_dmi_id->driver_data) {
@@ -1144,8 +1169,10 @@ static int bcm_get_resources(struct bcm_device *dev)
 		struct gpio_desc *gpio;
 
 		gpio = devm_gpiod_get_optional(dev->dev, irq_con_id, GPIOD_IN);
-		if (IS_ERR(gpio))
+		if (IS_ERR(gpio)) {
+			dev_err(dev->dev, "Failed to acquire IRQ GPIO, code %ld\n", PTR_ERR(gpio));
 			return PTR_ERR(gpio);
+		}
 
 		dev->irq = gpiod_to_irq(gpio);
 	}
@@ -1161,6 +1188,7 @@ static int bcm_get_resources(struct bcm_device *dev)
 	}
 
 	dev_dbg(dev->dev, "BCM irq: %d\n", dev->irq);
+	dev_info(dev->dev, "Resource acquisition OK\n");
 	return 0;
 }
 
@@ -1248,6 +1276,7 @@ static int bcm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	dev->dev = &pdev->dev;
+	dev_info(&pdev->dev, "%s probe start!\n", dev->name);
 
 	ret = platform_get_irq(pdev, 0);
 	if (ret < 0)
@@ -1512,9 +1541,13 @@ static int bcm_serdev_probe(struct serdev_device *serdev)
 	const struct bcm_device_data *data;
 	int err;
 
+	dev_info(&serdev->dev, "Probing BCM serial device\n");
+
 	bcmdev = devm_kzalloc(&serdev->dev, sizeof(*bcmdev), GFP_KERNEL);
-	if (!bcmdev)
+	if (!bcmdev) {
+		dev_err(&serdev->dev, "Failed to allocate memory for bcmdev\n");
 		return -ENOMEM;
+	}
 
 	bcmdev->dev = &serdev->dev;
 #ifdef CONFIG_PM
@@ -1530,12 +1563,16 @@ static int bcm_serdev_probe(struct serdev_device *serdev)
 		err = bcm_acpi_probe(bcmdev);
 	else
 		err = bcm_of_probe(bcmdev);
-	if (err)
+	if (err) {
+		dev_err(&serdev->dev, "OF probe failed\n");
 		return err;
+	}
 
 	err = bcm_get_resources(bcmdev);
-	if (err)
+	if (err) {
+		dev_err(&serdev->dev, "Failed to get resources\n");
 		return err;
+	}
 
 	if (!bcmdev->shutdown) {
 		dev_warn(&serdev->dev,
@@ -1546,6 +1583,7 @@ static int bcm_serdev_probe(struct serdev_device *serdev)
 	err = bcm_gpio_set_power(bcmdev, false);
 	if (err)
 		dev_err(&serdev->dev, "Failed to power down\n");
+	dev_info(&serdev->dev, "Power down OK!\n");
 
 	data = device_get_match_data(bcmdev->dev);
 	if (data) {
@@ -1557,7 +1595,9 @@ static int bcm_serdev_probe(struct serdev_device *serdev)
 			bcmdev->oper_speed = data->max_speed;
 	}
 
-	return hci_uart_register_device(&bcmdev->serdev_hu, &bcm_proto);
+	dev_info(&serdev->dev, "Registering device!\n");
+	err = hci_uart_register_device(&bcmdev->serdev_hu, &bcm_proto);
+	return err;
 }
 
 static void bcm_serdev_remove(struct serdev_device *serdev)
