@@ -910,6 +910,10 @@
 		device-wakeup-gpios = <&gpx3 1 GPIO_ACTIVE_HIGH>;
 		host-wakeup-gpios = <&gpx2 6 GPIO_ACTIVE_HIGH>;
 		clocks = <&s2mps14_osc S2MPS11_CLK_BT>;
+		clock-names = "s2mps14_bt";
+		txco = "s2mps14_bt";
+
+		/* TODO: Figure out which regulators are used and add them here to silence dummy regulator warning */
 	};
 };
 
