@@ -1705,10 +1705,10 @@ static void get_intensity_data(struct mms_ts_info *info)
 #if SHOW_TSP_DEBUG_MSG
 	pr_info("\n");
 	for (i = 0; i < rx_num; i++) {
-		pr_info("melfas-ts data :");
+		dev_dbg(&info->client->dev, "melfas-ts data :");
 		for (j = 0; j < tx_num; j++)
-			pr_info("[%d]", info->intensity[i * tx_num + j]);
-		pr_info("\n");
+			dev_dbg(&info->client->dev, "[%d]", info->intensity[i * tx_num + j]);
+		dev_dbg(&info->client->dev, "\n");
 	}
 #endif
 
@@ -1864,21 +1864,21 @@ static void get_raw_data(struct mms_ts_info *info, u8 cmd)
 					CMD_EXIT_TEST);
 
 #if SHOW_TSP_DEBUG_MSG
-	pr_info("\n");
+	dev_dbg(&info->client->dev, "\n");
 	for (i = 0; i < rx_num; i++) {
-		dev_info(&info->client->dev, "melfas-ts data :");
+		dev_dbg(&info->client->dev, "melfas-ts data :");
 		for (j = 0; j < tx_num; j++) {
 			if (cmd == MMS_VSC_CMD_CM_DELTA)
-				dev_info(&info->client->dev, "[%d]",
+				dev_dbg(&info->client->dev, "[%d]",
 					 info->cm_delta[i * tx_num + j]);
 			else if (cmd == MMS_VSC_CMD_CM_ABS)
-				dev_info(&info->client->dev, "[%d]",
+				dev_dbg(&info->client->dev, "[%d]",
 					 info->cm_abs[i * tx_num + j]);
 			else if (cmd == MMS_VSC_CMD_REFER)
-				dev_info(&info->client->dev, "[%d]",
+				dev_dbg(&info->client->dev, "[%d]",
 					 info->reference[i * tx_num + j]);
 		}
-		pr_info("\n");
+	  dev_dbg(&info->client->dev, "\n");
 	}
 #endif
 	snprintf(buff, sizeof(buff), "%d,%d", min_value, max_value);
@@ -2784,9 +2784,11 @@ static int mms_ts_probe(struct i2c_client *client)
 	int tx_num;
 #endif
 
-	pr_info("[TSP] %s\n", __func__);
-	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C))
+	dev_dbg(&info->client->dev, "[TSP] %s\n", __func__);
+	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C)) {
+		dev_err(&client->dev, "I2C adapter reported being nonfunctional!\n");
 		return -EIO;
+	}
 
 	info = kzalloc(sizeof(struct mms_ts_info), GFP_KERNEL);
 	if (!info) {
@@ -3031,7 +3033,7 @@ static int mms_ts_suspend(struct device *dev)
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 	int retries = 50;
 
-	dev_info(&info->client->dev, "%s %s\n", __func__,
+	dev_dbg(&info->client->dev, "%s %s\n", __func__,
 		 info->enabled ? "ON" : "OFF");
 
 	while (!info->resume_done) {
@@ -3064,7 +3066,7 @@ static int mms_ts_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 
-	dev_info(&info->client->dev, "%s %s\n", __func__,
+	dev_dbg(&info->client->dev, "%s %s\n", __func__,
 		 info->enabled ? "ON" : "OFF");
 
 	if (info->enabled)
@@ -3095,7 +3097,7 @@ static int mms_ts_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 
-	dev_info(&info->client->dev, "%s %s\n", __func__,
+	dev_dbg(&info->client->dev, "%s %s\n", __func__,
 		 info->enabled ? "ON" : "OFF");
 
 	if (device_may_wakeup(dev)) {
@@ -3111,7 +3113,7 @@ static int mms_ts_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 
-	dev_info(&info->client->dev, "%s %s\n", __func__,
+	dev_dbg(&info->client->dev, "%s %s\n", __func__,
 		 info->enabled ? "ON" : "OFF");
 
 	if (device_may_wakeup(dev)) {
