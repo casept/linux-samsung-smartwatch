@@ -390,7 +390,7 @@ void bch2_accounting_mem_gc(struct bch_fs *c)
  */
 int bch2_fs_replicas_usage_read(struct bch_fs *c, darray_char *usage)
 {
-	struct bch_accounting_mem *acc = &c->accounting[0];
+	struct bch_accounting_mem *acc = &c->accounting;
 	int ret = 0;
 
 	darray_init(usage);
@@ -537,6 +537,7 @@ int bch2_gc_accounting_done(struct bch_fs *c)
 		struct accounting_mem_entry *e = acc->k.data + idx;
 		pos = bpos_successor(e->pos);
 
+	darray_for_each(acc->k, e) {
 		struct disk_accounting_pos acc_k;
 		bpos_to_disk_accounting_pos(&acc_k, e->pos);
 
@@ -594,7 +595,7 @@ int bch2_gc_accounting_done(struct bch_fs *c)
 	}
 err:
 fsck_err:
-	percpu_up_write(&c->mark_lock);
+	percpu_up_read(&c->mark_lock);
 	printbuf_exit(&buf);
 	bch2_trans_put(trans);
 	bch_err_fn(c, ret);

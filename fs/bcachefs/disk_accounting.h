@@ -218,7 +218,7 @@ static inline void bch2_accounting_mem_read_counters(struct bch_accounting_mem *
 static inline void bch2_accounting_mem_read(struct bch_fs *c, struct bpos p,
 					    u64 *v, unsigned nr)
 {
-	struct bch_accounting_mem *acc = &c->accounting[0];
+	struct bch_accounting_mem *acc = &c->accounting;
 	unsigned idx = eytzinger0_find(acc->k.data, acc->k.nr, sizeof(acc->k.data[0]),
 				       accounting_pos_cmp, &p);
 
