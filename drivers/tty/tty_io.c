@@ -427,6 +427,24 @@ static ssize_t hung_up_tty_write(struct kiocb *iocb, struct iov_iter *from)
 	return -EIO;
 }
 
+static ssize_t hung_up_copy_splice_read(struct file *in, loff_t *ppos,
+					struct pipe_inode_info *pipe,
+					size_t len, unsigned int flags)
+{
+	return -EINVAL;
+}
+
+static ssize_t hung_up_iter_file_splice_write(struct pipe_inode_info *pipe, struct file *out,
+					      loff_t *ppos, size_t len, unsigned int flags)
+{
+	return -EINVAL;
+}
+
+static int hung_up_no_open(struct inode *inode, struct file *file)
+{
+	return -ENXIO;
+}
+
 /* No kernel lock held - none needed ;) */
 static __poll_t hung_up_tty_poll(struct file *filp, poll_table *wait)
 {
@@ -488,11 +506,15 @@ static const struct file_operations console_fops = {
 static const struct file_operations hung_up_tty_fops = {
 	.read_iter	= hung_up_tty_read,
 	.write_iter	= hung_up_tty_write,
+	.splice_read    = hung_up_copy_splice_read,
+	.splice_write   = hung_up_iter_file_splice_write,
 	.poll		= hung_up_tty_poll,
 	.unlocked_ioctl	= hung_up_tty_ioctl,
 	.compat_ioctl	= hung_up_tty_compat_ioctl,
+	.open           = hung_up_no_open,
 	.release	= tty_release,
 	.fasync		= hung_up_tty_fasync,
+	.show_fdinfo    = tty_show_fdinfo,
 };
 
 static DEFINE_SPINLOCK(redirect_lock);
