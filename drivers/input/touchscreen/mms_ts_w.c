@@ -1230,7 +1230,7 @@ static void release_all_fingers(struct mms_ts_info *info)
 {
 	int i;
 
-	dev_notice(&info->client->dev, "%s\n", __func__);
+	dev_dbg(&info->client->dev, "%s\n", __func__);
 
 	for (i = 0; i < MAX_FINGERS; i++) {
 		input_mt_slot(info->input_dev, i);
@@ -1238,8 +1238,7 @@ static void release_all_fingers(struct mms_ts_info *info)
 					   false);
 
 		if (info->finger_state[i] != TSP_STATE_RELEASE) {
-			dev_notice(&info->client->dev, "finger %d up(force)\n",
-				   i);
+			dev_dbg(&info->client->dev, "finger %d up(force)\n", i);
 		}
 		info->finger_state[i] = TSP_STATE_RELEASE;
 		info->mcount[i] = 0;
@@ -1251,7 +1250,7 @@ static void release_all_fingers(struct mms_ts_info *info)
 
 #if TOUCH_BOOSTER
 	set_dvfs_lock(info, TOUCH_BOOSTER_QUICK_OFF);
-	dev_notice(&info->client->dev, "dvfs lock free.\n");
+	dev_dbg(&info->client->dev, "dvfs lock free.\n");
 #endif
 }
 
@@ -1489,7 +1488,7 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 				posY = 0;
 		}
 		if (id >= MAX_FINGERS) {
-			dev_notice(&client->dev, "finger id error [%d]\n", id);
+			dev_err(&client->dev, "finger id error [%d]\n", id);
 			reset_mms_ts(info);
 			return IRQ_HANDLED;
 		}
@@ -1499,12 +1498,11 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			input_mt_report_slot_state(info->input_dev,
 						   MT_TOOL_FINGER, false);
 #if SHOW_COORD
-			dev_notice(&client->dev,
-				   "R [%2d],([%4d],[%3d])[%d][%d]", id, posX,
-				   posY, palm, info->mcount[id]);
+			dev_dbg(&client->dev, "R [%2d],([%4d],[%3d])[%d][%d]",
+				id, posX, posY, palm, info->mcount[id]);
 #else
-			dev_notice(&client->dev, "R [%2d][%d]", id,
-				   info->mcount[id]);
+			dev_dbg(&client->dev, "R [%2d][%d]", id,
+				info->mcount[id]);
 #endif
 			info->finger_state[id] = TSP_STATE_RELEASE;
 			info->mcount[id] = 0;
@@ -1537,13 +1535,12 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			if (info->finger_state[id] == TSP_STATE_RELEASE) {
 				info->finger_state[id] = TSP_STATE_PRESS;
 #if SHOW_COORD
-				dev_notice(
-					&client->dev,
+				dev_dbg(&client->dev,
 					"P [%2d],([%4d],[%3d]),P:%d W:%d S:%3d Mj_a:%d Mi_a:%d",
 					id, posX, posY, palm, width, strenth,
 					major_axis, minor_axis);
 #else
-				dev_notice(&client->dev, "P [%2d]", id);
+				dev_dbg(&client->dev, "P [%2d]", id);
 #endif
 			} else
 				info->finger_state[id] = TSP_STATE_MOVE;
@@ -1707,7 +1704,8 @@ static void get_intensity_data(struct mms_ts_info *info)
 	for (i = 0; i < rx_num; i++) {
 		dev_dbg(&info->client->dev, "melfas-ts data :");
 		for (j = 0; j < tx_num; j++)
-			dev_dbg(&info->client->dev, "[%d]", info->intensity[i * tx_num + j]);
+			dev_dbg(&info->client->dev, "[%d]",
+				info->intensity[i * tx_num + j]);
 		dev_dbg(&info->client->dev, "\n");
 	}
 #endif
@@ -1870,15 +1868,15 @@ static void get_raw_data(struct mms_ts_info *info, u8 cmd)
 		for (j = 0; j < tx_num; j++) {
 			if (cmd == MMS_VSC_CMD_CM_DELTA)
 				dev_dbg(&info->client->dev, "[%d]",
-					 info->cm_delta[i * tx_num + j]);
+					info->cm_delta[i * tx_num + j]);
 			else if (cmd == MMS_VSC_CMD_CM_ABS)
 				dev_dbg(&info->client->dev, "[%d]",
-					 info->cm_abs[i * tx_num + j]);
+					info->cm_abs[i * tx_num + j]);
 			else if (cmd == MMS_VSC_CMD_REFER)
 				dev_dbg(&info->client->dev, "[%d]",
-					 info->reference[i * tx_num + j]);
+					info->reference[i * tx_num + j]);
 		}
-	  dev_dbg(&info->client->dev, "\n");
+		dev_dbg(&info->client->dev, "\n");
 	}
 #endif
 	snprintf(buff, sizeof(buff), "%d,%d", min_value, max_value);
@@ -2786,7 +2784,8 @@ static int mms_ts_probe(struct i2c_client *client)
 
 	dev_dbg(&info->client->dev, "[TSP] %s\n", __func__);
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C)) {
-		dev_err(&client->dev, "I2C adapter reported being nonfunctional!\n");
+		dev_err(&client->dev,
+			"I2C adapter reported being nonfunctional!\n");
 		return -EIO;
 	}
 
@@ -3034,7 +3033,7 @@ static int mms_ts_suspend(struct device *dev)
 	int retries = 50;
 
 	dev_dbg(&info->client->dev, "%s %s\n", __func__,
-		 info->enabled ? "ON" : "OFF");
+		info->enabled ? "ON" : "OFF");
 
 	while (!info->resume_done) {
 		if (!retries--)
@@ -3067,7 +3066,7 @@ static int mms_ts_resume(struct device *dev)
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 
 	dev_dbg(&info->client->dev, "%s %s\n", __func__,
-		 info->enabled ? "ON" : "OFF");
+		info->enabled ? "ON" : "OFF");
 
 	if (info->enabled)
 		return 0;
@@ -3098,7 +3097,7 @@ static int mms_ts_suspend(struct device *dev)
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 
 	dev_dbg(&info->client->dev, "%s %s\n", __func__,
-		 info->enabled ? "ON" : "OFF");
+		info->enabled ? "ON" : "OFF");
 
 	if (device_may_wakeup(dev)) {
 		enable_irq_wake(client->irq);
@@ -3114,7 +3113,7 @@ static int mms_ts_resume(struct device *dev)
 	struct mms_ts_info *info = i2c_get_clientdata(client);
 
 	dev_dbg(&info->client->dev, "%s %s\n", __func__,
-		 info->enabled ? "ON" : "OFF");
+		info->enabled ? "ON" : "OFF");
 
 	if (device_may_wakeup(dev)) {
 		disable_irq_wake(client->irq);
