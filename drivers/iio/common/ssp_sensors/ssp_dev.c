@@ -562,9 +562,7 @@ static int ssp_probe(struct spi_device *spi)
 			goto err_read_reg;
 		}
 	} else {
-		dev_err(&spi->dev, "Firmware version not supported\n");
-		ret = -EPERM;
-		goto err_read_reg;
+		dev_err(&spi->dev, "Firmware version not supported! Continuing, but things may not work!\n");
 	}
 
 	return 0;
