@@ -196,7 +196,7 @@ err:
 	return err;
 }
 
-static int sboot_upload_remove(struct platform_device *pdev)
+static void sboot_upload_remove(struct platform_device *pdev)
 {
 	struct sboot_reboot_drvdata *drv;
 
@@ -211,8 +211,6 @@ static int sboot_upload_remove(struct platform_device *pdev)
 	release_mem_region(drv->region->start, drv->size);
 
 	kfree(drv);
-
-	return 0;
 }
 
 static struct platform_device sboot_upload_dev = {
