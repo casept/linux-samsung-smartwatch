@@ -36,6 +36,7 @@ struct s6e63j0x03 {
 	struct device *dev;
 	struct drm_panel panel;
 	struct backlight_device *bl_dev;
+	bool bl_enabled;
 
 	struct regulator_bulk_data supplies[2];
 	struct gpio_desc *reset_gpio;
@@ -205,10 +206,50 @@ static int s6e63j0x03_update_gamma(struct s6e63j0x03 *ctx,
 
 static int s6e63j0x03_set_brightness(struct backlight_device *bl_dev)
 {
+	int ret;
 	struct s6e63j0x03 *ctx = bl_get_data(bl_dev);
+	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	unsigned int brightness = bl_dev->props.brightness;
+	dev_err(ctx->dev, "Updating backlight device\n");
 
-	return s6e63j0x03_update_gamma(ctx, brightness);
+	if (!backlight_is_blank(bl_dev)) {
+		dev_err(ctx->dev, "Backlight not blank\n");
+		if (!ctx->bl_enabled) {
+			dev_err(ctx->dev, "Backlight not enabled, enabling\n");
+
+			ret = mipi_dsi_dcs_set_display_on(dsi);
+			if (ret < 0) {
+				dev_err(ctx->dev,
+					"Failed to send MIPI enable command to switch display on. Error: %d\n",
+					ret);
+				return ret;
+			}
+
+			dev_err(ctx->dev, "Backlight enable OK\n");
+			ctx->bl_enabled = true;
+		}
+		return s6e63j0x03_update_gamma(ctx, brightness);
+	} else {
+		dev_err(ctx->dev, "Backlight is blank\n");
+		if (ctx->bl_enabled) {
+			dev_err(ctx->dev,
+				"Backlight not disabled, disabling\n");
+
+			ret = mipi_dsi_dcs_set_display_off(dsi);
+			if (ret < 0) {
+				dev_err(ctx->dev,
+					"Failed to send MIPI disable command to switch display off. Error: %d\n",
+					ret);
+				return ret;
+			}
+
+			ctx->bl_dev->props.power = FB_BLANK_NORMAL;
+			ctx->bl_enabled = false;
+			dev_err(ctx->dev, "Backlight disable OK\n");
+			return 0;
+		}
+	}
+	return 0;
 }
 
 static const struct backlight_ops s6e63j0x03_bl_ops = {
