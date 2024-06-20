@@ -37,6 +37,7 @@ struct s6e63j0x03 {
 	struct device *dev;
 	struct drm_panel panel;
 	struct backlight_device *bl_dev;
+	bool bl_was_enabled;
 
 	struct regulator_bulk_data supplies[2];
 	struct gpio_desc *reset_gpio;
@@ -145,6 +146,10 @@ static inline int s6e63j0x03_apply_mtp_key(struct s6e63j0x03 *ctx, bool on)
 	return s6e63j0x03_dcs_write_seq_static(ctx, MCS_MTP_KEY, 0xa5, 0xa5);
 }
 
+static int s6e63j0x03_prepare(struct drm_panel *panel);
+static int s6e63j0x03_enable(struct drm_panel *panel);
+static int s6e63j0x03_disable(struct drm_panel *panel);
+
 static int s6e63j0x03_power_on(struct s6e63j0x03 *ctx)
 {
 	int ret;
@@ -206,10 +211,41 @@ static int s6e63j0x03_update_gamma(struct s6e63j0x03 *ctx,
 
 static int s6e63j0x03_set_brightness(struct backlight_device *bl_dev)
 {
+	int ret;
 	struct s6e63j0x03 *ctx = bl_get_data(bl_dev);
 	unsigned int brightness = bl_dev->props.brightness;
+	dev_dbg(ctx->dev, "Updating backlight device, new brightness %d, power: %d, currently enabled: %d\n", brightness, bl_dev->props.power, ctx->bl_was_enabled);
 
-	return s6e63j0x03_update_gamma(ctx, brightness);
+	if (!backlight_is_blank(bl_dev)) {
+		dev_dbg(ctx->dev, "Backlight not blank\n");
+		if (!ctx->bl_was_enabled) {
+			dev_dbg(ctx->dev, "Backlight not enabled, enabling\n");
+			ret = s6e63j0x03_prepare(&ctx->panel);
+			if (ret < 0) return ret;
+			ret = s6e63j0x03_enable(&ctx->panel);
+			if (ret < 0) return ret;
+			dev_dbg(ctx->dev, "Backlight enable OK\n");
+			ctx->bl_dev->props.power = BACKLIGHT_POWER_ON;
+			ctx->bl_was_enabled = true;
+		}
+		return s6e63j0x03_update_gamma(ctx, brightness);
+	} else {
+		dev_dbg(ctx->dev, "Backlight is blank\n");
+		if (ctx->bl_was_enabled) {
+			dev_dbg(ctx->dev,
+				"Backlight not disabled, disabling\n");
+
+			ret = s6e63j0x03_disable(&ctx->panel);
+			if (ret < 0) return ret;
+			ret = s6e63j0x03_power_off(ctx);
+			if (ret < 0) return ret;
+			ctx->bl_dev->props.power = BACKLIGHT_POWER_OFF;
+			ctx->bl_was_enabled = false;
+			dev_err(ctx->dev, "Backlight disable OK\n");
+			return 0;
+		}
+	}
+	return 0;
 }
 
 static const struct backlight_ops s6e63j0x03_bl_ops = {
@@ -240,6 +276,7 @@ static int s6e63j0x03_disable(struct drm_panel *panel)
 static int s6e63j0x03_unprepare(struct drm_panel *panel)
 {
 	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
+	dev_dbg(ctx->dev, "Unpreparing panel\n");
 	int ret;
 
 	ret = s6e63j0x03_power_off(ctx);
@@ -247,12 +284,14 @@ static int s6e63j0x03_unprepare(struct drm_panel *panel)
 		return ret;
 
 	ctx->bl_dev->props.power = BACKLIGHT_POWER_OFF;
+	ctx->bl_was_enabled = false;
 
 	return 0;
 }
 
 static int s6e63j0x03_panel_init(struct s6e63j0x03 *ctx)
 {
+	dev_dbg(ctx->dev, "Panel init\n");
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	int ret;
 
@@ -323,6 +362,7 @@ static int s6e63j0x03_panel_init(struct s6e63j0x03 *ctx)
 static int s6e63j0x03_prepare(struct drm_panel *panel)
 {
 	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
+	dev_dbg(ctx->dev, "Preparing panel\n");
 	int ret;
 
 	ret = s6e63j0x03_power_on(ctx);
@@ -334,6 +374,7 @@ static int s6e63j0x03_prepare(struct drm_panel *panel)
 		goto err;
 
 	ctx->bl_dev->props.power = BACKLIGHT_POWER_REDUCED;
+	ctx->bl_was_enabled = true;
 
 	return 0;
 
@@ -395,6 +436,7 @@ static int s6e63j0x03_enable(struct drm_panel *panel)
 		return ret;
 
 	ctx->bl_dev->props.power = BACKLIGHT_POWER_ON;
+	ctx->bl_was_enabled = true;
 
 	return 0;
 }
@@ -406,7 +448,7 @@ static int s6e63j0x03_get_modes(struct drm_panel *panel,
 
 	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
-		dev_err(panel->dev, "failed to add mode %ux%u@%u\n",
+		dev_dbg(panel->dev, "failed to add mode %ux%u@%u\n",
 			default_mode.hdisplay, default_mode.vdisplay,
 			drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
@@ -474,7 +516,8 @@ static int s6e63j0x03_probe(struct mipi_dsi_device *dsi)
 
 	ctx->bl_dev->props.max_brightness = MAX_BRIGHTNESS;
 	ctx->bl_dev->props.brightness = DEFAULT_BRIGHTNESS;
-	ctx->bl_dev->props.power = BACKLIGHT_POWER_OFF;
+	ctx->bl_dev->props.power = BACKLIGHT_POWER_ON;
+	ctx->bl_was_enabled = true;
 
 	drm_panel_add(&ctx->panel);
 
