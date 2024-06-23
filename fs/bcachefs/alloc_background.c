@@ -1875,6 +1875,25 @@ void bch2_dev_do_discards(struct bch_dev *ca)
 	percpu_ref_put(&ca->io_ref);
 put_write_ref:
 	bch2_write_ref_put(c, BCH_WRITE_REF_discard);
+	percpu_ref_put(&ca->io_ref);
+}
+
+void bch2_dev_do_discards(struct bch_dev *ca)
+{
+	struct bch_fs *c = ca->fs;
+
+	if (!bch2_dev_get_ioref(c, ca->dev_idx, WRITE))
+		return;
+
+	if (!bch2_write_ref_tryget(c, BCH_WRITE_REF_discard))
+		goto put_ioref;
+
+	if (queue_work(c->write_ref_wq, &ca->discard_work))
+		return;
+
+	bch2_write_ref_put(c, BCH_WRITE_REF_discard);
+put_ioref:
+	percpu_ref_put(&ca->io_ref);
 }
 
 void bch2_do_discards(struct bch_fs *c)
@@ -1954,6 +1973,7 @@ static void bch2_do_discards_fast_work(struct work_struct *work)
 	bch2_trans_put(trans);
 	percpu_ref_put(&ca->io_ref);
 	bch2_write_ref_put(c, BCH_WRITE_REF_discard_fast);
+	percpu_ref_put(&ca->io_ref);
 }
 
 static void bch2_discard_one_bucket_fast(struct bch_dev *ca, u64 bucket)
@@ -2121,6 +2141,25 @@ void bch2_dev_do_invalidates(struct bch_dev *ca)
 	percpu_ref_put(&ca->io_ref);
 put_ref:
 	bch2_write_ref_put(c, BCH_WRITE_REF_invalidate);
+	percpu_ref_put(&ca->io_ref);
+}
+
+void bch2_dev_do_invalidates(struct bch_dev *ca)
+{
+	struct bch_fs *c = ca->fs;
+
+	if (!bch2_dev_get_ioref(c, ca->dev_idx, WRITE))
+		return;
+
+	if (!bch2_write_ref_tryget(c, BCH_WRITE_REF_invalidate))
+		goto put_ioref;
+
+	if (queue_work(c->write_ref_wq, &ca->invalidate_work))
+		return;
+
+	bch2_write_ref_put(c, BCH_WRITE_REF_invalidate);
+put_ioref:
+	percpu_ref_put(&ca->io_ref);
 }
 
 void bch2_do_invalidates(struct bch_fs *c)
