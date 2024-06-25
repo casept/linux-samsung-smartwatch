@@ -83,6 +83,44 @@ static inline void memcg1_soft_limit_reset(struct mem_cgroup *memcg)
 struct cgroup_taskset;
 void memcg1_css_offline(struct mem_cgroup *memcg);
 
+/*
+ * Per memcg event counter is incremented at every pagein/pageout. With THP,
+ * it will be incremented by the number of pages. This counter is used
+ * to trigger some periodic events. This is straightforward and better
+ * than using jiffies etc. to handle periodic memcg event.
+ */
+enum mem_cgroup_events_target {
+	MEM_CGROUP_TARGET_THRESH,
+	MEM_CGROUP_TARGET_SOFTLIMIT,
+	MEM_CGROUP_NTARGETS,
+};
+
+bool memcg1_oom_prepare(struct mem_cgroup *memcg, bool *locked);
+void memcg1_oom_finish(struct mem_cgroup *memcg, bool locked);
+void memcg1_oom_recover(struct mem_cgroup *memcg);
+
+void memcg1_commit_charge(struct folio *folio, struct mem_cgroup *memcg);
+void memcg1_swapout(struct folio *folio, struct mem_cgroup *memcg);
+void memcg1_uncharge_batch(struct mem_cgroup *memcg, unsigned long pgpgout,
+			   unsigned long nr_memory, int nid);
+
+/* Cgroup v1-specific declarations */
+
+void memcg1_remove_from_trees(struct mem_cgroup *memcg);
+
+static inline void memcg1_soft_limit_reset(struct mem_cgroup *memcg)
+{
+	WRITE_ONCE(memcg->soft_limit, PAGE_COUNTER_MAX);
+}
+
+bool memcg1_wait_acct_move(struct mem_cgroup *memcg);
+
+struct cgroup_taskset;
+int memcg1_can_attach(struct cgroup_taskset *tset);
+void memcg1_cancel_attach(struct cgroup_taskset *tset);
+void memcg1_move_task(void);
+void memcg1_css_offline(struct mem_cgroup *memcg);
+
 /* for encoding cft->private value on file */
 enum res_type {
 	_MEM,
@@ -95,10 +133,7 @@ bool memcg1_oom_prepare(struct mem_cgroup *memcg, bool *locked);
 void memcg1_oom_finish(struct mem_cgroup *memcg, bool locked);
 void memcg1_oom_recover(struct mem_cgroup *memcg);
 
-void memcg1_commit_charge(struct folio *folio, struct mem_cgroup *memcg);
-void memcg1_swapout(struct folio *folio, struct mem_cgroup *memcg);
-void memcg1_uncharge_batch(struct mem_cgroup *memcg, unsigned long pgpgout,
-			   unsigned long nr_memory, int nid);
+void memcg1_check_events(struct mem_cgroup *memcg, int nid);
 
 void memcg1_stat_format(struct mem_cgroup *memcg, struct seq_buf *s);
 
