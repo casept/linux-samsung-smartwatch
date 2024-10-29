@@ -177,6 +177,7 @@ enum bch_fsck_flags {
 	x(ptr_stripe_redundant,					163,	0)		\
 	x(reservation_key_nr_replicas_invalid,			164,	0)		\
 	x(reflink_v_refcount_wrong,				165,	0)		\
+	x(reflink_v_pos_bad,					292,	0)		\
 	x(reflink_p_to_missing_reflink_v,			166,	0)		\
 	x(stripe_pos_bad,					167,	0)		\
 	x(stripe_val_size_bad,					168,	0)		\
@@ -302,7 +303,7 @@ enum bch_fsck_flags {
 	x(accounting_key_replicas_devs_unsorted,		280,	FSCK_AUTOFIX)	\
 	x(accounting_key_version_0,				282,	FSCK_AUTOFIX)	\
 	x(logged_op_but_clean,					283,	FSCK_AUTOFIX)	\
-	x(MAX,							292,	0)
+	x(MAX,							293,	0)
 
 enum bch_sb_error_id {
 #define x(t, n, ...) BCH_FSCK_ERR_##t = n,
