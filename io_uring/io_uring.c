@@ -121,7 +121,6 @@
 
 #define IO_TCTX_REFS_CACHE_NR	(1U << 10)
 
-#define IO_COMPL_BATCH			32
 #define IO_REQ_ALLOC_BATCH		8
 
 struct io_defer_entry {
