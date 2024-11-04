@@ -2972,10 +2972,11 @@ static int dm_suspend(void *handle)
 
 	hpd_rx_irq_work_suspend(dm);
 
-	if (adev->dm.dc->caps.ips_support)
-		dc_allow_idle_optimizations(adev->dm.dc, true);
-
 	dc_set_power_state(dm->dc, DC_ACPI_CM_POWER_STATE_D3);
+
+	if (dm->dc->caps.ips_support && adev->in_s0ix)
+		dc_allow_idle_optimizations(dm->dc, true);
+
 	dc_dmub_srv_set_power_state(dm->dc->ctx->dmub_srv, DC_ACPI_CM_POWER_STATE_D3);
 
 	return 0;
@@ -8373,7 +8374,8 @@ static void manage_dm_interrupts(struct amdgpu_device *adev,
 		if (amdgpu_ip_version(adev, DCE_HWIP, 0) <
 		    IP_VERSION(3, 5, 0) ||
 		    acrtc_state->stream->link->psr_settings.psr_version <
-		    DC_PSR_VERSION_UNSUPPORTED) {
+		    DC_PSR_VERSION_UNSUPPORTED ||
+		    !(adev->flags & AMD_IS_APU)) {
 			timing = &acrtc_state->stream->timing;
 
 			/* at least 2 frames */
