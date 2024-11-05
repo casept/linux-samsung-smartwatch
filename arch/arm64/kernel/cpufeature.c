@@ -103,6 +103,7 @@ static DECLARE_BITMAP(elf_hwcap, MAX_CPU_FEATURES) __read_mostly;
 				 COMPAT_HWCAP_LPAE)
 unsigned int compat_elf_hwcap __read_mostly = COMPAT_ELF_HWCAP_DEFAULT;
 unsigned int compat_elf_hwcap2 __read_mostly;
+unsigned int compat_elf_hwcap3 __read_mostly;
 #endif
 
 DECLARE_BITMAP(system_cpucaps, ARM64_NCAPS);
@@ -228,6 +229,7 @@ static const struct arm64_ftr_bits ftr_id_aa64isar0[] = {
 };
 
 static const struct arm64_ftr_bits ftr_id_aa64isar1[] = {
+	ARM64_FTR_BITS(FTR_HIDDEN, FTR_STRICT, FTR_LOWER_SAFE, ID_AA64ISAR1_EL1_XS_SHIFT, 4, 0),
 	ARM64_FTR_BITS(FTR_VISIBLE, FTR_STRICT, FTR_LOWER_SAFE, ID_AA64ISAR1_EL1_I8MM_SHIFT, 4, 0),
 	ARM64_FTR_BITS(FTR_VISIBLE, FTR_STRICT, FTR_LOWER_SAFE, ID_AA64ISAR1_EL1_DGH_SHIFT, 4, 0),
 	ARM64_FTR_BITS(FTR_VISIBLE, FTR_STRICT, FTR_LOWER_SAFE, ID_AA64ISAR1_EL1_BF16_SHIFT, 4, 0),
@@ -2601,6 +2603,21 @@ static const struct arm64_cpu_capabilities arm64_features[] = {
 		ARM64_CPUID_FIELDS(ID_AA64MMFR1_EL1, HAFDBS, DBM)
 	},
 #endif
+#ifdef CONFIG_ARM64_HAFT
+	{
+		.desc = "Hardware managed Access Flag for Table Descriptors",
+		/*
+		 * Contrary to the page/block access flag, the table access flag
+		 * cannot be emulated in software (no access fault will occur).
+		 * Therefore this should be used only if it's supported system
+		 * wide.
+		 */
+		.type = ARM64_CPUCAP_SYSTEM_FEATURE,
+		.capability = ARM64_HAFT,
+		.matches = has_cpuid_feature,
+		ARM64_CPUID_FIELDS(ID_AA64MMFR1_EL1, HAFDBS, HAFT)
+	},
+#endif
 	{
 		.desc = "CRC32 instructions",
 		.capability = ARM64_HAS_CRC32,
@@ -3520,6 +3537,11 @@ unsigned long cpu_get_elf_hwcap(void)
 unsigned long cpu_get_elf_hwcap2(void)
 {
 	return elf_hwcap[1];
+}
+
+unsigned long cpu_get_elf_hwcap3(void)
+{
+	return elf_hwcap[2];
 }
 
 static void __init setup_boot_cpu_capabilities(void)
