@@ -231,11 +231,11 @@ static struct promote_op *__promote_alloc(struct btree_trans *trans,
 		update_opts.target = opts.foreground_target;
 
 		struct bkey_ptrs_c ptrs = bch2_bkey_ptrs_c(k);
-		unsigned i = 0;
+		unsigned ptr_bit = 1;
 		bkey_for_each_ptr(ptrs, ptr) {
 			if (bch2_dev_io_failures(failed, ptr->dev))
-				update_opts.rewrite_ptrs |= BIT(i);
-			i++;
+				update_opts.rewrite_ptrs |= ptr_bit;
+			ptr_bit <<= 1;
 		}
 	}
 
@@ -753,17 +753,13 @@ int __bch2_read_indirect_extent(struct btree_trans *trans,
 				unsigned *offset_into_extent,
 				struct bkey_buf *orig_k)
 {
+	struct bkey_i_reflink_p *p = bkey_i_to_reflink_p(orig_k->k);
+	u64 reflink_offset = REFLINK_P_IDX(&p->v) + *offset_into_extent;
+
 	struct btree_iter iter;
-	struct bkey_s_c k;
-	u64 reflink_offset;
-	int ret;
-
-	reflink_offset = le64_to_cpu(bkey_i_to_reflink_p(orig_k->k)->v.idx) +
-		*offset_into_extent;
-
-	k = bch2_bkey_get_iter(trans, &iter, BTREE_ID_reflink,
+	struct bkey_s_c k = bch2_bkey_get_iter(trans, &iter, BTREE_ID_reflink,
 			       POS(0, reflink_offset), 0);
-	ret = bkey_err(k);
+	int ret = bkey_err(k);
 	if (ret)
 		goto err;
 
@@ -802,16 +798,15 @@ static noinline void read_from_stale_dirty_pointer(struct btree_trans *trans,
 			     PTR_BUCKET_POS(ca, &ptr),
 			     BTREE_ITER_cached);
 
-	u8 *gen = bucket_gen(ca, iter.pos.offset);
-	if (gen) {
-
+	int gen = bucket_gen_get(ca, iter.pos.offset);
+	if (gen >= 0) {
 		prt_printf(&buf, "Attempting to read from stale dirty pointer:\n");
 		printbuf_indent_add(&buf, 2);
 
 		bch2_bkey_val_to_text(&buf, c, k);
 		prt_newline(&buf);
 
-		prt_printf(&buf, "memory gen: %u", *gen);
+		prt_printf(&buf, "memory gen: %u", gen);
 
 		ret = lockrestart_do(trans, bkey_err(k = bch2_btree_iter_peek_slot(&iter)));
 		if (!ret) {

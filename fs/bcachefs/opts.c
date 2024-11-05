@@ -48,7 +48,7 @@ static const char * const __bch2_csum_types[] = {
 	NULL
 };
 
-const char * const bch2_csum_opts[] = {
+const char * const __bch2_csum_opts[] = {
 	BCH_CSUM_OPTS()
 	NULL
 };
@@ -113,6 +113,7 @@ void bch2_prt_##name(struct printbuf *out, type t)				\
 PRT_STR_OPT_BOUNDSCHECKED(jset_entry_type,	enum bch_jset_entry_type);
 PRT_STR_OPT_BOUNDSCHECKED(fs_usage_type,	enum bch_fs_usage_type);
 PRT_STR_OPT_BOUNDSCHECKED(data_type,		enum bch_data_type);
+PRT_STR_OPT_BOUNDSCHECKED(csum_opt,		enum bch_csum_opt);
 PRT_STR_OPT_BOUNDSCHECKED(csum_type,		enum bch_csum_type);
 PRT_STR_OPT_BOUNDSCHECKED(compression_type,	enum bch_compression_type);
 PRT_STR_OPT_BOUNDSCHECKED(str_hash_type,	enum bch_str_hash_type);
@@ -710,11 +711,14 @@ void bch2_opt_set_sb(struct bch_fs *c, struct bch_dev *ca,
 
 struct bch_io_opts bch2_opts_to_inode_opts(struct bch_opts src)
 {
-	return (struct bch_io_opts) {
+	struct bch_io_opts opts = {
 #define x(_name, _bits)	._name = src._name,
 	BCH_INODE_OPTS()
 #undef x
 	};
+
+	bch2_io_opts_fixups(&opts);
+	return opts;
 }
 
 bool bch2_opt_is_inode_opt(enum bch_opt_id id)
