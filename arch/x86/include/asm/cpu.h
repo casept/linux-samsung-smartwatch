@@ -52,8 +52,14 @@ static inline void bus_lock_init(void) {}
 
 #ifdef CONFIG_CPU_SUP_INTEL
 u8 get_this_hybrid_cpu_type(void);
+u32 get_this_hybrid_cpu_native_id(void);
 #else
 static inline u8 get_this_hybrid_cpu_type(void)
+{
+	return 0;
+}
+
+static inline u32 get_this_hybrid_cpu_native_id(void)
 {
 	return 0;
 }
