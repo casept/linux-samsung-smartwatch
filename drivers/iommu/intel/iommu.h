@@ -653,8 +653,6 @@ struct dmar_domain {
 		struct {
 			/* parent page table which the user domain is nested on */
 			struct dmar_domain *s2_domain;
-			/* user page table pointer (in GPA) */
-			unsigned long s1_pgtbl;
 			/* page table attributes */
 			struct iommu_hwpt_vtd_s1 s1_cfg;
 			/* link to parent domain siblings */
@@ -720,7 +718,7 @@ struct intel_iommu {
 	int		msagaw; /* max sagaw of this iommu */
 	unsigned int	irq, pr_irq, perf_irq;
 	u16		segment;     /* PCI segment# */
-	unsigned char 	name[13];    /* Device Name */
+	unsigned char	name[16];    /* Device Name */
 
 #ifdef CONFIG_INTEL_IOMMU
 	unsigned long 	*domain_ids; /* bitmap of domains */
@@ -730,12 +728,10 @@ struct intel_iommu {
 
 	struct iommu_flush flush;
 #endif
-#ifdef CONFIG_INTEL_IOMMU_SVM
 	struct page_req_dsc *prq;
 	unsigned char prq_name[16];    /* Name for PRQ interrupt */
 	unsigned long prq_seq_number;
 	struct completion prq_complete;
-#endif
 	struct iopf_queue *iopf_queue;
 	unsigned char iopfq_name[16];
 	/* Synchronization between fault report and iommu device release. */
@@ -1230,9 +1226,7 @@ void __iommu_flush_iotlb(struct intel_iommu *iommu, u16 did, u64 addr,
 int domain_attach_iommu(struct dmar_domain *domain, struct intel_iommu *iommu);
 void domain_detach_iommu(struct dmar_domain *domain, struct intel_iommu *iommu);
 void device_block_translation(struct device *dev);
-int prepare_domain_attach_device(struct iommu_domain *domain,
-				 struct device *dev);
-void domain_update_iommu_cap(struct dmar_domain *domain);
+int paging_domain_compatible(struct iommu_domain *domain, struct device *dev);
 
 int dmar_ir_support(void);
 
@@ -1278,18 +1272,18 @@ void intel_context_flush_present(struct device_domain_info *info,
 				 struct context_entry *context,
 				 u16 did, bool affect_domains);
 
+int intel_iommu_enable_prq(struct intel_iommu *iommu);
+int intel_iommu_finish_prq(struct intel_iommu *iommu);
+void intel_iommu_page_response(struct device *dev, struct iopf_fault *evt,
+			       struct iommu_page_response *msg);
+void intel_iommu_drain_pasid_prq(struct device *dev, u32 pasid);
+
 #ifdef CONFIG_INTEL_IOMMU_SVM
 void intel_svm_check(struct intel_iommu *iommu);
-int intel_svm_enable_prq(struct intel_iommu *iommu);
-int intel_svm_finish_prq(struct intel_iommu *iommu);
-void intel_svm_page_response(struct device *dev, struct iopf_fault *evt,
-			     struct iommu_page_response *msg);
 struct iommu_domain *intel_svm_domain_alloc(struct device *dev,
 					    struct mm_struct *mm);
-void intel_drain_pasid_prq(struct device *dev, u32 pasid);
 #else
 static inline void intel_svm_check(struct intel_iommu *iommu) {}
-static inline void intel_drain_pasid_prq(struct device *dev, u32 pasid) {}
 static inline struct iommu_domain *intel_svm_domain_alloc(struct device *dev,
 							  struct mm_struct *mm)
 {
