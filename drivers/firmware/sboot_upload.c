@@ -85,8 +85,6 @@ struct sboot_reboot_notifier {
 
 /* Structure holding private data of a driver instance */
 struct sboot_reboot_drvdata {
-	/* Regular kernel reboot notification handler */
-	struct sboot_reboot_notifier srn_reboot;
 	/* Kernel panic notification handler */
 	struct sboot_reboot_notifier srn_panic;
 	/* Description of memory region allocated in DT */
@@ -115,22 +113,6 @@ static int sboot_panic_cb(struct notifier_block *nb, unsigned long action,
 	pr_info("Panic string: %s\n", panic_str);
 	sboot_write_panic_string(sboot_mapping, panic_str);
 
-	return NOTIFY_OK;
-}
-
-static int sboot_reboot_cb(struct notifier_block *nb, unsigned long action,
-			   void *data)
-{
-	struct sboot_reboot_notifier *srn;
-	void __iomem *sboot_mapping;
-	sboot_mapping = NULL;
-
-	/* Extract pointer to I/O mapping we appended after notifier_block structure */
-	srn = (struct sboot_reboot_notifier *)nb;
-	sboot_mapping = srn->sboot_mapping;
-
-	pr_info("Handling regular reboot\n");
-	sboot_write_magic(sboot_mapping, SBOOT_MAGIC_NORMAL);
 	return NOTIFY_OK;
 }
 
@@ -169,6 +151,9 @@ static int sboot_upload_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	/* Tell S-Boot to treat the reboot as a normal reboot, if we don't panic */
+	sboot_write_magic(sboot_mapping, SBOOT_MAGIC_NORMAL);
+
 	drv_data = kzalloc(sizeof *drv_data, 0);
 	if (drv_data == NULL) {
 		pr_err("Failed to allocate driver data structures, backing out!");
@@ -177,16 +162,11 @@ static int sboot_upload_probe(struct platform_device *pdev)
 	}
 	drv_data->srn_panic.nb.notifier_call = sboot_panic_cb;
 	drv_data->srn_panic.sboot_mapping = sboot_mapping;
-	drv_data->srn_reboot.nb.notifier_call = sboot_reboot_cb;
-	drv_data->srn_reboot.sboot_mapping = sboot_mapping;
 	drv_data->region = region;
 	drv_data->size = size;
 
 	atomic_notifier_chain_register(&panic_notifier_list,
 				       &drv_data->srn_panic.nb);
-	blocking_notifier_chain_register(&reboot_notifier_list,
-					 &drv_data->srn_reboot.nb);
-
 	platform_set_drvdata(pdev, drv_data);
 	return 0;
 
@@ -204,10 +184,8 @@ static void sboot_upload_remove(struct platform_device *pdev)
 
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &drv->srn_panic.nb);
-	blocking_notifier_chain_unregister(&reboot_notifier_list,
-					   &drv->srn_reboot.nb);
 
-	iounmap(drv->srn_reboot.sboot_mapping);
+	iounmap(drv->srn_panic.sboot_mapping);
 	release_mem_region(drv->region->start, drv->size);
 
 	kfree(drv);
