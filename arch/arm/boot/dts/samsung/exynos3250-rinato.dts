@@ -670,13 +670,36 @@
 			polling-delay-passive = <2000>;
 			thermal-sensors = <&thermistor_ap>;
 
+			/* Trip points are based on semi-educated guess, no real data */
+			trips {
+				cpu_warm: cpu-warm {
+				        temperature = <55000>;
+				        hysteresis = <2000>;
+				        type = "passive";
+				};
+
+				cpu_hot: cpu-hot {
+					temperature = <67000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+
+				cpu-crit {
+					temperature = <90000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+
 			cooling-maps {
 				map0 {
+					trip = <&cpu_warm>;
 					/* Corresponds to 500MHz */
 					cooling-device = <&cpu0 5 5>,
 							 <&cpu1 5 5>;
 				};
 				map1 {
+					trip = <&cpu_hot>;
 					/* Corresponds to 200MHz */
 					cooling-device = <&cpu0 8 8>,
 							 <&cpu1 8 8>;
@@ -778,6 +801,15 @@
 
 &cpu0 {
 	cpu0-supply = <&buck2_reg>;
+};
+
+&cpu_thermal {
+	/*
+	 * Inherited from exynos4-cpu-thermal.
+	 * We do our own thermal stuff in this file, so disable it.
+	 * Otherwise, kernel complains about missing cooling maps.
+	 */
+	status = "disabled";
 };
 
 &exynos_usbphy {
