@@ -39,40 +39,44 @@
 
 	/* For ramoops, recoverable via upload mode */
 	reserved-memory {
-        #address-cells = <1>;
-        #size-cells = <1>;
-        ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
 
-        ramoops@51000000 {
-            compatible = "ramoops";
-            reg = <0x51000000 0x100000>;
-            record-size = <0x4000>;
-            console-size = <0x4000>;
-            ftrace-size = <0x4000>;
-            pmsg-size = <0x4000>;
-            ecc-size = <0x4000>;
+		ramoops@51000000 {
+			compatible = "ramoops";
+			reg = <0x51000000 0x100000>;
+			record-size = <0x8000>;
+			console-size = <0x8000>;
+			ftrace-size = <0x8000>;
+			pmsg-size = <0x8000>;
+			ecc-size = <0x8000>;
 			max-reason = <5>; /* Currently KMSG_DUMP_MAX */
-        };
-	};
+		};
 
+		/*
+		 * Region contains S-Boot logs,
+		 * ensure we don't clobber this helpful debug information.
+		 */
+		buffer@46000000 {
+			no-map;
+			reg = <0x46000000 0x200000>;
+		};
+
+		sboot: buffer@40000000 {
+			no-map;
+			reg = <0x40000000 0x4000>;
+		};
+	};
 
 	sboot-upload@40000000 {
 		compatible = "samsung,sboot-upload";
-		reg = <0x40000000 0x4000>;
+		memory-region = <&sboot>;
 	};
 
-	/*
-	 * Memory actually starts at 0x40000000,
-	 * but retail devices can use the first 16K of RAM for S-Boot debug purposes.
-	 * Therefore, make main RAM start a bit later so we can also use this feature.
-	 *
-	 * Just leaving them in the memory node would result in multiple mappings
-	 * and unpredictable behaviour when attempting access in the S-Boot
-	 * debug driver.
-	 */
-	memory@40004000 {
+	memory@40000000 {
 		device_type = "memory";
-		reg = <0x40004000 0x1fefc000>;
+		reg = <0x40000000 0x1ff00000>;
 	};
 
 	firmware@205f000 {
