@@ -188,4 +188,4 @@ module_platform_driver(ssp_hrm_raw_driver);
 MODULE_AUTHOR("Davids Paskevics <davids.paskevics@gmail.com>");
 MODULE_DESCRIPTION("Samsung sensorhub heart rate monitor driver (raw values)");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS(IIO_SSP_SENSORS);
+MODULE_IMPORT_NS("IIO_SSP_SENSORS");
