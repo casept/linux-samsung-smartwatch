@@ -94,6 +94,8 @@
 		cm-poll-mode = <2>;
 		cm-poll-interval = <30000>;
 
+		cm-fullbatt-capacity = <300000>;
+		cm-fullbatt-voltage = <4348000>;
 		cm-fullbatt-vchkdrop-ms = <30000>;
 		cm-fullbatt-vchkdrop-volt = <150000>;
 		cm-fullbatt-soc = <200>; /* For whatever reason, fuelgauge assumes full = 200 */
@@ -711,7 +713,6 @@
 			polling-delay = <2000>;
 			polling-delay-passive = <2000>;
 			thermal-sensors = <&thermistor_battery>;
-
 			trips {
 				battery-crit-hi {
 					temperature = <70000>;
