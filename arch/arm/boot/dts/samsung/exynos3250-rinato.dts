@@ -69,7 +69,7 @@
 		};
 	};
 
-	sboot-upload@40000000 {
+	sboot-upload {
 		compatible = "samsung,sboot-upload";
 		memory-region = <&sboot>;
 	};
@@ -84,7 +84,7 @@
 		reg = <0x0205f000 0x1000>;
 	};
 
-	charger-manager@0 {
+	charger-manager {
 		compatible = "charger-manager";
 		status = "okay";
 		chg-reg-supply = <&charger_reg>;
@@ -112,13 +112,13 @@
 		cm-discharging-max = <7200000>;
 		cm-num-chargers = <1>;
 		cm-chargers = "max14577-charger";
-		charger@0 {
+		charger {
 			cm-regulator-name = "chg-reg";
-			cable@0 {
+			cable-usb {
 				cm-cable-name = "USB";
 				cm-cable-extcon = "max77836-muic";
 			};
-			cable@1 {
+			cable-ta {
 				cm-cable-name = "TA";
 				cm-cable-extcon = "max77836-muic";
 			};
