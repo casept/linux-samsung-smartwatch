@@ -6,6 +6,7 @@
 #include <linux/init.h>
 #include <linux/ioport.h>
 #include <linux/notifier.h>
+#include <linux/of_address.h>
 #include <linux/panic_notifier.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -119,23 +120,31 @@ static int sboot_panic_cb(struct notifier_block *nb, unsigned long action,
 static int sboot_upload_probe(struct platform_device *pdev)
 {
 	int err;
-	struct resource *r;
+	struct device_node* mem_node;
+	struct resource mem_res;
 	struct resource *region;
 	void __iomem *sboot_mapping;
 	resource_size_t start;
 	resource_size_t size;
 	struct sboot_reboot_drvdata *drv_data;
 
-	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!r) {
-		pr_err("Probe failed: could not get memory resource! Is a reg entry defined in DT?\n");
+	/* Get S-Boot memory region reference from DT */
+	mem_node = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
+	if (!mem_node) {
+		pr_err("Probe failed: could not get memory region! Is a memory-region entry defined in DT?\n");
 		err = -ENXIO;
 		goto err;
 	}
 
+	err = of_address_to_resource(mem_node, 0, &mem_res);
+	if (err) {
+		pr_err("Probe failed: No memory address assigned to the region\n");
+		goto err;
+	}
+
 	/* Claim S-Boot debug area memory */
-	start = r->start;
-	size = r->end - r->start + 1;
+	start = mem_res.start;
+	size = mem_res.end - mem_res.start + 1;
 	region = request_mem_region(start, size, "sboot_upload");
 	if (IS_ERR(region)) {
 		pr_err("Failed to request memory region, backing out!\n");
