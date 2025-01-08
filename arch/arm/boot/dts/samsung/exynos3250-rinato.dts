@@ -670,7 +670,7 @@
 		cpu {
 			polling-delay = <2000>;
 			polling-delay-passive = <2000>;
-			thermal-sensors = <&thermistor_ap>;
+			thermal-sensors = <&thermistor_ap>, <&tmu>;
 
 			/* Trip points are based on semi-educated guess, no real data */
 			trips {
