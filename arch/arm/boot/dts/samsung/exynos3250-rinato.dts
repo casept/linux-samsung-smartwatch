@@ -196,6 +196,19 @@
 				maxim,eoc-uamp = <7500>;
 				maxim,ovp-uvolt = <6500000>;
 			};
+
+			/*
+			 * Seems like this MUIC does not actually manage the battery for some reason (?).
+			 * Makes little sense, did Samsung build in two of them or something?
+			 *
+			 * Either way, add it in a disabled state to make this warning disappear:
+			 * 	max77836-battery: Failed to locate of_node [id: -1]
+			 * See https://lore.kernel.org/lkml/20210702125920.fydyfhwqe7tyr7oi@maple.lan/T/
+			 */
+			unused-battery {
+				compatible = "maxim,max77836-battery";
+				status = "disabled";
+			};
 		};
 	};
 
@@ -207,8 +220,6 @@
 		#size-cells = <0>;
 		status = "okay";
 
-	/* fails to enumerate with max77836-battery: Failed to locate of_node [id: -1], maybe wrong addr? */
-	/* Downstream code suggests true address might be 0xE (14), though 0x36 is also used */
 		fuelgauge@36 {
 			compatible = "maxim,max77836-battery";
 			interrupt-parent = <&gpx1>;
