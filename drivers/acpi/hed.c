@@ -81,6 +81,7 @@ static struct acpi_driver acpi_hed_driver = {
 	},
 };
 module_acpi_driver(acpi_hed_driver);
+subsys_initcall(acpi_hed_driver_init);
 
 MODULE_AUTHOR("Huang Ying");
 MODULE_DESCRIPTION("ACPI Hardware Error Device Driver");
