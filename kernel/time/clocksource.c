@@ -340,9 +340,13 @@ static void clocksource_verify_choose_cpus(void)
 	 * and no replacement CPU is selected.  This gracefully handles
 	 * situations where verify_n_cpus is greater than the number of
 	 * CPUs that are currently online.
+	 *
+	 * The get_random_bytes() is used here to avoid taking lock with
+	 * preemption disabled.
 	 */
 	for (i = 1; i < n; i++) {
-		cpu = get_random_u32_below(nr_cpu_ids);
+		get_random_bytes(&cpu, sizeof(cpu));
+		cpu %= nr_cpu_ids;
 		cpu = cpumask_next(cpu - 1, cpu_online_mask);
 		if (cpu >= nr_cpu_ids)
 			cpu = cpumask_first(cpu_online_mask);
@@ -382,7 +386,8 @@ void clocksource_verify_percpu(struct clocksource *cs)
 		return;
 	}
 	testcpu = smp_processor_id();
-	pr_warn("Checking clocksource %s synchronization from CPU %d to CPUs %*pbl.\n", cs->name, testcpu, cpumask_pr_args(&cpus_chosen));
+	pr_info("Checking clocksource %s synchronization from CPU %d to CPUs %*pbl.\n",
+		cs->name, testcpu, cpumask_pr_args(&cpus_chosen));
 	for_each_cpu(cpu, &cpus_chosen) {
 		if (cpu == testcpu)
 			continue;
