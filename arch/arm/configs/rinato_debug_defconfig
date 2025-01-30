@@ -41,7 +41,7 @@ CONFIG_NR_CPUS=2
 CONFIG_HIGHMEM=y
 # CONFIG_ATAGS is not set
 CONFIG_ARM_APPENDED_DTB=y
-CONFIG_CMDLINE="console=ttySAC1,115200 console=ttyGS0,115200 debug printk.always_kmsg_dump=1 crash_kexec_post_notifiers panic=5 nosgx g_ether.dev_addr=12:34:56:78:9a:bc g_ether.host_addr=12:34:56:78:9a:bd root=/dev/mmcblk0p14 rw rootwait"
+CONFIG_CMDLINE="console=ttySAC1,115200 console=ttyGS0,115200 console=tty0 printk.always_kmsg_dump=1 crash_kexec_post_notifiers panic=5 nosgx g_ether.dev_addr=12:34:56:78:9a:bc g_ether.host_addr=12:34:56:78:9a:bd root=/dev/mmcblk0p14 rw rootwait"
 CONFIG_CMDLINE_FORCE=y
 CONFIG_CPU_FREQ=y
 CONFIG_CPU_FREQ_STAT=y
@@ -188,6 +188,7 @@ CONFIG_DRM_EXYNOS_ROTATOR=y
 CONFIG_DRM_EXYNOS_SCALER=y
 CONFIG_DRM_PANEL_SAMSUNG_S6E63J0X03=y
 CONFIG_DRM_LIMA=m
+CONFIG_FB_DEVICE=y
 CONFIG_LCD_CLASS_DEVICE=y
 CONFIG_LCD_PLATFORM=y
 CONFIG_BACKLIGHT_CLASS_DEVICE=y
