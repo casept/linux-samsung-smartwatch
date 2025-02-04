@@ -97,7 +97,7 @@
 		cm-fullbatt-voltage = <4348000>;
 		cm-fullbatt-vchkdrop-ms = <30000>;
 		cm-fullbatt-vchkdrop-volt = <150000>;
-		cm-fullbatt-soc = <200>; /* For whatever reason, fuelgauge assumes full = 200 */
+		cm-fullbatt-soc = <100>;
 
 		cm-battery-stat = <0>;
 		cm-fuel-gauge = "battery";
@@ -224,6 +224,7 @@
 			interrupt-parent = <&gpx1>;
 			interrupts = <2 IRQ_TYPE_EDGE_RISING>;
 			reg = <0x36>;
+			maxim,double-soc;
 		};
 	};
 
