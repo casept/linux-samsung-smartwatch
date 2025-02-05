@@ -1,9 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Samsung S-Boot upload mode driver
+ *
+ * S-Boot provides the ability to display a message on screen
+ * and dump memory after a crash.
+ * This is a useful debug feature, especially if no debug console is available.
+ *
+ * This driver automatically boots into S-Boot upload mode after a kernel
+ * panic and displays the panic message on screen.
+ *
+ * Copyright (C) 2025 Davids Paskevics <davids.paskevics@gmail.com>.
+ */
+
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/device.h>
 #include <linux/kdebug.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/io.h>
 #include <linux/ioport.h>
 #include <linux/notifier.h>
 #include <linux/of_address.h>
@@ -13,8 +28,6 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/of.h>
-
-#include <asm/io.h>
 
 /*
  * Comment from Samsung's downstream kernel regarding the debug area layout:
@@ -67,13 +80,15 @@ static void sboot_write_panic_string(void __iomem *sboot_mapping,
 				     const char *str)
 {
 	int len = strlen(str);
-	if (len > (SBOOT_PANIC_STRING_SIZE - 1)) {
+
+	if (len > (SBOOT_PANIC_STRING_SIZE - 1))
 		pr_warn("Panic string will not fit in S-Boot buffer, truncating the end!\n");
-	}
 
 	unsigned long bytes_to_write = min(len, SBOOT_PANIC_STRING_SIZE);
+
 	for (unsigned int i = 0; i <= bytes_to_write; i++) {
 		unsigned long offset = i + SBOOT_PANIC_STRING_START_OFFSET;
+
 		sboot_iowrite8(sboot_mapping, str[i], offset);
 	}
 }
@@ -111,6 +126,7 @@ static int sboot_panic_cb(struct notifier_block *nb, unsigned long action,
 	/* Make S-Boot display (part of) the panic message */
 	sboot_clear_panic_string(sboot_mapping);
 	const char *panic_str = (const char *)data;
+
 	pr_info("Panic string: %s\n", panic_str);
 	sboot_write_panic_string(sboot_mapping, panic_str);
 
@@ -120,7 +136,7 @@ static int sboot_panic_cb(struct notifier_block *nb, unsigned long action,
 static int sboot_upload_probe(struct platform_device *pdev)
 {
 	int err;
-	struct device_node* mem_node;
+	struct device_node *mem_node;
 	struct resource mem_res;
 	struct resource *region;
 	void __iomem *sboot_mapping;
@@ -163,9 +179,8 @@ static int sboot_upload_probe(struct platform_device *pdev)
 	/* Tell S-Boot to treat the reboot as a normal reboot, if we don't panic */
 	sboot_write_magic(sboot_mapping, SBOOT_MAGIC_NORMAL);
 
-	drv_data = kzalloc(sizeof *drv_data, 0);
+	drv_data = kzalloc(sizeof(*drv_data), 0);
 	if (drv_data == NULL) {
-		pr_err("Failed to allocate driver data structures, backing out!");
 		err = -ENOMEM;
 		goto err_remapped;
 	}
