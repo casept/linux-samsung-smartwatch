@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * mms_ts_w.c - Touchscreen driver for Melfas MMS W-series touch controllers
  *
@@ -8,7 +9,7 @@
  * ISP reflashing code based on original code from Melfas.
  * ISC reflashing code based on original code from Melfas.
  * Device tree-aware version adapted from Google's kernel tree for sprat:
- * https://android.googlesource.com/kernel/msm.git/+/refs/tags/android-wear-5.0.0_r0.2/drivers/input/touchscreen/mms_ts_w.c
+ * https://android.googlesource.com/kernel/msm.git/+/refs/tags/android-wear-5.0.0_r0.2/
  *
  * This driver seems to implement a similar protocol to MMS114, the main difference being the firmware/configuration upload code.
  * Merging this driver into MMS114 should therefore be considered.
@@ -288,7 +289,7 @@ struct mms_fw_img {
 struct isc_packet {
 	u8 cmd;
 	u32 addr;
-	u8 data[0];
+	u8 data[];
 } __packed;
 
 #endif /* ISC_DL_MODE end */
@@ -344,11 +345,11 @@ enum {
 };
 
 enum { /* this is using by cmd_state valiable. */
-       WAITING = 0,
-       RUNNING,
-       OK,
-       FAIL,
-       NOT_APPLICABLE,
+	WAITING = 0,
+	RUNNING,
+	OK,
+	FAIL,
+	NOT_APPLICABLE,
 };
 #endif /* SEC_TSP_FACTORY_TEST */
 
@@ -554,6 +555,7 @@ static int mms_verify_config(struct mms_ts_info *info, const u8 *buf,
 {
 	int count = 0;
 	int ret = 0;
+
 	if (memcmp(buf, tmp, len)) {
 		dev_info(&info->client->dev, "Run-time config verify failed\n");
 		mms_reboot(info);
@@ -602,7 +604,7 @@ static int mms_config_flash(struct mms_ts_info *info, const u8 *buf,
 {
 	struct i2c_client *client;
 	struct i2c_msg msg;
-	int ret;
+
 	client = info->client;
 
 	msg.addr = client->addr;
@@ -615,10 +617,9 @@ static int mms_config_flash(struct mms_ts_info *info, const u8 *buf,
 		mms_reboot(info);
 		mms_config_set(info);
 		return 0;
-	} else {
-		ret = 1;
 	}
-	return ret;
+
+	return 1;
 }
 
 static void mms_config_set(void *context)
@@ -663,7 +664,7 @@ static void mms_config_set(void *context)
 
 	offset = conf_hdr->data_offset;
 	conf_item =
-		kzalloc(sizeof(*conf_item) * conf_hdr->data_count, GFP_KERNEL);
+		kcalloc(conf_hdr->data_count, sizeof(*conf_item), GFP_KERNEL);
 
 	for (i = 0;; i++, offset += MMS_MFSP_OFFSET) {
 		conf_item[i] =
@@ -764,8 +765,8 @@ static void mms_config_set(void *context)
 	}
 
 	kfree(conf_item);
-	return;
 }
+
 static int mms_config_get(struct mms_ts_info *info, u8 mode)
 {
 	struct i2c_client *client = info->client;
@@ -910,6 +911,7 @@ static int mms_flash_section(struct mms_ts_info *info, struct mms_fw_img *img,
 		for (i = 0; i < ISC_BLOCK_NUM; i++, ptr += ISC_XFER_LEN) {
 			/* flash firmware */
 			u32 tmp = page * 256 + i * (ISC_XFER_LEN / 4);
+
 			put_unaligned_le32(tmp, &isc_packet->addr);
 			msg[0].len = sizeof(struct isc_packet) + ISC_XFER_LEN;
 
@@ -999,12 +1001,12 @@ static int mms_flash_fw(const u8 *fw_data, struct mms_ts_info *info,
 	bool isc_enter_flag = false;
 
 	if (fw_data == NULL) {
-		dev_err(&client->dev, "mms_flash_fw fw_data is NULL!");
+		dev_err(&client->dev, "%s fw_data is NULL!", __func__);
 		return 1;
 	}
 
 	fw_hdr = (struct mms_bin_hdr *)fw_data;
-	img = kzalloc(sizeof(*img) * fw_hdr->section_num, GFP_KERNEL);
+	img = kcalloc(fw_hdr->section_num, sizeof(*img), GFP_KERNEL);
 
 	while (retires--) {
 		if (!get_fw_version_ic(client, ver))
@@ -1228,18 +1230,13 @@ out:
 
 static void release_all_fingers(struct mms_ts_info *info)
 {
-	int i;
-
-	dev_dbg(&info->client->dev, "%s\n", __func__);
-
-	for (i = 0; i < MAX_FINGERS; i++) {
+	for (int i = 0; i < MAX_FINGERS; i++) {
 		input_mt_slot(info->input_dev, i);
 		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
 					   false);
 
-		if (info->finger_state[i] != TSP_STATE_RELEASE) {
+		if (info->finger_state[i] != TSP_STATE_RELEASE)
 			dev_dbg(&info->client->dev, "finger %d up(force)\n", i);
-		}
 		info->finger_state[i] = TSP_STATE_RELEASE;
 		info->mcount[i] = 0;
 	}
@@ -1337,7 +1334,7 @@ static void melfas_ta_cb(struct tsp_callbacks *cb, bool ta_status)
 			i2c_smbus_write_byte_data(info->client, MMS_NOISE_REG,
 						  MMS_NOISE_ON);
 			dev_err(&client->dev,
-				"melfas_ta_cb & abnormal noise mode on!\n");
+				"%s & abnormal noise mode on!\n", __func__);
 		}
 
 	} else {
@@ -1527,9 +1524,9 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			input_report_abs(info->input_dev, ABS_MT_TOUCH_MINOR,
 					 minor_axis);
 			/*
-			input_report_abs(info->input_dev,
-						ABS_MT_PALM, palm);
-*/
+			 * input_report_abs(info->input_dev,
+			 *			ABS_MT_PALM, palm);
+			 */
 			info->mcount[id] += 1;
 
 			if (info->finger_state[id] == TSP_STATE_RELEASE) {
@@ -2006,7 +2003,7 @@ err_i2c:
 		cmd);
 }
 
-static ssize_t show_close_tsp_test(struct device *dev,
+static ssize_t close_tsp_test_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
@@ -2063,7 +2060,6 @@ static void not_support_cmd(void *device_data)
 	info->cmd_state = 4;
 	dev_info(&info->client->dev, "%s: \"%s(%d)\"\n", __func__, buff,
 		 strnlen(buff, sizeof(buff)));
-	return;
 }
 
 static void fw_update(void *device_data)
@@ -2081,6 +2077,7 @@ static void fw_update(void *device_data)
 	const struct firmware *fw;
 
 	char result[16] = { 0 };
+
 	set_default_result(info);
 
 	dev_info(&client->dev, "fw_ic_ver = 0x%02x, fw_bin_ver = 0x%02x\n",
@@ -2155,7 +2152,6 @@ not_support:
 	snprintf(result, sizeof(result), "%s", "NG");
 	set_cmd_result(info, result, strnlen(result, sizeof(result)));
 	info->cmd_state = FAIL;
-	return;
 }
 
 static void get_fw_ver_bin(void *device_data)
@@ -2509,7 +2505,7 @@ static void run_intensity_read(void *device_data)
 	info->cmd_state = OK;
 }
 
-static ssize_t store_cmd(struct device *dev, struct device_attribute *devattr,
+static ssize_t cmd_store(struct device *dev, struct device_attribute *devattr,
 			 const char *buf, size_t count)
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
@@ -2598,7 +2594,7 @@ err_out:
 	return count;
 }
 
-static ssize_t show_cmd_status(struct device *dev,
+static ssize_t cmd_status_show(struct device *dev,
 			       struct device_attribute *devattr, char *buf)
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
@@ -2624,7 +2620,7 @@ static ssize_t show_cmd_status(struct device *dev,
 	return snprintf(buf, TSP_BUF_SIZE, "%s\n", buff);
 }
 
-static ssize_t show_cmd_result(struct device *dev,
+static ssize_t cmd_result_show(struct device *dev,
 			       struct device_attribute *devattr, char *buf)
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
@@ -2640,10 +2636,10 @@ static ssize_t show_cmd_result(struct device *dev,
 	return snprintf(buf, TSP_BUF_SIZE, "%s\n", info->cmd_result);
 }
 
-static DEVICE_ATTR(close_tsp_test, S_IRUGO, show_close_tsp_test, NULL);
-static DEVICE_ATTR(cmd, S_IWUSR | S_IWGRP, NULL, store_cmd);
-static DEVICE_ATTR(cmd_status, S_IRUGO, show_cmd_status, NULL);
-static DEVICE_ATTR(cmd_result, S_IRUGO, show_cmd_result, NULL);
+static DEVICE_ATTR_RO(close_tsp_test, 0444, close_tsp_test_show, NULL);
+static DEVICE_ATTR(cmd, 0220, NULL, cmd_store);
+static DEVICE_ATTR_RO(cmd_status, 0444, cmd_status_show, NULL);
+static DEVICE_ATTR_RO(cmd_result, 0444, cmd_result_show, NULL);
 
 static struct attribute *sec_touch_facotry_attributes[] = {
 	&dev_attr_close_tsp_test.attr,
@@ -2791,15 +2787,12 @@ static int mms_ts_probe(struct i2c_client *client)
 
 	info = kzalloc(sizeof(struct mms_ts_info), GFP_KERNEL);
 	if (!info) {
-		dev_err(&client->dev, "Failed to allocate memory\n");
 		ret = -ENOMEM;
 		goto err_alloc;
 	}
 
 	input_dev = input_allocate_device();
 	if (!input_dev) {
-		dev_err(&client->dev,
-			"Failed to allocate memory for input device\n");
 		ret = -ENOMEM;
 		goto err_input_alloc;
 	}
@@ -2824,7 +2817,7 @@ static int mms_ts_probe(struct i2c_client *client)
 		info->pdata = client->dev.platform_data;
 	}
 
-	if (NULL == info->pdata) {
+	if (info->pdata == NULL) {
 		dev_err(&client->dev, "failed to get platform data\n");
 		goto err_config;
 	}
@@ -2890,11 +2883,11 @@ static int mms_ts_probe(struct i2c_client *client)
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MINOR, 0, MAX_PRESSURE, 0,
 			     0);
 	/*
-	input_set_abs_params(input_dev, ABS_MT_ANGLE,
-		     MIN_ANGLE, MAX_ANGLE, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_PALM,
-			0, 1, 0, 0);
-*/
+	 * input_set_abs_params(input_dev, ABS_MT_ANGLE,
+	 *	     MIN_ANGLE, MAX_ANGLE, 0, 0);
+	 * input_set_abs_params(input_dev, ABS_MT_PALM,
+	 *		0, 1, 0, 0);
+	 */
 	input_set_drvdata(input_dev, info);
 
 	ret = input_register_device(input_dev);
@@ -3128,6 +3121,7 @@ static int mms_ts_resume(struct device *dev)
 static void mms_ts_early_suspend(struct early_suspend *h)
 {
 	struct mms_ts_info *info;
+
 	info = container_of(h, struct mms_ts_info, early_suspend);
 	mms_ts_suspend(&info->client->dev);
 }
@@ -3135,6 +3129,7 @@ static void mms_ts_early_suspend(struct early_suspend *h)
 static void mms_ts_late_resume(struct early_suspend *h)
 {
 	struct mms_ts_info *info;
+
 	info = container_of(h, struct mms_ts_info, early_suspend);
 	mms_ts_resume(&info->client->dev);
 }
@@ -3152,7 +3147,7 @@ static const struct i2c_device_id mms_ts_id[] = { { MELFAS_TS_NAME, 0 }, {} };
 MODULE_DEVICE_TABLE(i2c, mms_ts_id);
 
 #ifdef CONFIG_OF
-static struct of_device_id melfas_match_table[] = {
+static const struct of_device_id melfas_match_table[] = {
 	{
 		.compatible = "melfas,mms128s",
 	},
