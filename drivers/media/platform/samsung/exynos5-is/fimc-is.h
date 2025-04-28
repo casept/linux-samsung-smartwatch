@@ -47,7 +47,6 @@
  * struct fimc_is - fimc-is driver private data
  * @pdev: pointer to FIMC-IS platform device
  * @pdata: platform data for FIMC-IS
- * @alloc_ctx: videobuf2 memory allocator context
  * @clock: FIMC-IS clocks
  * @pmu_regs: PMU reg base address
  * @num_pipelines: number of pipelines opened
@@ -60,7 +59,6 @@
 struct fimc_is {
 	struct platform_device		*pdev;
 
-	struct vb2_alloc_ctx		*alloc_ctx;
 	struct clk			*clock[IS_CLK_MAX_NUM];
 	void __iomem			*pmu_regs;
 	unsigned int			num_pipelines;

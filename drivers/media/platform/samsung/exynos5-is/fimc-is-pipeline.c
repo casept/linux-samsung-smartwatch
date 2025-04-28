@@ -363,20 +363,19 @@ static int fimc_is_pipeline_create_subdevs(struct fimc_is_pipeline *pipeline)
 	int ret;
 
 	/* ISP */
-	ret = fimc_is_isp_subdev_create(&pipeline->isp,
-			is->alloc_ctx, pipeline);
+	ret = fimc_is_isp_subdev_create(&pipeline->isp, pipeline);
 	if (ret)
 		return ret;
 
 	/* SCC scaler */
 	ret = fimc_is_scaler_subdev_create(&pipeline->scaler[SCALER_SCC],
-			SCALER_SCC, is->alloc_ctx, pipeline);
+			SCALER_SCC, pipeline);
 	if (ret)
 		return ret;
 
 	/* SCP scaler */
 	ret = fimc_is_scaler_subdev_create(&pipeline->scaler[SCALER_SCP],
-			SCALER_SCP, is->alloc_ctx, pipeline);
+			SCALER_SCP, pipeline);
 	if (ret)
 		return ret;
 
