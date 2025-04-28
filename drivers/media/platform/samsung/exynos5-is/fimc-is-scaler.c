@@ -11,6 +11,7 @@
 
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
+#include <media/videobuf2-core.h>
 
 #include "fimc-is.h"
 
@@ -57,7 +58,7 @@ static int scaler_video_capture_start_streaming(struct vb2_queue *vq,
 
 	ret = fimc_is_pipeline_scaler_start(ctx->pipeline,
 			ctx->scaler_id,
-			vq->num_buffers,
+			vq->max_num_buffers,
 			ctx->fmt->num_planes);
 	if (ret) {
 		v4l2_err(&ctx->subdev, "Scaler start failed.\n");
@@ -68,7 +69,7 @@ static int scaler_video_capture_start_streaming(struct vb2_queue *vq,
 	return 0;
 }
 
-static int scaler_video_capture_stop_streaming(struct vb2_queue *vq)
+static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 {
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
 	struct fimc_is_buf *buf;
@@ -89,13 +90,11 @@ static int scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 	}
 
 	clear_bit(STATE_RUNNING, &ctx->capture_state);
-	return 0;
 }
 
 static int scaler_video_capture_queue_setup(struct vb2_queue *vq,
-			const struct v4l2_format *pfmt,
 			unsigned int *num_buffers, unsigned int *num_planes,
-			unsigned int sizes[], void *allocators[])
+			unsigned int sizes[], struct device *allocators[])
 {
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
 	const struct fimc_is_fmt *fmt = ctx->fmt;
@@ -109,7 +108,8 @@ static int scaler_video_capture_queue_setup(struct vb2_queue *vq,
 	wh = ctx->width * ctx->height;
 
 	for (i = 0; i < *num_planes; i++) {
-		allocators[i] = ctx->alloc_ctx;
+		// TODO: allocators[i] = ctx->alloc_ctx;
+		allocators[i] = NULL;
 		sizes[i] = (wh * fmt->depth[i]) / 8;
 	}
 	return 0;
@@ -204,16 +204,19 @@ static int scaler_querycap_capture(struct file *file, void *priv,
 }
 
 static int scaler_enum_fmt_mplane(struct file *file, void *priv,
-				     struct v4l2_fmtdesc *f)
+				     struct v4l2_format *f)
 {
+	panic("scaler_enum_fmt_mplane: not implemented\n");
+	/*
 	const struct fimc_is_fmt *fmt;
 
 	if (f->index >= NUM_FORMATS)
 		return -EINVAL;
 
 	fmt = &formats[f->index];
-	strlcpy(f->description, fmt->name, sizeof(f->description));
+	strscpy(f->description, fmt->name, sizeof(f->description));
 	f->pixelformat = fmt->fourcc;
+	*/
 	return 0;
 }
 
@@ -329,7 +332,7 @@ static int scaler_reqbufs(struct file *file, void *priv,
 
 static const struct v4l2_ioctl_ops scaler_video_capture_ioctl_ops = {
 	.vidioc_querycap		= scaler_querycap_capture,
-	.vidioc_enum_fmt_vid_cap_mplane	= scaler_enum_fmt_mplane,
+	.vidioc_g_fmt_vid_cap_mplane	= scaler_enum_fmt_mplane,
 	.vidioc_try_fmt_vid_cap_mplane	= scaler_try_fmt_mplane,
 	.vidioc_s_fmt_vid_cap_mplane	= scaler_s_fmt_mplane,
 	.vidioc_g_fmt_vid_cap_mplane	= scaler_g_fmt_mplane,
@@ -365,12 +368,12 @@ static int scaler_subdev_registered(struct v4l2_subdev *sd)
 	vfd->lock = &ctx->video_lock;
 	vfd->queue = q;
 	vfd->vfl_dir = VFL_DIR_RX;
-	set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
+	// set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
 
 	memset(q, 0, sizeof(*q));
 	q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	q->io_modes = VB2_MMAP | VB2_DMABUF;
-	q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->ops = &scaler_video_capture_qops;
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct fimc_is_buf);
@@ -381,13 +384,13 @@ static int scaler_subdev_registered(struct v4l2_subdev *sd)
 		return ret;
 
 	ctx->vd_pad.flags = MEDIA_PAD_FL_SINK;
-	ret = media_entity_init(&vfd->entity, 1, &ctx->vd_pad, 0);
+	ret = media_entity_pads_init(&vfd->entity, 1, &ctx->vd_pad);
 	if (ret < 0)
 		return ret;
 
 	video_set_drvdata(vfd, ctx);
 
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(vfd, VFL_TYPE_VIDEO, -1);
 	if (ret < 0) {
 		media_entity_cleanup(&vfd->entity);
 		return ret;
@@ -415,7 +418,6 @@ static struct v4l2_subdev_ops scaler_subdev_ops;
 
 int fimc_is_scaler_subdev_create(struct fimc_is_scaler *ctx,
 		enum fimc_is_scaler_id scaler_id,
-		struct vb2_alloc_ctx *alloc_ctx,
 		struct fimc_is_pipeline *pipeline)
 {
 	struct v4l2_ctrl_handler *handler = &ctx->ctrl_handler;
@@ -423,7 +425,6 @@ int fimc_is_scaler_subdev_create(struct fimc_is_scaler *ctx,
 	int ret;
 
 	ctx->scaler_id = scaler_id;
-	ctx->alloc_ctx = alloc_ctx;
 	ctx->pipeline = pipeline;
 	ctx->fmt = &formats[0];
 	ctx->width = SCALER_DEF_WIDTH;
@@ -444,8 +445,7 @@ int fimc_is_scaler_subdev_create(struct fimc_is_scaler *ctx,
 	ctx->subdev_pads[SCALER_SD_PAD_SINK].flags = MEDIA_PAD_FL_SINK;
 	ctx->subdev_pads[SCALER_SD_PAD_SRC_FIFO].flags = MEDIA_PAD_FL_SOURCE;
 	ctx->subdev_pads[SCALER_SD_PAD_SRC_DMA].flags = MEDIA_PAD_FL_SOURCE;
-	ret = media_entity_init(&sd->entity, ISP_SD_PADS_NUM,
-			ctx->subdev_pads, 0);
+	ret = media_entity_pads_init(&sd->entity, ISP_SD_PADS_NUM, ctx->subdev_pads);
 	if (ret < 0)
 		return ret;
 

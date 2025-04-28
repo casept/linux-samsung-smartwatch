@@ -11,6 +11,8 @@
 
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/timekeeping.h>
+#include <linux/time.h>
 #include "fimc-is.h"
 #include "fimc-is-cmd.h"
 #include "fimc-is-regs.h"
@@ -18,6 +20,8 @@
 #define init_request_barrier(itf) mutex_init(&itf->request_barrier)
 #define enter_request_barrier(itf) mutex_lock(&itf->request_barrier)
 #define exit_request_barrier(itf) mutex_unlock(&itf->request_barrier)
+
+static void itf_busy_wakeup(struct fimc_is_interface *itf);
 
 static inline void itf_get_cmd(struct fimc_is_interface *itf,
 	struct fimc_is_msg *msg, unsigned int index)
@@ -112,7 +116,7 @@ static void itf_init_wakeup(struct fimc_is_interface *itf)
 	wake_up(&itf->irq_queue);
 }
 
-void itf_busy_wakeup(struct fimc_is_interface *itf)
+static void itf_busy_wakeup(struct fimc_is_interface *itf)
 {
 	itf_clr_state(itf, IS_IF_STATE_BUSY);
 	wake_up(&itf->irq_queue);
@@ -437,7 +441,7 @@ static void itf_handle_scaler_done(struct fimc_is_interface *itf,
 	struct fimc_is_scaler *scl;
 	const struct fimc_is_fmt *fmt;
 	struct timeval *tv;
-	struct timespec ts;
+	struct timespec64 ts;
 	unsigned int wh, i;
 	unsigned int fcount = msg->param[0];
 	unsigned long *comp_state;
@@ -462,11 +466,14 @@ static void itf_handle_scaler_done(struct fimc_is_interface *itf,
 					(wh * fmt->depth[i]) / 8);
 
 		/* Set timestamp */
-		ktime_get_ts(&ts);
+		/*
+		ktime_get_ts64(&ts);
 		tv = &buf->vb.v4l2_buf.timestamp;
 		tv->tv_sec = ts.tv_sec;
 		tv->tv_usec = ts.tv_nsec / NSEC_PER_USEC;
 		buf->vb.v4l2_buf.sequence = fcount;
+		*/
+		panic("%s: Unimplemented!\n", __func__);
 
 		pr_debug("SCP buffer done %d/%d\n",
 				msg->param[0], msg->param[2]);
