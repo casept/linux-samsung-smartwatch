@@ -35,7 +35,6 @@
  * struct fimc_is_isp - ISP context
  * @vfd: video device node
  * @fh: v4l2 file handle
- * @alloc_ctx: videobuf2 memory allocator context
  * @subdev: fimc-is-isp subdev
  * @vd_pad: media pad for the output video node
  * @subdev_pads: the subdev media pads
@@ -59,7 +58,6 @@
 struct fimc_is_isp {
 	struct video_device		vfd;
 	struct v4l2_fh			fh;
-	struct vb2_alloc_ctx		*alloc_ctx;
 	struct v4l2_subdev		subdev;
 	struct media_pad		vd_pad;
 	struct media_pad		subdev_pads[ISP_SD_PADS_NUM];
@@ -83,7 +81,6 @@ struct fimc_is_isp {
 };
 
 int fimc_is_isp_subdev_create(struct fimc_is_isp *isp,
-		struct vb2_alloc_ctx *alloc_ctx,
 		struct fimc_is_pipeline *pipeline);
 void fimc_is_isp_subdev_destroy(struct fimc_is_isp *isp);
 

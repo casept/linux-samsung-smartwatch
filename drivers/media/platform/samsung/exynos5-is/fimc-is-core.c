@@ -13,12 +13,12 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/of_graph.h>
 #include <linux/videodev2.h>
 
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-mem2mem.h>
-#include <media/v4l2-of.h>
 #include <media/videobuf2-core.h>
 #include <media/videobuf2-dma-contig.h>
 
@@ -129,11 +129,11 @@ static int fimc_is_parse_sensor_config(struct fimc_is *is, unsigned int index,
 		return -EINVAL;
 	}
 
-	node = v4l2_of_get_next_endpoint(node, NULL);
+	node = of_graph_get_next_endpoint(node, NULL);
 	if (!node)
 		return -ENXIO;
 
-	node = v4l2_of_get_remote_port(node);
+	node = of_graph_get_remote_port(node);
 	if (!node)
 		return -ENXIO;
 
@@ -245,16 +245,10 @@ static int fimc_is_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, is);
 	pm_runtime_enable(dev);
 
-	is->alloc_ctx = vb2_dma_contig_init_ctx(dev);
-	if (IS_ERR(is->alloc_ctx)) {
-		ret = PTR_ERR(is->alloc_ctx);
-		goto err_vb;
-	}
-
 	/* Get IS-sensor contexts */
 	ret = fimc_is_parse_sensor(is);
 	if (ret < 0)
-		goto err_vb;
+		goto err_clk;
 
 	/* Initialize FIMC Pipeline */
 	for (i = 0; i < is->drvdata->num_instances; i++) {
@@ -279,15 +273,13 @@ static int fimc_is_probe(struct platform_device *pdev)
 
 err_sd:
 	fimc_is_pipelines_destroy(is);
-err_vb:
-	vb2_dma_contig_cleanup_ctx(is->alloc_ctx);
 err_clk:
 	fimc_is_put_clocks(is);
 
 	return ret;
 }
 
-int fimc_is_clk_enable(struct fimc_is *is)
+static int fimc_is_clk_enable(struct fimc_is *is)
 {
 	int ret;
 
@@ -300,7 +292,7 @@ int fimc_is_clk_enable(struct fimc_is *is)
 	return ret;
 }
 
-void fimc_is_clk_disable(struct fimc_is *is)
+static void fimc_is_clk_disable(struct fimc_is *is)
 {
 	clk_disable(is->clock[IS_CLK_ISP]);
 	clk_disable(is->clock[IS_CLK_MCU_ISP]);
@@ -351,7 +343,7 @@ static int fimc_is_suspend(struct device *dev)
 }
 #endif /* CONFIG_PM_SLEEP */
 
-static int fimc_is_remove(struct platform_device *pdev)
+static void fimc_is_remove(struct platform_device *pdev)
 {
 	struct fimc_is *is = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
@@ -359,9 +351,7 @@ static int fimc_is_remove(struct platform_device *pdev)
 	pm_runtime_disable(dev);
 	pm_runtime_set_suspended(dev);
 	fimc_is_pipelines_destroy(is);
-	vb2_dma_contig_cleanup_ctx(is->alloc_ctx);
 	fimc_is_put_clocks(is);
-	return 0;
 }
 
 static const struct dev_pm_ops fimc_is_pm_ops = {

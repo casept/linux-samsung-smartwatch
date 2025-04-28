@@ -24,7 +24,7 @@
 #include <media/videobuf2-core.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-mediabus.h>
-#include <media/s5p_fimc.h>
+#include <media/drv-intf/exynos-fimc.h>
 
 #include "fimc-is-core.h"
 
@@ -49,7 +49,6 @@
  * struct fimc_is_scaler - fimc-is scaler structure
  * @vfd: video device node
  * @fh: v4l2 file handle
- * @alloc_ctx: videobuf2 memory allocator context
  * @subdev: fimc-is-scaler subdev
  * @vd_pad: media pad for the output video node
  * @subdev_pads: the subdev media pads
@@ -72,7 +71,6 @@
 struct fimc_is_scaler {
 	struct video_device		vfd;
 	struct v4l2_fh			fh;
-	struct vb2_alloc_ctx		*alloc_ctx;
 	struct v4l2_subdev		subdev;
 	struct media_pad		vd_pad;
 	struct media_pad		subdev_pads[SCALER_SD_PADS_NUM];
@@ -99,7 +97,6 @@ struct fimc_is_scaler {
 
 int fimc_is_scaler_subdev_create(struct fimc_is_scaler *ctx,
 		enum fimc_is_scaler_id scaler_id,
-		struct vb2_alloc_ctx *alloc_ctx,
 		struct fimc_is_pipeline *pipeline);
 void fimc_is_scaler_subdev_destroy(struct fimc_is_scaler *scaler);
 

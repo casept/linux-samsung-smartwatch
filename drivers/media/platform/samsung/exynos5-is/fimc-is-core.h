@@ -20,7 +20,7 @@
 #include <linux/videodev2.h>
 
 #include <media/media-entity.h>
-#include <media/s5p_fimc.h>
+#include <media/drv-intf/exynos-fimc.h>
 #include <media/videobuf2-core.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>

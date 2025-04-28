@@ -9,6 +9,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/videodev2.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 
@@ -57,7 +58,7 @@ static int isp_video_output_start_streaming(struct vb2_queue *vq,
 	return 0;
 }
 
-static int isp_video_output_stop_streaming(struct vb2_queue *vq)
+static void isp_video_output_stop_streaming(struct vb2_queue *vq)
 {
 	struct fimc_is_isp *isp = vb2_get_drv_priv(vq);
 	struct fimc_is_buf *buf;
@@ -73,13 +74,11 @@ static int isp_video_output_stop_streaming(struct vb2_queue *vq)
 	}
 
 	clear_bit(STATE_RUNNING, &isp->output_state);
-	return 0;
 }
 
 static int isp_video_output_queue_setup(struct vb2_queue *vq,
-			const struct v4l2_format *pfmt,
 			unsigned int *num_buffers, unsigned int *num_planes,
-			unsigned int sizes[], void *allocators[])
+			unsigned int sizes[], struct device *allocators[])
 {
 	struct fimc_is_isp *isp = vb2_get_drv_priv(vq);
 	const struct fimc_is_fmt *fmt = isp->fmt;
@@ -92,7 +91,7 @@ static int isp_video_output_queue_setup(struct vb2_queue *vq,
 	wh = isp->width * isp->height;
 
 	for (i = 0; i < *num_planes; i++) {
-		allocators[i] = isp->alloc_ctx;
+		// TODO: allocators[i] = isp->alloc_ctx;
 		sizes[i] = (wh * fmt->depth[i]) / 8;
 	}
 	return 0;
@@ -173,16 +172,20 @@ static int isp_querycap_output(struct file *file, void *priv,
 }
 
 static int isp_enum_fmt_mplane(struct file *file, void *priv,
-				     struct v4l2_fmtdesc *f)
+				     struct v4l2_format *f)
 {
+	panic("%s: Unimplemented!\n", __func__);
+	/* TODO: We need to obtain v4l2_fmtdesc from v4l2_format */
+	/*
 	const struct fimc_is_fmt *fmt;
 
 	if (f->index >= NUM_FORMATS)
 		return -EINVAL;
 
 	fmt = &formats[f->index];
-	strlcpy(f->description, fmt->name, sizeof(f->description));
+	strscpy(f->description, fmt->name, sizeof(f->description));
 	f->pixelformat = fmt->fourcc;
+	*/
 
 	return 0;
 }
@@ -295,7 +298,7 @@ static int isp_reqbufs(struct file *file, void *priv,
 
 static const struct v4l2_ioctl_ops isp_video_output_ioctl_ops = {
 	.vidioc_querycap		= isp_querycap_output,
-	.vidioc_enum_fmt_vid_out_mplane	= isp_enum_fmt_mplane,
+	.vidioc_g_fmt_vid_out_mplane	= isp_enum_fmt_mplane,
 	.vidioc_try_fmt_vid_out_mplane	= isp_try_fmt_mplane,
 	.vidioc_s_fmt_vid_out_mplane	= isp_s_fmt_mplane,
 	.vidioc_g_fmt_vid_out_mplane	= isp_g_fmt_mplane,
@@ -326,12 +329,12 @@ static int isp_subdev_registered(struct v4l2_subdev *sd)
 	vfd->lock = &isp->video_lock;
 	vfd->queue = q;
 	vfd->vfl_dir = VFL_DIR_TX;
-	set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
+	// set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
 
 	memset(q, 0, sizeof(*q));
 	q->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	q->io_modes = VB2_MMAP | VB2_DMABUF;
-	q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->ops = &isp_video_output_qops;
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct fimc_is_buf);
@@ -342,13 +345,13 @@ static int isp_subdev_registered(struct v4l2_subdev *sd)
 		return ret;
 
 	isp->vd_pad.flags = MEDIA_PAD_FL_SINK;
-	ret = media_entity_init(&vfd->entity, 1, &isp->vd_pad, 0);
+	ret = media_entity_pads_init(&vfd->entity, 1, &isp->vd_pad);
 	if (ret < 0)
 		return ret;
 
 	video_set_drvdata(vfd, isp);
 
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(vfd, VFL_TYPE_VIDEO, -1);
 	if (ret < 0) {
 		media_entity_cleanup(&vfd->entity);
 		return ret;
@@ -478,14 +481,12 @@ static struct v4l2_subdev_ops isp_subdev_ops = {
 };
 
 int fimc_is_isp_subdev_create(struct fimc_is_isp *isp,
-		struct vb2_alloc_ctx *alloc_ctx,
 		struct fimc_is_pipeline *pipeline)
 {
 	struct v4l2_ctrl_handler *handler = &isp->ctrl_handler;
 	struct v4l2_subdev *sd = &isp->subdev;
 	int ret;
 
-	isp->alloc_ctx = alloc_ctx;
 	isp->pipeline = pipeline;
 	isp->fmt = &formats[1];
 	INIT_LIST_HEAD(&isp->wait_queue);
@@ -501,8 +502,7 @@ int fimc_is_isp_subdev_create(struct fimc_is_isp *isp,
 	isp->subdev_pads[ISP_SD_PAD_SINK_DMA].flags = MEDIA_PAD_FL_SINK;
 	isp->subdev_pads[ISP_SD_PAD_SINK_OTF].flags = MEDIA_PAD_FL_SINK;
 	isp->subdev_pads[ISP_SD_PAD_SRC].flags = MEDIA_PAD_FL_SOURCE;
-	ret = media_entity_init(&sd->entity, ISP_SD_PADS_NUM,
-			isp->subdev_pads, 0);
+	ret = media_entity_pads_init(&sd->entity, ISP_SD_PADS_NUM, isp->subdev_pads);
 	if (ret < 0)
 		return ret;
 
