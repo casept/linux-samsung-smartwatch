@@ -273,8 +273,10 @@ ax88796c_tx_fixup(struct net_device *ndev, struct sk_buff_head *q)
 	if (skb_cloned(skb) ||
 	    (headroom < (TX_OVERHEAD + spi_len)) ||
 	    (tailroom < (padlen + TX_EOP_SIZE))) {
-		size_t h = max((TX_OVERHEAD + spi_len) - headroom, 0);
-		size_t t = max((padlen + TX_EOP_SIZE) - tailroom, 0);
+		int h_needed = TX_OVERHEAD + spi_len;
+		int h = max(h_needed - headroom, 0);
+		int t_needed = padlen + TX_EOP_SIZE;
+		int t = max(t_needed - tailroom, 0);
 
 		if (pskb_expand_head(skb, h, t, GFP_KERNEL))
 			return NULL;
