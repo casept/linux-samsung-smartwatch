@@ -18,7 +18,8 @@
 			"samsung,exynos3250", "samsung,exynos3";
 
 	aliases {
-		mmc0 = &mshc_2;
+		/* External microSD card should show up as mmcblk1 */
+		mmc1 = &mshc_2;
 	};
 };
 
