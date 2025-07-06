@@ -359,6 +359,28 @@
 	pinctrl-0 = <&sd1_cmd &sd1_clk &sd1_bus1 &sd1_bus4 &wlanen>;
 	bus-width = <4>;
 	status = "okay";
+
+	brcmf: wifi@1 {
+		compatible = "brcm,bcm4354-fmac", "brcm,bcm4329-fmac";
+		reg = <1>;
+
+		pinctrl-names = "default", "default";
+
+		reset-gpios = <&gpx2 3 GPIO_ACTIVE_LOW>; /* WLAN_EN */
+		pinctrl-0 = <&wlanen>;
+
+		/*
+		 * Commenting this in breaks Wi-Fi.
+		 * Could be an incorrect IRQ type, as it's hard to pick properly
+		 * due to the downstream driver accepting a GPIO and converting it to an interrupt source itself.
+		 * And the GPIO for that is configured in mode 0xF, which makes no sense.
+		 *
+		 * // pinctrl-1 = <&wlanhostwake>;
+		 * // interrupt-parent = <&gpx3>;
+		 * // interrupts = <2 IRQ_TYPE_LEVEL_HIGH>; // WLAN_HOST_WAKE
+		 * // interrupt-names = "host-wake";
+		 */
+	};
 };
 
 &pinctrl_1 {
@@ -376,6 +398,14 @@
 		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
 		samsung,pin-drv = <EXYNOS4_PIN_DRV_LV3>;
 		samsung,pin-val = <1>;
+	};
+
+	wlanhostwake: wlanhostwake-pins {
+		samsung,pins = "gpx3-2";
+		samsung,pin-function = <EXYNOS_PIN_FUNC_OUTPUT>;
+		samsung,pin-pud = <EXYNOS_PIN_PULL_DOWN>;
+		samsung,pin-con-pdn = <EXYNOS_PIN_PDN_INPUT>;
+		samsung,pin-pud-pdn = <EXYNOS_PIN_PULL_NONE>;
 	};
 
 	s2mps14_irq: s2mps14-irq-pins {
