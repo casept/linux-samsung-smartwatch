@@ -460,3 +460,8 @@
 &xusbxti {
 	clock-frequency = <24000000>;
 };
+
+&hsotg {
+	vusb_d-supply = <&ldo6_reg>;
+	vusb_a-supply = <&ldo8_reg>;
+};

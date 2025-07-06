@@ -68,3 +68,16 @@
 		};
 	};
 };
+
+&exynos_usbphy {
+	status = "okay";
+	/* TODO: Unsure what regulator to use here */
+	// vbus-supply = <&safeout_reg>;
+};
+
+&hsotg {
+	dr_mode = "peripheral";
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	status = "okay";
+};
