@@ -11,6 +11,8 @@
 
 /dts-v1/;
 #include "exynos3250-artik5.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/linux-event-codes.h>
 
 / {
 	model = "Samsung ARTIK5 evaluation board";
@@ -20,6 +22,17 @@
 	aliases {
 		/* External microSD card should show up as mmcblk1 */
 		mmc1 = &mshc_2;
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		power-key {
+			gpios = <&gpx2 7 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+			label = "power key";
+			debounce-interval = <10>;
+			wakeup-source;
+		};
 	};
 };
 
