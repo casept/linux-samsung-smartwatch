@@ -442,7 +442,7 @@
 	status = "okay";
 
 	bluetooth {
-		compatible = "brcm,bcm4330-bt";
+		compatible = "brcm,bcm43540-bt";
 		pinctrl-names = "default";
 		pinctrl-0 = <&bten &btwake &bthostwake>;
 		max-speed = <3000000>;
