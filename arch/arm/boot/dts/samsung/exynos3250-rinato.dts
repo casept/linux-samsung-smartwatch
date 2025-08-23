@@ -27,7 +27,6 @@
 		i2c1 = &i2c_touchscreen;
 		i2c7 = &i2c_max77836;
 		i2c8 = &i2c_ice4_irda;
-		i2c14 = &i2c_fuelgauge;
 		mmc0 = &mshc_0;
 		mmc1 = &mshc_1;
 	};
@@ -207,23 +206,6 @@
 				compatible = "maxim,max77836-battery";
 				status = "disabled";
 			};
-		};
-	};
-
-	i2c_fuelgauge: i2c-gpio-1 {
-		compatible = "i2c-gpio";
-		sda-gpios = <&gpd1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		scl-gpios = <&gpd1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		status = "okay";
-
-		fuelgauge@36 {
-			compatible = "maxim,max77836-battery";
-			interrupt-parent = <&gpx1>;
-			interrupts = <2 IRQ_TYPE_EDGE_RISING>;
-			reg = <0x36>;
-			maxim,double-soc;
 		};
 	};
 
@@ -854,6 +836,13 @@
 	samsung,i2c-max-bus-freq = <400000>;
 	status = "okay";
 
+	fuelgauge@36 {
+		compatible = "maxim,max77836-battery";
+		interrupt-parent = <&gpx1>;
+		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
+		reg = <0x36>;
+		maxim,double-soc;
+	};
 };
 
 &i2s2 {
