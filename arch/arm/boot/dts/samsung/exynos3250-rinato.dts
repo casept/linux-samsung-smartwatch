@@ -24,7 +24,6 @@
 	chassis-type = "watch";
 
 	aliases {
-		i2c1 = &i2c_touchscreen;
 		i2c7 = &i2c_max77836;
 		i2c8 = &i2c_ice4_irda;
 		mmc0 = &mshc_0;
@@ -206,35 +205,6 @@
 				compatible = "maxim,max77836-battery";
 				status = "disabled";
 			};
-		};
-	};
-
-	/* For whatever reason, the builtin I2C master doesn't work at all */
-	i2c_touchscreen: i2c-gpio-3 {
-		compatible = "i2c-gpio";
-		sda-gpios = <&gpa0 6 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		scl-gpios = <&gpa0 7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		status = "okay";
-
-		touchscreen@48 {
-			compatible = "melfas,mms128s";
-			reg = <0x48>;
-			interrupt-parent = <&gpx3>;
-			interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
-			vddo-supply = <&ldo19_reg>;
-			avdd-supply = <&ldo15_reg>;
-
-			melfas,max_x = <320>;
-			melfas,max_y = <320>;
-			melfas,gpio_int = <&gpx3 5 IRQ_TYPE_EDGE_FALLING>;
-			melfas,tsp_vendor = "MELFAS";
-			melfas,tsp_ic = "MMS128S";
-			melfas,tsp_tx = <7>;
-			melfas,tsp_rx = <7>;
-			/* Unsure about this */
-			melfas,config_fw_version = "V700_ME_0910";
 		};
 	};
 
@@ -842,6 +812,35 @@
 		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
 		reg = <0x36>;
 		maxim,double-soc;
+	};
+};
+
+&i2c_2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	samsung,i2c-sda-delay = <100>;
+	samsung,i2c-slave-addr = <0x10>;
+	samsung,i2c-max-bus-freq = <400000>;
+	status = "okay";
+
+
+	touchscreen@48 {
+		compatible = "melfas,mms128s";
+		reg = <0x48>;
+		interrupt-parent = <&gpx3>;
+		interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+		vddo-supply = <&ldo19_reg>;
+		avdd-supply = <&ldo15_reg>;
+
+		melfas,max_x = <320>;
+		melfas,max_y = <320>;
+		melfas,gpio_int = <&gpx3 5 IRQ_TYPE_EDGE_FALLING>;
+		melfas,tsp_vendor = "MELFAS";
+		melfas,tsp_ic = "MMS128S";
+		melfas,tsp_tx = <7>;
+		melfas,tsp_rx = <7>;
+		/* Unsure about this */
+		melfas,config_fw_version = "V700_ME_0910";
 	};
 };
 
