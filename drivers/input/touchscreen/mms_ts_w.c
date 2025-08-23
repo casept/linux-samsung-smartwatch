@@ -374,6 +374,8 @@ struct mms_ts_info {
 	const u8 *config_fw_version;
 	unsigned char finger_state[MAX_FINGERS];
 	u16 mcount[MAX_FINGERS];
+	bool avdd_enabled_by_us;
+	bool vddo_enabled_by_us;
 
 	struct melfas_tsi_platform_data *pdata;
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1145,6 +1147,8 @@ static void work_mms_config_set(struct work_struct *work)
 
 	info->enabled = true;
 	info->resume_done = true;
+	info->avdd_enabled_by_us = false;
+	info->vddo_enabled_by_us = false;
 }
 #endif
 
@@ -2692,46 +2696,61 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 
 	if (onoff) {
 		if (regulator_is_enabled(vddo_vreg)) {
-			dev_err(&info->client->dev,
-				"[TSP] vddo is already enabled\n");
-		} else {
+			dev_dbg(&info->client->dev,
+				"[TSP] vddo is already enabled. If there are other consumers, this is OK\n");
+		}
+		/* Still enable to let regulator framework know we're a consumer */
+		if (!info->vddo_enabled_by_us) {
 			rc = regulator_enable(vddo_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
 					"[TSP] unable to enable vddo\n");
 				return rc;
 			}
+			info->vddo_enabled_by_us = true;
 		}
 		if (regulator_is_enabled(avdd_vreg)) {
-			dev_err(&info->client->dev,
-				"[TSP] avdd is already enabled\n");
-		} else {
+			dev_dbg(&info->client->dev,
+				"[TSP] avdd is already enabled. If there are other consumers, this is OK\n");
+		}
+		if (!info->avdd_enabled_by_us) {
 			rc = regulator_enable(avdd_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
 					"[TSP] unable to enable avdd\n");
 				return rc;
 			}
+			info->avdd_enabled_by_us = true;
 		}
 	} else {
-		if (regulator_is_enabled(vddo_vreg)) {
+		/*
+		 * As we may be sharing the regulator with other consumers,
+		 * we may cause a warning by trying to disable the regulator more than once
+		 * if we just ask the regulator framework whether the regulator is on.
+		 * Instead, do our own accounting and only disable if we turned it on.
+		 */
+		if (regulator_is_enabled(vddo_vreg) &&
+		    info->vddo_enabled_by_us) {
 			rc = regulator_disable(vddo_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
 					"[TSP] unable to disable vddo\n");
 				return rc;
 			}
+			info->vddo_enabled_by_us = false;
 		} else {
 			dev_err(&info->client->dev,
 				"[TSP] vddo is already disabled\n");
 		}
-		if (regulator_is_enabled(avdd_vreg)) {
+		if (regulator_is_enabled(avdd_vreg) &&
+		    info->avdd_enabled_by_us) {
 			rc = regulator_disable(avdd_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
 					"[TSP] unable to disable avdd\n");
 				return rc;
 			}
+			info->avdd_enabled_by_us = false;
 		} else {
 			dev_err(&info->client->dev,
 				"[TSP] avdd is already disabled\n");
