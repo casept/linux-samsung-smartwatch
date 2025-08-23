@@ -1638,7 +1638,7 @@ static int get_data(struct mms_ts_info *info, u8 addr, u8 size, u8 *array)
 		ret = i2c_transfer(adapter, &msg, 1);
 	}
 	if (ret < 0) {
-		pr_err("[TSP] : read error : [%d]", ret);
+		dev_err(&client->dev, "read error : [%d]", ret);
 		return ret;
 	}
 
@@ -1694,14 +1694,13 @@ static void get_intensity_data(struct mms_ts_info *info)
 				min_value = min(min_value, raw_data);
 			}
 			info->intensity[i * tx_num + j] = raw_data;
-			dev_dbg(&info->client->dev,
-				"[TSP] intensity[%d][%d] = %d\n", j, i,
-				info->intensity[i * tx_num + j]);
+			dev_dbg(&info->client->dev, "intensity[%d][%d] = %d\n",
+				j, i, info->intensity[i * tx_num + j]);
 		}
 	}
 
 #if SHOW_TSP_DEBUG_MSG
-	pr_info("\n");
+	dev_info(&client->dev, "\n");
 	for (i = 0; i < rx_num; i++) {
 		dev_dbg(&info->client->dev, "melfas-ts data :");
 		for (j = 0; j < tx_num; j++)
@@ -1843,17 +1842,17 @@ static void get_raw_data(struct mms_ts_info *info, u8 cmd)
 			if (cmd == MMS_VSC_CMD_CM_DELTA) {
 				info->cm_delta[i * tx_num + j] = raw_data;
 				dev_dbg(&info->client->dev,
-					"[TSP] delta[%d][%d] = %d\n", j, i,
+					"delta[%d][%d] = %d\n", j, i,
 					info->cm_delta[i * tx_num + j]);
 			} else if (cmd == MMS_VSC_CMD_CM_ABS) {
 				info->cm_abs[i * tx_num + j] = raw_data;
 				dev_dbg(&info->client->dev,
-					"[TSP] raw[%d][%d] = %d\n", j, i,
+					"raw[%d][%d] = %d\n", j, i,
 					info->cm_abs[i * tx_num + j]);
 			} else if (cmd == MMS_VSC_CMD_REFER) {
 				info->reference[i * tx_num + j] = raw_data;
 				dev_dbg(&info->client->dev,
-					"[TSP] reference[%d][%d] = %d\n", j, i,
+					"reference[%d][%d] = %d\n", j, i,
 					info->reference[i * tx_num + j]);
 			}
 		}
@@ -1975,22 +1974,22 @@ static void get_raw_data_all(struct mms_ts_info *info, u8 cmd)
 			if (cmd == MMS_VSC_CMD_INTENSITY) {
 				info->intensity[j * rx_num + i] = raw_data;
 				dev_info(&info->client->dev,
-					 "[TSP] intensity[%d][%d] = %d\n", i, j,
+					 "intensity[%d][%d] = %d\n", i, j,
 					 info->intensity[j * rx_num + i]);
 			} else if (cmd == MMS_VSC_CMD_CM_DELTA) {
 				info->cm_delta[j * rx_num + i] = raw_data;
 				dev_info(&info->client->dev,
-					 "[TSP] delta[%d][%d] = %d\n", i, j,
+					 "delta[%d][%d] = %d\n", i, j,
 					 info->cm_delta[j * rx_num + i]);
 			} else if (cmd == MMS_VSC_CMD_CM_ABS) {
 				info->cm_abs[j * rx_num + i] = raw_data;
 				dev_info(&info->client->dev,
-					 "[TSP] raw[%d][%d] = %d\n", i, j,
+					 "raw[%d][%d] = %d\n", i, j,
 					 info->cm_abs[j * rx_num + i]);
 			} else if (cmd == MMS_VSC_CMD_REFER) {
 				info->reference[j * rx_num + i] = raw_data >> 3;
 				dev_info(&info->client->dev,
-					 "[TSP] reference[%d][%d] = %d\n", i, j,
+					 "reference[%d][%d] = %d\n", i, j,
 					 info->reference[j * rx_num + i]);
 			}
 		}
@@ -2665,7 +2664,7 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 	static struct regulator *vddo_vreg;
 	static struct regulator *avdd_vreg;
 
-	dev_info(&info->client->dev, "[TSP] %s called with ON= %d\n", __func__,
+	dev_info(&info->client->dev, "%s called with ON= %d\n", __func__,
 		 onoff);
 
 	if (!vddo_vreg) {
@@ -2673,7 +2672,7 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 		if (IS_ERR(vddo_vreg)) {
 			vddo_vreg = NULL;
 			dev_err(&info->client->dev,
-				"[TSP] failed to get vddo regulator\n");
+				"failed to get vddo regulator\n");
 			return -ENODEV;
 		}
 	}
@@ -2683,13 +2682,13 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 		if (IS_ERR(avdd_vreg)) {
 			avdd_vreg = NULL;
 			dev_err(&info->client->dev,
-				"[TSP] failed to get avdd regulator\n");
+				"failed to get avdd regulator\n");
 			return -ENODEV;
 		}
 		rc = regulator_set_voltage(avdd_vreg, 3300000, 3300000);
 		if (rc) {
 			dev_err(&info->client->dev,
-				"[TSP] unable to set voltage for avdd_vreg\n");
+				"unable to set voltage for avdd_vreg\n");
 			return rc;
 		}
 	}
@@ -2697,27 +2696,27 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 	if (onoff) {
 		if (regulator_is_enabled(vddo_vreg)) {
 			dev_dbg(&info->client->dev,
-				"[TSP] vddo is already enabled. If there are other consumers, this is OK\n");
+				"vddo is already enabled. If there are other consumers, this is OK\n");
 		}
 		/* Still enable to let regulator framework know we're a consumer */
 		if (!info->vddo_enabled_by_us) {
 			rc = regulator_enable(vddo_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
-					"[TSP] unable to enable vddo\n");
+					"unable to enable vddo\n");
 				return rc;
 			}
 			info->vddo_enabled_by_us = true;
 		}
 		if (regulator_is_enabled(avdd_vreg)) {
 			dev_dbg(&info->client->dev,
-				"[TSP] avdd is already enabled. If there are other consumers, this is OK\n");
+				"avdd is already enabled. If there are other consumers, this is OK\n");
 		}
 		if (!info->avdd_enabled_by_us) {
 			rc = regulator_enable(avdd_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
-					"[TSP] unable to enable avdd\n");
+					"unable to enable avdd\n");
 				return rc;
 			}
 			info->avdd_enabled_by_us = true;
@@ -2734,29 +2733,29 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 			rc = regulator_disable(vddo_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
-					"[TSP] unable to disable vddo\n");
+					"unable to disable vddo\n");
 				return rc;
 			}
 			info->vddo_enabled_by_us = false;
 		} else {
 			dev_err(&info->client->dev,
-				"[TSP] vddo is already disabled\n");
+				"vddo is already disabled\n");
 		}
 		if (regulator_is_enabled(avdd_vreg) &&
 		    info->avdd_enabled_by_us) {
 			rc = regulator_disable(avdd_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
-					"[TSP] unable to disable avdd\n");
+					"unable to disable avdd\n");
 				return rc;
 			}
 			info->avdd_enabled_by_us = false;
 		} else {
 			dev_err(&info->client->dev,
-				"[TSP] avdd is already disabled\n");
+				"avdd is already disabled\n");
 		}
 	}
-	dev_info(&info->client->dev, "[TSP] %s: vddo: %d, avdd: %d\n", __func__,
+	dev_info(&info->client->dev, "%s: vddo: %d, avdd: %d\n", __func__,
 		 regulator_is_enabled(vddo_vreg),
 		 regulator_is_enabled(avdd_vreg));
 	usleep_range(100000, 100100);
@@ -2797,7 +2796,7 @@ static int mms_ts_probe(struct i2c_client *client)
 	int tx_num;
 #endif
 
-	dev_dbg(&info->client->dev, "[TSP] %s\n", __func__);
+	dev_dbg(&info->client->dev, "%s\n", __func__);
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev,
 			"I2C adapter reported being nonfunctional!\n");
@@ -2989,7 +2988,7 @@ static int mms_ts_probe(struct i2c_client *client)
 		dev_err(&client->dev, "Failed to create sysfs group\n");
 #endif /* SEC_TSP_FACTORY_TEST */
 
-	pr_info("[TSP] %s done\n", __func__);
+	dev_info(&client->dev, "%s done\n", __func__);
 
 	return 0;
 
@@ -3011,7 +3010,7 @@ err_config:
 err_input_alloc:
 err_alloc:
 	kfree(info);
-	pr_err("[TSP] %s failed\n", __func__);
+	dev_err(&client->dev, "%s failed\n", __func__);
 	return ret;
 }
 
