@@ -483,13 +483,16 @@ static void dwc2_set_param_lpm(struct dwc2_hsotg *hsotg)
 {
 	struct dwc2_core_params *p = &hsotg->params;
 
-	p->lpm = hsotg->hw_params.lpm_mode;
+	p->lpm = hsotg->hw_params.lpm_mode && \
+		hsotg->hw_params.snpsid >= DWC2_CORE_REV_3_00a;
 	if (p->lpm) {
+		printk("LPM enable\n");
 		p->lpm_clock_gating = true;
 		p->besl = true;
 		p->hird_threshold_en = true;
 		p->hird_threshold = 4;
 	} else {
+		printk("LPM disable\n");
 		p->lpm_clock_gating = false;
 		p->besl = false;
 		p->hird_threshold_en = false;
@@ -564,7 +567,8 @@ static void dwc2_set_default_params(struct dwc2_hsotg *hsotg)
 		 * default.
 		 */
 		p->g_rx_fifo_size = 2048;
-		p->g_np_tx_fifo_size = 1024;
+		// p->g_np_tx_fifo_size = 1024;
+		p->g_np_tx_fifo_size = 768;
 		dwc2_set_param_tx_fifo_sizes(hsotg);
 	}
 }
