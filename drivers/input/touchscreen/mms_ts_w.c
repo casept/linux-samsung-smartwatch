@@ -345,11 +345,11 @@ enum {
 };
 
 enum { /* this is using by cmd_state valiable. */
-	WAITING = 0,
-	RUNNING,
-	OK,
-	FAIL,
-	NOT_APPLICABLE,
+			WAITING = 0,
+			RUNNING,
+			OK,
+			FAIL,
+			NOT_APPLICABLE,
 };
 #endif /* SEC_TSP_FACTORY_TEST */
 
@@ -384,7 +384,7 @@ struct mms_ts_info {
 	struct mutex lock;
 	// struct wake_lock tsp_wake_lock;
 
-	void (*register_cb)(void *);
+	void (*register_cb)(struct tsp_callbacks *tsp_cb);
 	struct tsp_callbacks callbacks;
 	bool ta_status;
 	bool noise_mode;
@@ -1013,8 +1013,8 @@ static int mms_flash_fw(const u8 *fw_data, struct mms_ts_info *info,
 	while (retires--) {
 		if (!get_fw_version_ic(client, ver))
 			break;
-		else
-			mms_reboot(info);
+
+		mms_reboot(info);
 	}
 
 	if (retires < 0) {
@@ -1337,8 +1337,8 @@ static void melfas_ta_cb(struct tsp_callbacks *cb, bool ta_status)
 		if (info->noise_mode) {
 			i2c_smbus_write_byte_data(info->client, MMS_NOISE_REG,
 						  MMS_NOISE_ON);
-			dev_err(&client->dev,
-				"%s & abnormal noise mode on!\n", __func__);
+			dev_err(&client->dev, "%s & abnormal noise mode on!\n",
+				__func__);
 		}
 
 	} else {
@@ -2796,7 +2796,6 @@ static int mms_ts_probe(struct i2c_client *client)
 	int tx_num;
 #endif
 
-	dev_dbg(&info->client->dev, "%s\n", __func__);
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev,
 			"I2C adapter reported being nonfunctional!\n");
@@ -2988,8 +2987,6 @@ static int mms_ts_probe(struct i2c_client *client)
 		dev_err(&client->dev, "Failed to create sysfs group\n");
 #endif /* SEC_TSP_FACTORY_TEST */
 
-	dev_info(&client->dev, "%s done\n", __func__);
-
 	return 0;
 
 #if SEC_TSP_FACTORY_TEST
@@ -3169,6 +3166,7 @@ static const struct of_device_id melfas_match_table[] = {
 	{
 		.compatible = "melfas,mms128s",
 	},
+	{ /* sentinel */ }
 };
 #else
 #define melfas_match_table NULL
