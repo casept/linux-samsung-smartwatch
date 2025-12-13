@@ -353,10 +353,6 @@ enum { /* this is using by cmd_state valiable. */
 };
 #endif /* SEC_TSP_FACTORY_TEST */
 
-struct tsp_callbacks {
-	void (*inform_charger)(struct tsp_callbacks *tsp_cb, bool mode);
-};
-
 struct mms_ts_info {
 	struct i2c_client *client;
 	struct input_dev *input_dev;

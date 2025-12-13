@@ -16,6 +16,10 @@
 #define _LINUX_MMS_TOUCH_H
 #define MELFAS_TS_NAME "melfas-ts"
 
+struct tsp_callbacks {
+	void (*inform_charger)(struct tsp_callbacks *tsp_cb, bool mode);
+};
+
 struct melfas_tsi_platform_data {
 	int	max_x;
 	int	max_y;
@@ -36,7 +40,7 @@ struct melfas_tsi_platform_data {
 	int	fw_bin_ver[3];
 	const char *config_fw_version;
 	void	(*input_event)(void *data);
-	void	(*register_cb)(void *);
+	void	(*register_cb)(struct tsp_callbacks *);
 };
 extern struct class *sec_class;
 void tsp_charger_infom(bool en);
