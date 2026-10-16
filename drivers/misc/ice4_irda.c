@@ -531,9 +531,22 @@ static void ice4_irda_firmware_download(struct device *dev,
 					unsigned char *firmware, int len)
 {
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
+	struct i2c_adapter *adapter = data->client->adapter;
 	int i;
 
 	dev_info(dev, "firmware download start!\n");
+
+	/*
+	 * The SPI configuration port shares SDA/SCL with the i2c-gpio bus we
+	 * sit on. i2c-gpio requests those lines as emulated open-drain, so
+	 * while the bus idles they are configured as inputs and raw value
+	 * writes never reach the pins. Keep the bus quiet and drive them
+	 * push-pull for the duration of the download.
+	 */
+	i2c_lock_bus(adapter, I2C_LOCK_ROOT_ADAPTER);
+
+	gpio_direction_output(data->gpio_scl, 1);
+	gpio_direction_output(data->gpio_sda, 0);
 
 	/* fpga change download state */
 	gpio_set_value(data->gpio_fpga_rst_n, 0);
@@ -545,10 +558,6 @@ static void ice4_irda_firmware_download(struct device *dev,
 
 	gpio_set_value(data->gpio_creset, 1);
 	usleep_range(1000, 1100);
-
-	/* firmware download via bitbanged SPI */
-	/* Uses the same pins as bitbanged I2C on Rinato, gotta make sure there's no interference */
-	// struct i2c_adapter *adapter = to_i2c_adapter(dev->parent);
 
 	for (i = 0; i < len; i++) {
 		int bit;
@@ -567,12 +576,14 @@ static void ice4_irda_firmware_download(struct device *dev,
 		gpio_set_value(data->gpio_scl, 1);
 	}
 
-	/*
-	 * Uses the removed GPIO interface, probably not needed (why is this even exported to userspace?)
-	 * gpio_export(data->gpio_fpga_rst_n, false);
-	 */
 	gpio_set_value(data->gpio_fpga_rst_n, 1);
 	udelay(500); // Originally 1
+
+	/* Hand the lines back to i2c-gpio in their released (idle) state */
+	gpio_direction_input(data->gpio_sda);
+	gpio_direction_input(data->gpio_scl);
+
+	i2c_unlock_bus(adapter, I2C_LOCK_ROOT_ADAPTER);
 
 	dev_info(dev, "firmware download done!\n");
 }
