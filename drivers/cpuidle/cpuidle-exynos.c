@@ -55,7 +55,7 @@ static int exynos_enter_coupled_lowpower(struct cpuidle_device *dev,
 	return index;
 }
 
-static int exynos_enter_lowpower(struct cpuidle_device *dev,
+static __cpuidle int exynos_enter_lowpower(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv,
 				int index)
 {
@@ -65,8 +65,12 @@ static int exynos_enter_lowpower(struct cpuidle_device *dev,
 	if (num_online_cpus() > 1 || dev->cpu != 0)
 		new_index = drv->safe_state_index;
 
-	if (new_index == 0)
-		return arm_cpuidle_simple_enter(dev, drv, new_index);
+	if (new_index == 0) {
+		ct_cpuidle_enter();
+		new_index = arm_cpuidle_simple_enter(dev, drv, new_index);
+		ct_cpuidle_exit();
+		return new_index;
+	}
 
 	exynos_enter_aftr();
 
@@ -82,6 +86,7 @@ static struct cpuidle_driver exynos_idle_driver = {
 			.enter			= exynos_enter_lowpower,
 			.exit_latency		= 300,
 			.target_residency	= 10000,
+			.flags			= CPUIDLE_FLAG_RCU_IDLE,
 			.name			= "C1",
 			.desc			= "ARM power down",
 		},
@@ -100,7 +105,8 @@ static struct cpuidle_driver exynos_coupled_idle_driver = {
 			.exit_latency		= 5000,
 			.target_residency	= 10000,
 			.flags			= CPUIDLE_FLAG_COUPLED |
-						  CPUIDLE_FLAG_TIMER_STOP,
+						  CPUIDLE_FLAG_TIMER_STOP |
+						  CPUIDLE_FLAG_RCU_IDLE,
 			.name			= "C1",
 			.desc			= "ARM power down",
 		},

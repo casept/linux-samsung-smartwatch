@@ -11,6 +11,7 @@
 
 #include <linux/init.h>
 #include <linux/suspend.h>
+#include <linux/cpuidle.h>
 #include <linux/cpu_pm.h>
 #include <linux/io.h>
 #include <linux/of.h>
@@ -150,7 +151,7 @@ static int exynos_aftr_finisher(unsigned long flags)
 	return 1;
 }
 
-void exynos_enter_aftr(void)
+__cpuidle void exynos_enter_aftr(void)
 {
 	unsigned int cpuid = smp_processor_id();
 
@@ -167,7 +168,11 @@ void exynos_enter_aftr(void)
 			       S5P_CENTRAL_SEQ_OPTION);
 	}
 
+	ct_cpuidle_enter();
+
 	cpu_suspend(0, exynos_aftr_finisher);
+
+	ct_cpuidle_exit();
 
 	if (read_cpuid_part() == ARM_CPU_PART_CORTEX_A9) {
 		exynos_scu_enable();
@@ -285,7 +290,7 @@ static int exynos_wfi_finisher(unsigned long flags)
 	return -1;
 }
 
-static int exynos_cpu1_powerdown(void)
+static __cpuidle int exynos_cpu1_powerdown(void)
 {
 	int ret = -1;
 
@@ -303,7 +308,11 @@ static int exynos_cpu1_powerdown(void)
 	if (soc_is_exynos3250())
 		pmu_raw_writel(0, S5P_PMU_SPARE2);
 
+	ct_cpuidle_enter();
+
 	ret = cpu_suspend(0, exynos_wfi_finisher);
+
+	ct_cpuidle_exit();
 
 	cpu_pm_exit();
 
