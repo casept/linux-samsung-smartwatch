@@ -51,12 +51,24 @@
 		};
 
 		/*
-		 * Region contains S-Boot logs,
-		 * ensure we don't clobber this helpful debug information.
+		 * Region contains S-Boot logs, ensure we don't clobber this
+		 * helpful debug information. The log magic and write pointer
+		 * live in the 8 bytes right below the 2 MiB log buffer at
+		 * 0x46000000, so the region starts one page earlier.
 		 */
-		buffer@46000000 {
+		sboot_logs@45fff000 {
 			no-map;
-			reg = <0x46000000 0x200000>;
+			reg = <0x45fff000 0x201000>;
+		};
+
+		/*
+		 * S-Boot uses this for it's framebuffer.
+		 * Also looks like some other firmware uses this region,
+		 * as without reserving it something writes to 0x48100014 and corrupts kernel memory.
+		 */
+		sboot_buffers@48000000 {
+			no-map;
+			reg = <0x48000000 0x1000000>;
 		};
 
 		sboot: buffer@40000000 {
