@@ -20,7 +20,6 @@
 #include <linux/init.h>
 #include <linux/printk.h>
 #include <linux/sysfs.h>
-#include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -54,12 +53,9 @@ struct ice4_fpga_data {
 	struct device *dev;
 	struct device *sys_dev;
 	struct regulator *ir_regulator;
-	struct regulator *fpga_regulator;
 	struct mutex mutex;
 	struct clk *mclk;
 	struct work_struct work_download;
-	struct cdev char_dev;
-	struct class *dev_class;
 	struct {
 		unsigned char addr;
 		unsigned char data[MAX_SIZE];
@@ -80,7 +76,9 @@ struct ice4_fpga_data {
 static int ack_number;
 static int count_number;
 
-static struct class *ice4_irda_class;
+static const struct class ice4_irda_class = {
+	.name = DEVICE_CLASS,
+};
 
 static int ice4_irda_check_cdone(struct ice4_fpga_data *data)
 {
@@ -409,8 +407,13 @@ static struct attribute *sec_ir_attributes[] = {
 	&dev_attr_toggle_rst.attr, NULL,
 };
 
-static struct attribute_group sec_ir_attr_group = {
+static const struct attribute_group sec_ir_attr_group = {
 	.attrs = sec_ir_attributes,
+};
+
+static const struct attribute_group *sec_ir_attr_groups[] = {
+	&sec_ir_attr_group,
+	NULL,
 };
 
 static int ice4_irda_parse_dt(struct device *dev)
@@ -461,28 +464,16 @@ static int ice4_irda_parse_dt(struct device *dev)
 		data->ir_regulator = NULL;
 	}
 
-	data->fpga_regulator = devm_regulator_get(dev, "fpga");
-	if (IS_ERR(data->fpga_regulator)) {
-		dev_err(dev, "Cannot get fpga regulator\n");
-		return PTR_ERR(data->fpga_regulator);
-	}
-
-	ret = regulator_enable(data->fpga_regulator);
+	ret = devm_regulator_get_enable(dev, "fpga");
 	if (ret) {
 		dev_err(dev, "Cannot enable fpga regulator\n");
 		return ret;
 	}
 
-	data->mclk = devm_clk_get(data->dev, "out");
+	data->mclk = devm_clk_get_enabled(dev, "out");
 	if (IS_ERR(data->mclk)) {
-		dev_err(dev, "Cannot get out clk\n");
+		dev_err(dev, "Cannot enable out clk\n");
 		return PTR_ERR(data->mclk);
-	}
-
-	ret = clk_prepare_enable(data->mclk);
-	if (ret) {
-		dev_err(dev, "Cannot clk enalbe : out");
-		return ret;
 	}
 
 	return 0;
@@ -643,26 +634,12 @@ static int ice4_irda_probe(struct i2c_client *client)
 	}
 	dev_info(&client->dev, "Set GPIO configuration!\n");
 
-	data->dev_class = ice4_irda_class;
+	INIT_WORK(&data->work_download, work_function_firmware_download);
 
-	// For some reason, the class is registered even after unloading the module.
-	// Work around by checking and not registering if it exists.
-	if (!class_is_registered(data->dev_class)) {
-		// TODO: register owner as THIS_MODULE
-		ret = class_register(data->dev_class);
-		if (ret < 0) {
-			dev_err(&client->dev,
-				"Failed to register device class!\n");
-			goto err_class_register;
-		}
-		dev_info(&client->dev, "Registered device class!\n");
-	} else {
-		dev_info(&client->dev,
-			 "Device class already registered, skipping!\nn");
-	}
-
-	data->sys_dev = device_create(data->dev_class, data->dev,
-				      data->char_dev.dev, data, DEVICE_NAME);
+	data->sys_dev = device_create_with_groups(&ice4_irda_class, data->dev,
+						  MKDEV(0, 0), data,
+						  sec_ir_attr_groups,
+						  DEVICE_NAME);
 	if (IS_ERR(data->sys_dev)) {
 		dev_err(&client->dev,
 			"Failed to create ice4_irda_dev device!\n");
@@ -670,35 +647,20 @@ static int ice4_irda_probe(struct i2c_client *client)
 	}
 	dev_info(&client->dev, "Created device!\n");
 
-	ret = sysfs_create_group(&data->sys_dev->kobj, &sec_ir_attr_group);
-	if (ret < 0) {
-		dev_err(&client->dev, "Failed to create sysfs group!\n");
-		goto err_sysfs_create;
-	}
-	dev_info(&client->dev, "Created sysfs group!\n");
-
 	/* TODO: Proper FW download using kernel driver for this FPGA */
-	INIT_WORK(&data->work_download, work_function_firmware_download);
 	schedule_work(&data->work_download);
 
 	dev_info(&client->dev, "probe complete\n");
 
 	return 0;
-
-err_sysfs_create:
-	device_destroy(data->dev_class, data->sys_dev->devt);
-err_class_register:
-
-	return ret;
 }
 
 static void ice4_irda_remove(struct i2c_client *client)
 {
 	struct ice4_fpga_data *data = i2c_get_clientdata(client);
 
-	sysfs_remove_group(&data->sys_dev->kobj, &sec_ir_attr_group);
-	clk_disable_unprepare(data->mclk);
-	device_destroy(data->dev_class, data->sys_dev->devt);
+	device_unregister(data->sys_dev);
+	cancel_work_sync(&data->work_download);
 
 	dev_info(&client->dev, "Cleanup complete!\n");
 }
@@ -754,21 +716,25 @@ static struct i2c_driver ice4_irda_i2c_driver = {
 
 static int __init ice4_irda_module_init(void)
 {
-	int ret = 0;
+	int ret;
 
-	ice4_irda_class = class_create(DEVICE_CLASS);
-	if (IS_ERR(ice4_irda_class)) {
-		pr_err("failed to create class: %d\n", ret);
-		return PTR_ERR(ice4_irda_class);
+	ret = class_register(&ice4_irda_class);
+	if (ret) {
+		pr_err("failed to register class: %d\n", ret);
+		return ret;
 	}
 
-	return i2c_register_driver(THIS_MODULE, &ice4_irda_i2c_driver);
+	ret = i2c_add_driver(&ice4_irda_i2c_driver);
+	if (ret)
+		class_unregister(&ice4_irda_class);
+
+	return ret;
 }
 
 static void __exit ice4_irda_module_exit(void)
 {
-	class_destroy(ice4_irda_class);
 	i2c_del_driver(&ice4_irda_i2c_driver);
+	class_unregister(&ice4_irda_class);
 };
 
 module_init(ice4_irda_module_init);
