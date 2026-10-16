@@ -164,6 +164,8 @@ static int s6e63j0x03_power_on(struct s6e63j0x03 *ctx)
 
 static int s6e63j0x03_power_off(struct s6e63j0x03 *ctx)
 {
+	gpiod_set_value(ctx->reset_gpio, 1);
+
 	return regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
 }
 
