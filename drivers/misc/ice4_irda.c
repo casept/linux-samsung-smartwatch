@@ -313,7 +313,7 @@ static ssize_t check_ir_show(struct device *dev, struct device_attribute *attr,
 
 	ret = irda_read_device_info(data);
 
-	return snprintf(buf, 4, "%d\n", ret);
+	return sysfs_emit(buf, "%d\n", ret);
 }
 
 static DEVICE_ATTR(check_ir, 0664, check_ir_show, NULL);
