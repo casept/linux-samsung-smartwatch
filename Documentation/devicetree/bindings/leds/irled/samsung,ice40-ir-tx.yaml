@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/leds/irled/samsung,ice40-ir-tx.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Samsung iCE40 FPGA IR transmitter
+
+maintainers:
+  - Davids Paskevics <davids.paskevics@gmail.com>
+
+description:
+  IR transmitter built from a Lattice iCE40 FPGA running Samsung's IR
+  bitstream, as found in the Samsung Gear 2. The FPGA sits on a bit-banged
+  I2C bus whose SCL and SDA lines are wired to its SPI slave configuration
+  port, so the bitstream is loaded over the same two lines before the FPGA
+  answers as an I2C device. Its interrupt line is low while a frame is
+  transmitted.
+
+properties:
+  compatible:
+    const: samsung,ice40-ir-tx
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+    description: Busy line, rising at the end of a transmission.
+
+  clocks:
+    maxItems: 1
+    description: System clock of the FPGA design.
+
+  power-supply:
+    description: Supply of the IR LED.
+
+  reset-gpios:
+    maxItems: 1
+    description: FPGA CRESET_B line.
+
+  cdone-gpios:
+    maxItems: 1
+    description: FPGA CDONE line.
+
+  ss-gpios:
+    maxItems: 1
+    description:
+      FPGA SPI_SS_B line, which also resets the design once it is configured.
+
+  firmware-name:
+    maxItems: 1
+    description: Name of the bitstream file, if not samsung/ice40_irda.fw.
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - reset-gpios
+  - cdone-gpios
+  - ss-gpios
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    #include <dt-bindings/interrupt-controller/irq.h>
+
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        ir-transmitter@50 {
+            compatible = "samsung,ice40-ir-tx";
+            reg = <0x50>;
+            interrupt-parent = <&gpx1>;
+            interrupts = <0 IRQ_TYPE_EDGE_RISING>;
+            clocks = <&pmu_system_controller 0>;
+            power-supply = <&ldo17_reg>;
+            reset-gpios = <&gpx2 5 GPIO_ACTIVE_LOW>;
+            cdone-gpios = <&gpx2 4 GPIO_ACTIVE_HIGH>;
+            ss-gpios = <&gpe0 6 GPIO_ACTIVE_LOW>;
+        };
+    };
