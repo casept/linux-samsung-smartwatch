@@ -461,6 +461,15 @@ static enum power_supply_property max17040_battery_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 };
 
+static enum power_supply_property max17040_battery_props_no_temp[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CAPACITY_ALERT_MIN,
+	POWER_SUPPLY_PROP_STATUS,
+};
+
 static const struct power_supply_desc max17040_battery_desc = {
 	.name			= "battery",
 	.type			= POWER_SUPPLY_TYPE_BATTERY,
@@ -469,6 +478,16 @@ static const struct power_supply_desc max17040_battery_desc = {
 	.property_is_writeable  = max17040_prop_writeable,
 	.properties		= max17040_battery_props,
 	.num_properties		= ARRAY_SIZE(max17040_battery_props),
+};
+
+static const struct power_supply_desc max17040_battery_desc_no_temp = {
+	.name			= "battery",
+	.type			= POWER_SUPPLY_TYPE_BATTERY,
+	.get_property		= max17040_get_property,
+	.set_property		= max17040_set_property,
+	.property_is_writeable  = max17040_prop_writeable,
+	.properties		= max17040_battery_props_no_temp,
+	.num_properties		= ARRAY_SIZE(max17040_battery_props_no_temp),
 };
 
 static int max17040_probe(struct i2c_client *client)
@@ -512,7 +531,9 @@ static int max17040_probe(struct i2c_client *client)
 	}
 
 	chip->battery = devm_power_supply_register(&client->dev,
-				&max17040_battery_desc, &psy_cfg);
+				chip->channel_temp ? &max17040_battery_desc :
+						     &max17040_battery_desc_no_temp,
+				&psy_cfg);
 	if (IS_ERR(chip->battery)) {
 		dev_err(&client->dev, "failed: power supply register\n");
 		return PTR_ERR(chip->battery);
