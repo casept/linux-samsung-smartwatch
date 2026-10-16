@@ -507,7 +507,7 @@ int ssp_send_instruction(struct ssp_data *data, u8 inst, u8 sensor_type,
 
 	ret = ssp_spi_sync(data, msg, 1000);
 	ssp_clean_msg(msg);
-	ssp_dbg("%s - return = 0x%x", ret);
+	ssp_dbg("%s - return = %d\n", __func__, ret);
 
 	return ret;
 }
