@@ -36,7 +36,6 @@
 struct s6e63j0x03 {
 	struct device *dev;
 	struct drm_panel panel;
-	struct backlight_device *bl_dev;
 
 	struct regulator_bulk_data supplies[2];
 	struct gpio_desc *reset_gpio;
@@ -183,7 +182,6 @@ static unsigned int s6e63j0x03_get_brightness_index(unsigned int brightness)
 static int s6e63j0x03_update_gamma(struct s6e63j0x03 *ctx,
 					unsigned int brightness)
 {
-	struct backlight_device *bl_dev = ctx->bl_dev;
 	unsigned int index = s6e63j0x03_get_brightness_index(brightness);
 	int ret;
 
@@ -195,21 +193,18 @@ static int s6e63j0x03_update_gamma(struct s6e63j0x03 *ctx,
 	if (ret < 0)
 		return ret;
 
-	ret = s6e63j0x03_apply_mtp_key(ctx, false);
-	if (ret < 0)
-		return ret;
-
-	bl_dev->props.brightness = brightness;
-
-	return 0;
+	return s6e63j0x03_apply_mtp_key(ctx, false);
 }
 
 static int s6e63j0x03_set_brightness(struct backlight_device *bl_dev)
 {
 	struct s6e63j0x03 *ctx = bl_get_data(bl_dev);
-	unsigned int brightness = bl_dev->props.brightness;
 
-	return s6e63j0x03_update_gamma(ctx, brightness);
+	/* The panel is off; drm_panel_enable() will reapply the brightness. */
+	if (backlight_is_blank(bl_dev))
+		return 0;
+
+	return s6e63j0x03_update_gamma(ctx, bl_dev->props.brightness);
 }
 
 static const struct backlight_ops s6e63j0x03_bl_ops = {
@@ -226,8 +221,6 @@ static int s6e63j0x03_disable(struct drm_panel *panel)
 	if (ret < 0)
 		return ret;
 
-	ctx->bl_dev->props.power = BACKLIGHT_POWER_REDUCED;
-
 	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
 	if (ret < 0)
 		return ret;
@@ -240,15 +233,8 @@ static int s6e63j0x03_disable(struct drm_panel *panel)
 static int s6e63j0x03_unprepare(struct drm_panel *panel)
 {
 	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
-	int ret;
 
-	ret = s6e63j0x03_power_off(ctx);
-	if (ret < 0)
-		return ret;
-
-	ctx->bl_dev->props.power = BACKLIGHT_POWER_OFF;
-
-	return 0;
+	return s6e63j0x03_power_off(ctx);
 }
 
 static int s6e63j0x03_panel_init(struct s6e63j0x03 *ctx)
@@ -333,8 +319,6 @@ static int s6e63j0x03_prepare(struct drm_panel *panel)
 	if (ret < 0)
 		goto err;
 
-	ctx->bl_dev->props.power = BACKLIGHT_POWER_REDUCED;
-
 	return 0;
 
 err:
@@ -390,13 +374,7 @@ static int s6e63j0x03_enable(struct drm_panel *panel)
 	if (ret < 0)
 		return ret;
 
-	ret = mipi_dsi_dcs_set_display_on(dsi);
-	if (ret < 0)
-		return ret;
-
-	ctx->bl_dev->props.power = BACKLIGHT_POWER_ON;
-
-	return 0;
+	return mipi_dsi_dcs_set_display_on(dsi);
 }
 
 static int s6e63j0x03_get_modes(struct drm_panel *panel,
@@ -433,6 +411,12 @@ static const struct drm_panel_funcs s6e63j0x03_funcs = {
 
 static int s6e63j0x03_probe(struct mipi_dsi_device *dsi)
 {
+	const struct backlight_properties bl_props = {
+		.type = BACKLIGHT_RAW,
+		.brightness = DEFAULT_BRIGHTNESS,
+		.max_brightness = MAX_BRIGHTNESS,
+		.power = BACKLIGHT_POWER_OFF,
+	};
 	struct device *dev = &dsi->dev;
 	struct s6e63j0x03 *ctx;
 	int ret;
@@ -466,27 +450,19 @@ static int s6e63j0x03_probe(struct mipi_dsi_device *dsi)
 
 	ctx->panel.prepare_prev_first = true;
 
-	ctx->bl_dev = backlight_device_register("s6e63j0x03", dev, ctx,
-						&s6e63j0x03_bl_ops, NULL);
-	if (IS_ERR(ctx->bl_dev))
-		return dev_err_probe(dev, PTR_ERR(ctx->bl_dev),
+	ctx->panel.backlight = devm_backlight_device_register(dev, "s6e63j0x03",
+							      dev, ctx,
+							      &s6e63j0x03_bl_ops,
+							      &bl_props);
+	if (IS_ERR(ctx->panel.backlight))
+		return dev_err_probe(dev, PTR_ERR(ctx->panel.backlight),
 				     "failed to register backlight device\n");
-
-	ctx->bl_dev->props.max_brightness = MAX_BRIGHTNESS;
-	ctx->bl_dev->props.brightness = DEFAULT_BRIGHTNESS;
-	ctx->bl_dev->props.power = BACKLIGHT_POWER_OFF;
 
 	drm_panel_add(&ctx->panel);
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0)
-		goto remove_panel;
-
-	return ret;
-
-remove_panel:
-	drm_panel_remove(&ctx->panel);
-	backlight_device_unregister(ctx->bl_dev);
+		drm_panel_remove(&ctx->panel);
 
 	return ret;
 }
@@ -497,8 +473,6 @@ static void s6e63j0x03_remove(struct mipi_dsi_device *dsi)
 
 	mipi_dsi_detach(dsi);
 	drm_panel_remove(&ctx->panel);
-
-	backlight_device_unregister(ctx->bl_dev);
 }
 
 static const struct of_device_id s6e63j0x03_of_match[] = {
