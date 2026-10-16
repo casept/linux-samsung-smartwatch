@@ -455,13 +455,13 @@ static int ice4_irda_parse_dt(struct device *dev)
 		return -ENODEV;
 	}
 
-	data->ir_regulator = devm_regulator_get(dev, "ir-supply");
+	data->ir_regulator = devm_regulator_get(dev, "ir");
 	if (IS_ERR(data->ir_regulator)) {
 		dev_err(dev, "Cannot get ir regulator\n");
 		data->ir_regulator = NULL;
 	}
 
-	data->fpga_regulator = devm_regulator_get(dev, "fpga-supply");
+	data->fpga_regulator = devm_regulator_get(dev, "fpga");
 	if (IS_ERR(data->fpga_regulator)) {
 		dev_err(dev, "Cannot get fpga regulator\n");
 		return PTR_ERR(data->fpga_regulator);
