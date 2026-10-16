@@ -14,6 +14,7 @@
 #include "exynos4412-ppmu-common.dtsi"
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/clock/samsung,s2mps11.h>
 #include <dt-bindings/soc/samsung,sboot-boot-mode.h>
 
@@ -220,38 +221,26 @@
 		};
 	};
 
-	/* IR FPGA (iCE40LP640) */
-	i2c_ice4_irda: i2c-gpio-4 {
+	/* IR FPGA (iCE40LP640), configured through its SPI port on this bus */
+	i2c_ice4_irda: i2c-ir {
 		compatible = "i2c-gpio";
 		sda-gpios = <&gpa1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 		scl-gpios = <&gpa1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-		// i2c-gpio,delay-us = <2>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		status = "okay";
 
-		ice4-irda@50 {
-			compatible = "samsung,ice4-irda";
+		ir-transmitter@50 {
+			compatible = "samsung,ice40-ir-tx";
 			reg = <0x50>;
 			interrupt-parent = <&gpx1>;
-			interrupts = <0 0>;
-			status = "okay";
-
+			interrupts = <0 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&pmu_system_controller 0>;
-			clock-names = "out";
 			assigned-clocks = <&pmu_system_controller 0>;
 			assigned-clock-parents = <&xusbxti>;
-
-			ir-supply = <&ldo17_reg>;
-			/* fpga-supply seems not controlled in downstream */
-
-			irda-gpio = <&gpx1 0 GPIO_ACTIVE_HIGH>;
-			creset-gpio = <&gpx2 5 GPIO_ACTIVE_HIGH>;
-			cdone-gpio = <&gpx2 4 GPIO_ACTIVE_HIGH>;
-			fpga-reset-gpio = <&gpe0 6 GPIO_ACTIVE_HIGH>;
-			/* SPI configuration port, shared with the i2c-gpio bus above */
-			irda-sda-gpio = <&gpa1 2 GPIO_ACTIVE_HIGH>;
-			irda-scl-gpio = <&gpa1 3 GPIO_ACTIVE_HIGH>;
+			power-supply = <&ldo17_reg>;
+			reset-gpios = <&gpx2 5 GPIO_ACTIVE_LOW>;
+			cdone-gpios = <&gpx2 4 GPIO_ACTIVE_HIGH>;
+			ss-gpios = <&gpe0 6 GPIO_ACTIVE_LOW>;
 		};
 	};
 
