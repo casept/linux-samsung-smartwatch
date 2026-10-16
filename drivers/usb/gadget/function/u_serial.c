@@ -695,7 +695,26 @@ static void gs_close(struct tty_struct *tty, struct file *file)
 	struct gs_port *port = tty->driver_data;
 	struct gserial	*gser;
 
+	/* Close after this tty's very first open() failed: nothing to do. */
+	if (!port)
+		return;
+
 	spin_lock_irq(&port->port_lock);
+
+	/*
+	 * The tty core calls close() even for open() attempts that failed
+	 * (tty_open() -> tty_release()) and for files pre-closed by
+	 * __tty_hangup()'s console-redirect handling. Such calls have no
+	 * matching counted open: while one of those files is still attached,
+	 * tty->count exceeds port.count. An unmatched close must not tear
+	 * down state owned by the file descriptors that did open successfully
+	 * (and prematurely wake gserial_free_port(), which would free the
+	 * port under them).
+	 */
+	if (port->port.count < tty->count) {
+		spin_unlock_irq(&port->port_lock);
+		return;
+	}
 
 	if (port->port.count != 1) {
 raced_with_open:
@@ -908,7 +927,40 @@ static int gs_get_icount(struct tty_struct *tty,
 	return 0;
 }
 
+/*
+ * A tty keeps using its port until the tty core is done with it, which can be
+ * after the last close() and so after the port's line got freed. Keep the port
+ * around for as long as a tty is installed on it.
+ */
+static int gs_install(struct tty_driver *driver, struct tty_struct *tty)
+{
+	int		port_num = tty->index;
+	struct gs_port	*port;
+	int		ret;
+
+	mutex_lock(&ports[port_num].lock);
+	port = ports[port_num].port;
+	if (!port) {
+		mutex_unlock(&ports[port_num].lock);
+		return -ENODEV;
+	}
+
+	ret = tty_port_install(&port->port, driver, tty);
+	if (!ret)
+		tty_port_get(&port->port);
+	mutex_unlock(&ports[port_num].lock);
+
+	return ret;
+}
+
+static void gs_cleanup(struct tty_struct *tty)
+{
+	tty_port_put(tty->port);
+}
+
 static const struct tty_operations gs_tty_ops = {
+	.install =		gs_install,
+	.cleanup =		gs_cleanup,
 	.open =			gs_open,
 	.close =		gs_close,
 	.write =		gs_write,
@@ -1203,6 +1255,15 @@ static void gs_console_exit(struct gs_port *port)
 
 #endif
 
+static void gs_port_destruct(struct tty_port *tport)
+{
+	kfree(container_of(tport, struct gs_port, port));
+}
+
+static const struct tty_port_operations gs_port_ops = {
+	.destruct =	gs_port_destruct,
+};
+
 static int
 gs_port_alloc(unsigned port_num, struct usb_cdc_line_coding *coding)
 {
@@ -1222,6 +1283,7 @@ gs_port_alloc(unsigned port_num, struct usb_cdc_line_coding *coding)
 	}
 
 	tty_port_init(&port->port);
+	port->port.ops = &gs_port_ops;
 	spin_lock_init(&port->port_lock);
 	init_waitqueue_head(&port->drain_wait);
 	init_waitqueue_head(&port->close_wait);
@@ -1258,8 +1320,8 @@ static void gserial_free_port(struct gs_port *port)
 	/* wait for old opens to finish */
 	wait_event(port->close_wait, gs_closed(port));
 	WARN_ON(port->port_usb != NULL);
-	tty_port_destroy(&port->port);
-	kfree(port);
+	/* Freed once the last tty on it is gone as well */
+	tty_port_put(&port->port);
 }
 
 void gserial_free_line(unsigned char port_num)
