@@ -24,9 +24,10 @@
 #include <linux/bitops.h>
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
-#include "ice4_irda.h"
+#include <linux/firmware.h>
 
 #define IRDA_NAME "ice4-irda"
+#define IRDA_FIRMWARE "samsung/ice40_irda.fw"
 /* TODO: Define as standard kernel IR transmitter, but this should suffice for testing */
 #define DEVICE_CLASS "samsung_irda"
 #define DEVICE_NAME "ice4_irda"
@@ -505,11 +506,11 @@ err_gpio_request:
 }
 
 static void ice4_irda_firmware_download(struct device *dev,
-					const unsigned char *firmware, int len)
+					const u8 *firmware, size_t len)
 {
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
 	struct i2c_adapter *adapter = data->client->adapter;
-	int i;
+	size_t i;
 
 	dev_info(dev, "firmware download start!\n");
 
@@ -570,9 +571,18 @@ static void work_function_firmware_download(struct work_struct *work)
 	struct ice4_fpga_data *data = container_of((struct work_struct *)work,
 						   struct ice4_fpga_data,
 						   work_download);
+	const struct firmware *fw;
+	int ret;
 
-	ice4_irda_firmware_download(&data->client->dev, fpga_irda_fw,
-				    ARRAY_SIZE(fpga_irda_fw));
+	ret = request_firmware(&fw, IRDA_FIRMWARE, &data->client->dev);
+	if (ret) {
+		dev_err(&data->client->dev, "Cannot load %s: %d\n",
+			IRDA_FIRMWARE, ret);
+		return;
+	}
+
+	ice4_irda_firmware_download(&data->client->dev, fw->data, fw->size);
+	release_firmware(fw);
 
 	if (ice4_irda_check_cdone(data))
 		dev_info(&data->client->dev, "FPGA FW is loaded!\n");
@@ -725,3 +735,4 @@ module_exit(ice4_irda_module_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("SEC IRDA driver using ice4 fpga");
+MODULE_FIRMWARE(IRDA_FIRMWARE);
