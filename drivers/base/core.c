@@ -2237,8 +2237,21 @@ static int fw_devlink_create_devlink(struct device *con,
 		}
 
 		if (con != sup_dev && !device_link_add(con, sup_dev, flags)) {
-			dev_err(con, "Failed to create device link (0x%x) with supplier %s for %pfwf\n",
-				flags, dev_name(sup_dev), link->consumer);
+			/*
+			 * device_link_add() refuses to create SYNC_STATE_ONLY
+			 * links once the consumer has probed since they serve
+			 * no purpose from then on. That's expected when a
+			 * supplier binds after its consumers have probed, so
+			 * don't report an error for this case.
+			 */
+			if (device_link_flag_is_sync_state_only(flags) &&
+			    con->links.status != DL_DEV_NO_DRIVER &&
+			    con->links.status != DL_DEV_PROBING)
+				dev_dbg(con, "Not creating device link (0x%x) with supplier %s for %pfwf - consumer already probed\n",
+					flags, dev_name(sup_dev), link->consumer);
+			else
+				dev_err(con, "Failed to create device link (0x%x) with supplier %s for %pfwf\n",
+					flags, dev_name(sup_dev), link->consumer);
 			ret = -EINVAL;
 		}
 
