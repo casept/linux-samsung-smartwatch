@@ -229,6 +229,19 @@ config IR_IGUANA
 	   To compile this driver as a module, choose M here: the module will
 	   be called iguanair.
 
+config IR_ICE40_TX
+	tristate "Samsung iCE40 FPGA IR transmitter"
+	depends on LIRC
+	depends on I2C && OF
+	select I2C_ALGOBIT
+	help
+	   Say Y if you want to use the IR transmitter found in Samsung
+	   devices such as the Gear 2, built from a Lattice iCE40 FPGA that
+	   is configured with Samsung's IR bitstream over its I2C bus.
+
+	   To compile this driver as a module, choose M here: the module will
+	   be called ice40-ir-tx.
+
 config IR_IMON
 	tristate "SoundGraph iMON Receiver and Display"
 	depends on USB

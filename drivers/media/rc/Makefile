@@ -33,6 +33,7 @@ obj-$(CONFIG_IR_HIX5HD2) += ir-hix5hd2.o
 obj-$(CONFIG_IR_IGORPLUGUSB) += igorplugusb.o
 obj-$(CONFIG_IR_IGUANA) += iguanair.o
 obj-$(CONFIG_IR_IMG) += img-ir/
+obj-$(CONFIG_IR_ICE40_TX) += ice40-ir-tx.o
 obj-$(CONFIG_IR_IMON) += imon.o
 obj-$(CONFIG_IR_IMON_RAW) += imon_raw.o
 obj-$(CONFIG_IR_ITE_CIR) += ite-cir.o

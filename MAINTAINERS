@@ -22857,6 +22857,13 @@ S:	Maintained
 F:	Documentation/admin-guide/laptops/samsung-galaxybook.rst
 F:	drivers/platform/x86/samsung-galaxybook.c
 
+SAMSUNG ICE40 FPGA IR TRANSMITTER DRIVER
+M:	Davids Paskevics <davids.paskevics@gmail.com>
+L:	linux-media@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/leds/irled/samsung,ice40-ir-tx.yaml
+F:	drivers/media/rc/ice40-ir-tx.c
+
 SAMSUNG INTERCONNECT DRIVERS
 M:	Sylwester Nawrocki <s.nawrocki@samsung.com>
 M:	Artur Świgoń <a.swigon@samsung.com>
