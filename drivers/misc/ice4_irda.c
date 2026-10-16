@@ -1,18 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * driver/ice4_fpga IRDA fpga driver
  *
  * Copyright (C) 2013 Samsung Electronics
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
  */
 
 #include <asm-generic/errno-base.h>
@@ -53,7 +43,7 @@ struct ice4_fpga_data {
 	struct device *dev;
 	struct device *sys_dev;
 	struct regulator *ir_regulator;
-	struct mutex mutex;
+	struct mutex mutex; /* serialises frame transfers to the FPGA */
 	struct clk *mclk;
 	struct work_struct work_download;
 	struct {
@@ -129,13 +119,13 @@ static void ir_remocon_work(struct ice4_fpga_data *data, int count)
 	mutex_lock(&data->mutex);
 
 	buf_size++;
-	ret = i2c_master_send(
-		client, (unsigned char *)&(data->i2c_block_transfer), buf_size);
+	ret = i2c_master_send(client, (unsigned char *)&data->i2c_block_transfer,
+			      buf_size);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s: err1 %d\n", __func__, ret);
-		ret = i2c_master_send(
-			client, (unsigned char *)&(data->i2c_block_transfer),
-			buf_size);
+		ret = i2c_master_send(client,
+				      (unsigned char *)&data->i2c_block_transfer,
+				      buf_size);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s: err2 %d\n", __func__, ret);
 			print_fpga_gpio_status(data);
@@ -188,7 +178,7 @@ static void ir_remocon_work(struct ice4_fpga_data *data, int count)
 	data->ir_sum = 0;
 }
 
-static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
+static ssize_t ir_send_store(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t size)
 {
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
@@ -248,7 +238,7 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
-static ssize_t remocon_show(struct device *dev, struct device_attribute *attr,
+static ssize_t ir_send_show(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
@@ -259,18 +249,16 @@ static ssize_t remocon_show(struct device *dev, struct device_attribute *attr,
 		if (data->i2c_block_transfer.data[i] == 0 &&
 		    data->i2c_block_transfer.data[i + 1] == 0)
 			break;
-		else
-			bufp += sprintf(bufp, "%u,",
-					data->i2c_block_transfer.data[i]);
+		bufp += sprintf(bufp, "%u,", data->i2c_block_transfer.data[i]);
 	}
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(ir_send, 0664, remocon_show, remocon_store);
+static DEVICE_ATTR_RW(ir_send);
 
 /* sysfs node ir_send_result */
-static ssize_t remocon_ack(struct device *dev, struct device_attribute *attr,
-			   char *buf)
+static ssize_t ir_send_result_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
 {
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
 
@@ -282,15 +270,13 @@ static ssize_t remocon_ack(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "0\n");
 }
 
-static DEVICE_ATTR(ir_send_result, 0664, remocon_ack, NULL);
+static DEVICE_ATTR_RO(ir_send_result);
 
 static int irda_read_device_info(struct ice4_fpga_data *data)
 {
 	struct i2c_client *client = data->client;
 	u8 buf_ir_test[8];
 	int ret;
-
-	dev_info(data->dev, "%s: called\n", __func__);
 
 	ret = i2c_master_recv(client, buf_ir_test, READ_LENGTH);
 
@@ -299,9 +285,9 @@ static int irda_read_device_info(struct ice4_fpga_data *data)
 
 	dev_info(data->dev, "buf_ir dev_id: 0x%02x, 0x%02x\n", buf_ir_test[2],
 		 buf_ir_test[3]);
-	ret = data->dev_id = (buf_ir_test[2] << 8 | buf_ir_test[3]);
+	data->dev_id = buf_ir_test[2] << 8 | buf_ir_test[3];
 
-	return ret;
+	return data->dev_id;
 }
 
 /* sysfs node check_ir */
@@ -316,7 +302,7 @@ static ssize_t check_ir_show(struct device *dev, struct device_attribute *attr,
 	return sysfs_emit(buf, "%d\n", ret);
 }
 
-static DEVICE_ATTR(check_ir, 0664, check_ir_show, NULL);
+static DEVICE_ATTR_RO(check_ir);
 
 static ssize_t toggle_rst_store(struct device *dev,
 				struct device_attribute *attr, const char *buf,
@@ -334,7 +320,7 @@ static ssize_t toggle_rst_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(toggle_rst, 0664, NULL, toggle_rst_store);
+static DEVICE_ATTR_WO(toggle_rst);
 
 /* sysfs node irda_test */
 static ssize_t irda_test_store(struct device *dev,
@@ -399,7 +385,7 @@ static ssize_t irda_test_show(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(irda_test, 0664, irda_test_show, irda_test_store);
+static DEVICE_ATTR_RW(irda_test);
 
 static struct attribute *sec_ir_attributes[] = {
 	&dev_attr_ir_send.attr,	   &dev_attr_ir_send_result.attr,
@@ -519,7 +505,7 @@ err_gpio_request:
 }
 
 static void ice4_irda_firmware_download(struct device *dev,
-					unsigned char *firmware, int len)
+					const unsigned char *firmware, int len)
 {
 	struct ice4_fpga_data *data = dev_get_drvdata(dev);
 	struct i2c_adapter *adapter = data->client->adapter;
@@ -542,7 +528,7 @@ static void ice4_irda_firmware_download(struct device *dev,
 	/* fpga change download state */
 	gpio_set_value(data->gpio_fpga_rst_n, 0);
 	gpio_set_value(data->gpio_creset, 1);
-	msleep(10);
+	usleep_range(10000, 11000);
 
 	gpio_set_value(data->gpio_creset, 0);
 	usleep_range(30, 40);
@@ -568,7 +554,7 @@ static void ice4_irda_firmware_download(struct device *dev,
 	}
 
 	gpio_set_value(data->gpio_fpga_rst_n, 1);
-	udelay(500); // Originally 1
+	usleep_range(500, 600);
 
 	/* Hand the lines back to i2c-gpio in their released (idle) state */
 	gpio_direction_input(data->gpio_sda);
@@ -609,10 +595,8 @@ static int ice4_irda_probe(struct i2c_client *client)
 	}
 
 	data = devm_kzalloc(&client->dev, sizeof(*data), GFP_KERNEL);
-	if (NULL == data) {
-		dev_err(&client->dev, "Failed to data allocate\n");
+	if (!data)
 		return -ENOMEM;
-	}
 
 	data->dev = &client->dev;
 	data->client = client;
@@ -690,11 +674,9 @@ static const struct dev_pm_ops ice4_fpga_pm_ops = {
 };
 #endif
 
-static struct of_device_id ice4_irda_of_match[] = {
-	{
-		.compatible = "samsung,ice4-irda",
-	},
-	{},
+static const struct of_device_id ice4_irda_of_match[] = {
+	{ .compatible = "samsung,ice4-irda" },
+	{ }
 };
 
 static const struct i2c_device_id ice4_irda_id[] = { { IRDA_NAME, 0 }, {} };
