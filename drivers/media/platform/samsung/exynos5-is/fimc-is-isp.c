@@ -485,9 +485,9 @@ static int isp_s_stream(struct v4l2_subdev *sd, int enable)
 		if ((sensor->width >= sdata->pixel_width) ||
 		    (sensor->height >= sdata->pixel_height)) {
 			v4l2_err(sd,
-				 "The sensor does not support requested resolution: %dx%d vs %dx%d\n",
-				     sensor->width, sensor->height,
-				     sdata->pixel_width, sdata->pixel_height);
+				 "Sensor format %ux%u must be smaller than the %ux%u pixel array\n",
+				 sensor->width, sensor->height,
+				 sdata->pixel_width, sdata->pixel_height);
 			return -EINVAL;
 		}
 
