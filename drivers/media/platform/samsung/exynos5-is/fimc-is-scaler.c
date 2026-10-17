@@ -86,12 +86,12 @@ static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 	struct fimc_is_buf *buf;
 	int ret;
 
-        if (!test_bit(STATE_RUNNING, &ctx->capture_state))
-                return;
+	if (!test_bit(STATE_RUNNING, &ctx->capture_state))
+		return;
 
-        ret = fimc_is_pipeline_scaler_stop(ctx->pipeline, ctx->scaler_id);
-        if (ret)
-                v4l2_info(&ctx->subdev, "Scaler already stopped.\n");
+	ret = fimc_is_pipeline_scaler_stop(ctx->pipeline, ctx->scaler_id);
+	if (ret)
+		v4l2_info(&ctx->subdev, "Scaler already stopped.\n");
 
 	/* Release un-used buffers */
 	fimc_is_pipeline_buf_lock(ctx->pipeline);
@@ -105,7 +105,7 @@ static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 		buf->state = FIMC_IS_BUF_INVALID;
 		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 	}
-        fimc_is_pipeline_buf_unlock(ctx->pipeline);
+	fimc_is_pipeline_buf_unlock(ctx->pipeline);
 
 	clear_bit(STATE_RUNNING, &ctx->capture_state);
 }
@@ -371,7 +371,7 @@ static int scaler_reqbufs(struct file *file, void *priv,
 
 	if (reqbufs->count < FIMC_IS_SCALER_REQ_BUFS_MIN) {
 		reqbufs->count = 0;
-                vb2_reqbufs(&ctx->vbq, reqbufs);
+		vb2_reqbufs(&ctx->vbq, reqbufs);
 		return -ENOMEM;
 	}
 	set_bit(STATE_BUFS_ALLOCATED, &ctx->capture_state);

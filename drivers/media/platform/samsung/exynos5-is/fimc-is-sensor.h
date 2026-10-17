@@ -41,8 +41,8 @@ struct sensor_drv_data {
 	enum fimc_is_sensor_id id;
 	/* sensor open timeout in ms */
 	char *setfile_name;
-        unsigned int pixel_width;
-        unsigned int pixel_height;
+	unsigned int pixel_width;
+	unsigned int pixel_height;
 };
 
 /**
@@ -58,7 +58,7 @@ struct sensor_drv_data {
 struct fimc_is_sensor {
 	const struct sensor_drv_data *drvdata;
 	unsigned int i2c_bus;
-        unsigned int i2c_slave_addr;
+	unsigned int i2c_slave_addr;
 	unsigned int width;
 	unsigned int height;
 	unsigned int pixel_width;

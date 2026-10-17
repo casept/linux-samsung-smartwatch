@@ -54,21 +54,21 @@ enum fimc_is_gate_clks {
 	IS_CLK_ISP_DIVMPWM,
 	IS_CLK_MCU_ISP_DIV0,
 	IS_CLK_MCU_ISP_DIV1,
-        IS_CLK_CAM1,
-        IS_CLK_GATE_MAX,
+	IS_CLK_CAM1,
+	IS_CLK_GATE_MAX,
 };
 
 enum fimc_is_exynos3250_parent_clks {
-        IS_CLK_MOUT_ACLK400_MCUISP_SUB = IS_CLK_GATE_MAX,
-        IS_CLK_DIV_ACLK400_MCUISP,
-        IS_CLK_MOUT_ACLK400_MCUISP,
-        IS_CLK_MOUT_ACLK266_0,
-        IS_CLK_MOUT_ACLK266,
-        IS_CLK_DIV_ACLK266,
-        IS_CLK_MOUT_ACLK266_SUB,
-        IS_CLK_DIV_MPLL_PRE,
-        IS_CLK_FIN_PLL,
-        IS_CLKS_MAX,
+	IS_CLK_MOUT_ACLK400_MCUISP_SUB = IS_CLK_GATE_MAX,
+	IS_CLK_DIV_ACLK400_MCUISP,
+	IS_CLK_MOUT_ACLK400_MCUISP,
+	IS_CLK_MOUT_ACLK266_0,
+	IS_CLK_MOUT_ACLK266,
+	IS_CLK_DIV_ACLK266,
+	IS_CLK_MOUT_ACLK266_SUB,
+	IS_CLK_DIV_MPLL_PRE,
+	IS_CLK_FIN_PLL,
+	IS_CLKS_MAX,
 };
 
 /* Video capture states */
@@ -127,10 +127,10 @@ struct fimc_is_meminfo {
 struct fimc_is_drvdata {
 	unsigned int	num_instances;
 	char		*fw_name;
-        unsigned int	fw_version;
-        unsigned int	clk_mask;
-        unsigned int	subip_mask;
-        unsigned long	variant;
+	unsigned int	fw_version;
+	unsigned int	clk_mask;
+	unsigned int	subip_mask;
+	unsigned long	variant;
 	unsigned int	master_node:1;
 };
 
@@ -148,16 +148,17 @@ struct fimc_is_fmt {
 
 /**
  * struct fimc_is_event_listener  - internal representation
- * 				    of frame-related events listener
+ *				    of frame-related events listener
  * @private_data: Listener's private data
  * @event_handler: Event handler to be triggered upon upcoming
- * 		   events
+ *		   events
  * @link: list link
  */
 struct fimc_is_event_listener {
-        void * private_data;
-        void (*event_handler)(struct fimc_is_event_listener *, unsigned int, void*);
-        struct list_head link;
+	void *private_data;
+	void (*event_handler)(struct fimc_is_event_listener *listener,
+			      unsigned int event_id, void *arg);
+	struct list_head link;
 };
 
 

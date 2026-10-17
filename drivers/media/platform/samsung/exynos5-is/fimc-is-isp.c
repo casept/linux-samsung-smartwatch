@@ -235,8 +235,8 @@ static int isp_try_fmt_mplane(struct file *file, void *fh,
 	if (!fmt)
 		fmt = (struct fimc_is_fmt *) &formats[0];
 
-        v4l_bound_align_image(&pixm->width, ISP_MIN_WIDTH, ISP_MAX_WIDTH, 0,
-                        &pixm->height, ISP_MIN_HEIGHT, ISP_MAX_HEIGHT, 0,
+	v4l_bound_align_image(&pixm->width, ISP_MIN_WIDTH, ISP_MAX_WIDTH, 0,
+			&pixm->height, ISP_MIN_HEIGHT, ISP_MAX_HEIGHT, 0,
 			0);
 
 	plane_fmt->bytesperline = (pixm->width * fmt->depth[0]) / 8;
@@ -294,7 +294,7 @@ static int isp_reqbufs(struct file *file, void *priv,
 		return -EBUSY;
 
 	if (test_bit(STATE_BUFS_ALLOCATED, &isp->output_state)
-	&& !(reqbufs->count)){
+	&& !(reqbufs->count)) {
 		ret = vb2_reqbufs(&isp->vbq, reqbufs);
 		if (!ret)
 			clear_bit(STATE_BUFS_ALLOCATED, &isp->output_state);
@@ -476,24 +476,24 @@ static int isp_s_stream(struct v4l2_subdev *sd, int enable)
 		if (ret)
 			return ret;
 
-                sensor->width = fmt.format.width;
-                sensor->height = fmt.format.height;
+		sensor->width = fmt.format.width;
+		sensor->height = fmt.format.height;
 		sensor->pixel_width = fmt.format.width;
 		sensor->pixel_height = fmt.format.height;
 
 		/* Check sensor resolution match */
-                if ((sensor->width >= sdata->pixel_width) ||
-                    (sensor->height >= sdata->pixel_height)) {
-                        v4l2_err(sd, "The sensor does not support "
-                                     "requested resolution: %dx%d vs %dx%d\n",
-                                     sensor->width, sensor->height,
+		if ((sensor->width >= sdata->pixel_width) ||
+		    (sensor->height >= sdata->pixel_height)) {
+			v4l2_err(sd,
+				 "The sensor does not support requested resolution: %dx%d vs %dx%d\n",
+				     sensor->width, sensor->height,
 				     sdata->pixel_width, sdata->pixel_height);
-                        return -EINVAL;
-                }
+			return -EINVAL;
+		}
 
-                /* ISP supports only bayer cropping and scaling down */
-                if ((sensor->pixel_width < isp->width) ||
-                    (sensor->pixel_height < isp->height)) {
+		/* ISP supports only bayer cropping and scaling down */
+		if ((sensor->pixel_width < isp->width) ||
+		    (sensor->pixel_height < isp->height)) {
 			v4l2_err(sd, "Resolution mismatch\n");
 			return -EPIPE;
 		}
@@ -614,7 +614,7 @@ static const unsigned int scene_map[] = {
 	(1 << (V4L2_SCENE_MODE_BACKLIGHT)  | \
 	1 << (V4L2_SCENE_MODE_DAWN_DUSK)   | \
 	1 << (V4L2_SCENE_MODE_FALL_COLORS) | \
-	1 << (V4L2_SCENE_MODE_TEXT ))
+	1 << (V4L2_SCENE_MODE_TEXT))
 
 static inline int isp_video_set_scene_ctrl(struct fimc_is_isp *isp,
 					   unsigned long val)

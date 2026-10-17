@@ -51,22 +51,22 @@ struct fimc_is_interface {
 	unsigned long			state;
 
 	void __iomem			*regs;
-        void __iomem   	 		*shared_regs;
-        struct fimc_is_fw_data		*fw_data;
+	void __iomem			*shared_regs;
+	struct fimc_is_fw_data		*fw_data;
 	/* Lock for writing into MCUCTL registers */
 	spinlock_t			slock;
 	/* Lock for context state variable */
 	spinlock_t			slock_state;
 	wait_queue_head_t		irq_queue;
 	struct device			*dev;
-        unsigned int			drv_version;
+	unsigned int			drv_version;
 	/* Held while sending commands to FW */
 	struct mutex			request_barrier;
-        struct work_struct		shot_done_work;
+	struct work_struct		shot_done_work;
 	enum streaming_state		streaming;
 	enum processing_state		processing;
 	enum pdown_ready_state		pdown_ready;
-        struct shared_reg_map_entry	*shared_regs_map;
+	struct shared_reg_map_entry	*shared_regs_map;
 	struct fimc_is_msg		reply;
 
 	int				debug_cnt;
@@ -83,14 +83,14 @@ int fimc_is_itf_open_sensor(struct fimc_is_interface *itf,
 		unsigned int i2c_channel,
 		unsigned int sensor_ext);
 int fimc_is_itf_open_sensor_ext(struct fimc_is_interface *itf,
-                                unsigned int instance,
-                                unsigned int sensor_id,
-                                unsigned int sensor_ext);
+				unsigned int instance,
+				unsigned int sensor_id,
+				unsigned int sensor_ext);
 int fimc_is_itf_sensor_close(struct fimc_is_interface *itf,
-                             unsigned int instance);
+			     unsigned int instance);
 int fimc_is_itf_sensor_mode(struct fimc_is_interface *itf,
-                            unsigned int instance,
-                            unsigned int mode);
+			    unsigned int instance,
+			    unsigned int mode);
 int fimc_is_itf_get_setfile_addr(struct fimc_is_interface *this,
 		unsigned int instance, unsigned int *setfile_addr);
 int fimc_is_itf_load_setfile(struct fimc_is_interface *itf,
@@ -105,23 +105,23 @@ int fimc_is_itf_process_off(struct fimc_is_interface *itf,
 		unsigned int instance);
 int fimc_is_itf_set_param(struct fimc_is_interface *this,
 		unsigned int instance,
-                unsigned int scenario,
+		unsigned int scenario,
 		unsigned int lindex,
 		unsigned int hindex);
 int fimc_is_itf_preview_still(struct fimc_is_interface *itf,
 		unsigned int instance);
 int fimc_is_itf_capture_still(struct fimc_is_interface *itf,
-                unsigned int instance);
+		unsigned int instance);
 int fimc_is_itf_get_capability(struct fimc_is_interface *itf,
-                               unsigned int instance, unsigned int address);
+			       unsigned int instance, unsigned int address);
 int fimc_is_itf_change_sensor_mode(struct fimc_is_interface *itf,
-                                   unsigned int instance,
+				   unsigned int instance,
 				   unsigned int mode);
 int fimc_is_itf_map_mem(struct fimc_is_interface *itf,
 		unsigned int instance, unsigned int address,
 		unsigned int size);
 int fimc_is_itf_unmap_mem(struct fimc_is_interface *itf,
-                          unsigned int instance);
+			  unsigned int instance);
 int fimc_is_itf_shot_nblk(struct fimc_is_interface *itf,
 		unsigned int instance, unsigned int bayer,
 		unsigned int shot, unsigned int fcount, unsigned int rcount);

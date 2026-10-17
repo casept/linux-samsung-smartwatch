@@ -13,8 +13,8 @@
 
 enum is_cmd {
 	/* HOST -> IS */
-        HIC_COMMAND_BEGIN = 0x1,
-        HIC_PREVIEW_STILL = HIC_COMMAND_BEGIN,
+	HIC_COMMAND_BEGIN = 0x1,
+	HIC_PREVIEW_STILL = HIC_COMMAND_BEGIN,
 	HIC_PREVIEW_VIDEO,
 	HIC_CAPTURE_STILL,
 	HIC_CAPTURE_VIDEO,
@@ -29,13 +29,13 @@ enum is_cmd {
 	HIC_SET_PARAMETER,
 	HIC_GET_PARAMETER,
 	HIC_SET_A5_MEM_ACCESS,
-        HIC_SET_A5_MAP = HIC_SET_A5_MEM_ACCESS,
+	HIC_SET_A5_MAP = HIC_SET_A5_MEM_ACCESS,
 	RESERVED2,
-        /* HIC_SET_A5_UNMAP supported by FW v.130 nad higher */
-        HIC_SET_A5_UNMAP = RESERVED2,
+	/* HIC_SET_A5_UNMAP supported by FW v.130 nad higher */
+	HIC_SET_A5_UNMAP = RESERVED2,
 	HIC_GET_STATUS,
 	/* SENSOR PART*/
-        HIC_OPEN_SENSOR ,
+	HIC_OPEN_SENSOR,
 	HIC_CLOSE_SENSOR,
 	HIC_SIMMIAN_INIT,
 	HIC_SIMMIAN_WRITE,
@@ -46,17 +46,17 @@ enum is_cmd {
 	HIC_MSG_CONFIG,
 	HIC_MSG_TEST,
 	/* IS -> HOST */
-        HIC_ISP_I2C_CONTROL,
-        HIC_CALIBRATE_ACTUATOR,
-        HIC_GET_IP_STATUS, /* 30 */
-        HIC_I2C_CONTROL_LOCK,
-        HIC_SYSTEM_CONTROL,
-        HIC_SENSOR_MODE_CHANGE,
-        HIC_MSG_SENSOR_END,
-        HIC_COMMAND_END = HIC_MSG_SENSOR_END,
-        /* IS -> HOST */
-        IHC_COMMAND_BEGIN = 0x1000,
-        IHC_GET_SENSOR_NUMBER = IHC_COMMAND_BEGIN,
+	HIC_ISP_I2C_CONTROL,
+	HIC_CALIBRATE_ACTUATOR,
+	HIC_GET_IP_STATUS, /* 30 */
+	HIC_I2C_CONTROL_LOCK,
+	HIC_SYSTEM_CONTROL,
+	HIC_SENSOR_MODE_CHANGE,
+	HIC_MSG_SENSOR_END,
+	HIC_COMMAND_END = HIC_MSG_SENSOR_END,
+	/* IS -> HOST */
+	IHC_COMMAND_BEGIN = 0x1000,
+	IHC_GET_SENSOR_NUMBER = IHC_COMMAND_BEGIN,
 	/* Parameter1 : Address of space to copy a setfile */
 	/* Parameter2 : Space szie */
 	IHC_SET_SHOT_MARK,
@@ -71,10 +71,10 @@ enum is_cmd {
 	/* PARAM2 : frame count */
 	IHC_AA_DONE,
 	IHC_NOT_READY,
-        IHC_FLASH_READY,
-        /* F/W version >= 1.32 */
-        IHC_REPORT_ERR,
-        IHC_COMMAND_END
+	IHC_FLASH_READY,
+	/* F/W version >= 1.32 */
+	IHC_REPORT_ERR,
+	IHC_COMMAND_END
 };
 
 enum is_reply {
@@ -94,28 +94,28 @@ enum is_subscenario_id {
 	ISS_SUB_SCENARIO_STILL,
 	ISS_SUB_SCENARIO_VIDEO,
 	ISS_SUB_SCENARIO_SCENE1,
-        /* 2: dual still preview */
-        ISS_SUB_SCENARIO_DUAL_STILL       = ISS_SUB_SCENARIO_SCENE1,
+	/* 2: dual still preview */
+	ISS_SUB_SCENARIO_DUAL_STILL       = ISS_SUB_SCENARIO_SCENE1,
 	ISS_SUB_SCENARIO_SCENE2,
-        /* 3: dual video */
-        ISS_SUB_SCENARIO_DUAL_VIDEO       = ISS_SUB_SCENARIO_SCENE2,
+	/* 3: dual video */
+	ISS_SUB_SCENARIO_DUAL_VIDEO       = ISS_SUB_SCENARIO_SCENE2,
 	ISS_SUB_SCENARIO_SCENE3,
-        /* 4: video high speed */
-        ISS_SUB_SCENARIO_VIDEO_HIGH_SPEED = ISS_SUB_SCENARIO_SCENE3,
-        /* 5: still capture */
-        ISS_SUB_SCENARIO_STILL_CAPTURE    = 5,
+	/* 4: video high speed */
+	ISS_SUB_SCENARIO_VIDEO_HIGH_SPEED = ISS_SUB_SCENARIO_SCENE3,
+	/* 5: still capture */
+	ISS_SUB_SCENARIO_STILL_CAPTURE    = 5,
 
-        ISS_SUB_END,
+	ISS_SUB_END,
 };
 
 enum is_system_control_id {
-        IS_SYS_CLOCK_GATE = 0,
-        IS_SYS_END,
+	IS_SYS_CLOCK_GATE = 0,
+	IS_SYS_END,
 };
 
 enum is_system_control_cmd {
-        SYS_CONTROL_DISABLE = 0,
-        SYS_CONTROL_ENABLE  = 1,
+	SYS_CONTROL_DISABLE = 0,
+	SYS_CONTROL_ENABLE  = 1,
 };
 
 struct is_setfile_header_element {

@@ -53,12 +53,12 @@
 
 enum pipeline_state {
 	PIPELINE_INIT,
-        PIPELINE_POWER,
+	PIPELINE_POWER,
 	PIPELINE_OPEN,
-        PIPELINE_PREPARE,
+	PIPELINE_PREPARE,
 	PIPELINE_START,
 	PIPELINE_RUN,
-        PIPELINE_RESET,
+	PIPELINE_RESET,
 };
 
 enum is_components {
@@ -73,29 +73,29 @@ enum is_components {
 };
 
 enum component_state {
-        COMP_INVALID,
+	COMP_INVALID,
 	COMP_ENABLE,
 	COMP_START,
 	COMP_RUN
 };
 
 struct fimc_is_config {
-        unsigned long 	params[2];
-        int		metadata_mode;
+	unsigned long	params[2];
+	int		metadata_mode;
 };
 
 struct fimc_is_pipeline {
 	unsigned long		state;
-        unsigned long		subip_state[FIMC_IS_NUM_COMPS];
-        unsigned int		subip_mask;
+	unsigned long		subip_state[FIMC_IS_NUM_COMPS];
+	unsigned int		subip_mask;
 	bool			force_down;
 	unsigned int		instance;
 	/* Locks the isp / scaler buffers */
 	spinlock_t		slock_buf;
 	unsigned long		slock_flags;
 	wait_queue_head_t	wait_q;
-        struct work_struct	work;
-        struct delayed_work	wdg_work;
+	struct work_struct	work;
+	struct delayed_work	wdg_work;
 	/* For locking pipeline ops */
 	struct mutex		pipe_lock;
 	/* For locking scaler ops in pipeline */
@@ -109,15 +109,15 @@ struct fimc_is_pipeline {
 	struct fimc_is_sensor	*sensor;
 	struct fimc_is_isp	isp;
 	struct fimc_is_scaler	scaler[FIMC_IS_NUM_SCALERS];
-        struct fimc_is_config	config;
-        const struct fimc_is_fw_ctrl *fw_ctrl;
-        unsigned int		data_flow;
+	struct fimc_is_config	config;
+	const struct fimc_is_fw_ctrl *fw_ctrl;
+	unsigned int		data_flow;
 	unsigned int		fcount;
-        ktime_t			last_frame;
-        long long		frame_duration;
+	ktime_t			last_frame;
+	long long		frame_duration;
 	unsigned int		isp_width;
 	unsigned int		isp_height;
-        struct fimc_is_event_listener listener;
+	struct fimc_is_event_listener listener;
 };
 
 void fimc_is_pipeline_buf_lock(struct fimc_is_pipeline *pipeline);
@@ -133,8 +133,8 @@ int fimc_is_pipeline_set_scaler_effect(struct fimc_is_pipeline *pipeline,
 				   unsigned int rotation);
 void fimc_is_pipeline_config_shot(struct fimc_is_pipeline *pipeline);
 int fimc_is_pipeline_update_shot_ctrl(struct fimc_is_pipeline *pipeline,
-                                     unsigned int id,
-                                     unsigned long val);
+				     unsigned int id,
+				     unsigned long val);
 int fimc_is_pipeline_shot_safe(struct fimc_is_pipeline *pipeline);
 int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline);
 int fimc_is_pipeline_start(struct fimc_is_pipeline *pipeline, int streamon);
@@ -142,8 +142,8 @@ int fimc_is_pipeline_stop(struct fimc_is_pipeline *pipeline, int streamoff);
 int fimc_is_alloc_fw_mem(struct fimc_is *is);
 void fimc_is_free_fw_mem(struct fimc_is *is);
 int fimc_is_pipeline_init(struct fimc_is_pipeline *pipeline,
-                        unsigned int instance,
-                        void *is_ctx);
+			unsigned int instance,
+			void *is_ctx);
 int fimc_is_pipeline_destroy(struct fimc_is_pipeline *pipeline);
 int fimc_is_pipeline_open(struct fimc_is_pipeline *pipeline,
 			struct fimc_is_sensor *sensor);

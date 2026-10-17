@@ -62,6 +62,7 @@ static void fimc_pipeline_prepare(struct fimc_pipeline *p,
 		/* Find remote source pad */
 		for (i = 0; i < me->num_pads; i++) {
 			struct media_pad *spad = &me->pads[i];
+
 			if (!(spad->flags & MEDIA_PAD_FL_SINK))
 				continue;
 			pad = media_pad_remote_pad_first(spad);
@@ -116,9 +117,9 @@ static void fimc_pipeline_prepare(struct fimc_pipeline *p,
 
 /**
  * fimc_pipeline_cleanup - update pipeline information with regard to
- * 			   associated subdevs upon pipeline being closed
- * 			   explicitly or as a result of an unexpected
- * 			   failure while processing
+ *			   associated subdevs upon pipeline being closed
+ *			   explicitly or as a result of an unexpected
+ *			   failure while processing
  * @p: the pipeline object
  *
  * Caller holds the graph mutex.
@@ -267,7 +268,7 @@ static int __fimc_pipeline_close(struct exynos_media_pipeline *ep)
 
 	if (p->subdevs[IDX_SENSOR]) {
 		ret = fimc_pipeline_s_power(p, 0);
-		if(ret)
+		if (ret)
 			goto leave;
 	}
 
@@ -620,35 +621,35 @@ static int register_fimc_is_entity(struct fimc_md *fmd,
 			return ret;
 
 		/* FIMC SCP */
-                if (is->pipeline[i].subip_state[IS_SCP] != COMP_INVALID) {
-                        subdev = fimc_is_scp_get_sd(is, i);
-                        subdev->grp_id = GRP_ID_FIMC_IS;
-                        v4l2_set_subdev_hostdata(subdev, ep);
-                        ret = v4l2_device_register_subdev(&fmd->v4l2_dev, subdev);
-                        if (ret)
-                                v4l2_err(&fmd->v4l2_dev,
-                                         "Failed to register SCP subdev\n");
-                        p->subdevs[IDX_SCP] = subdev;
-                        /* Create default links: SCP -> vdev */
-                        vdev = fimc_is_scp_get_vfd(is, i);
-                                ret = media_create_pad_link(&subdev->entity,
-                                                SCALER_SD_PAD_SRC_DMA,
-                                                &vdev->entity, 0,
-                                                MEDIA_LNK_FL_IMMUTABLE |
-                                                MEDIA_LNK_FL_ENABLED);
-                                if (ret)
-                                        return ret;
+		if (is->pipeline[i].subip_state[IS_SCP] != COMP_INVALID) {
+			subdev = fimc_is_scp_get_sd(is, i);
+			subdev->grp_id = GRP_ID_FIMC_IS;
+			v4l2_set_subdev_hostdata(subdev, ep);
+			ret = v4l2_device_register_subdev(&fmd->v4l2_dev, subdev);
+			if (ret)
+				v4l2_err(&fmd->v4l2_dev,
+					 "Failed to register SCP subdev\n");
+			p->subdevs[IDX_SCP] = subdev;
+			/* Create default links: SCP -> vdev */
+			vdev = fimc_is_scp_get_vfd(is, i);
+				ret = media_create_pad_link(&subdev->entity,
+						SCALER_SD_PAD_SRC_DMA,
+						&vdev->entity, 0,
+						MEDIA_LNK_FL_IMMUTABLE |
+						MEDIA_LNK_FL_ENABLED);
+				if (ret)
+					return ret;
 
-                        /* Link SCC -> SCP */
-                        ret = media_create_pad_link(&p->subdevs[IDX_SCC]->entity,
+			/* Link SCC -> SCP */
+			ret = media_create_pad_link(&p->subdevs[IDX_SCC]->entity,
 					SCALER_SD_PAD_SRC_FIFO,
 					&subdev->entity, SCALER_SD_PAD_SINK,
 					MEDIA_LNK_FL_IMMUTABLE |
 					MEDIA_LNK_FL_ENABLED);
-                        if (ret)
-                                return ret;
+			if (ret)
+				return ret;
 
-                }
+		}
 	}
 	fmd->is = is;
 
@@ -826,10 +827,10 @@ static void fimc_md_unregister_entities(struct fimc_md *fmd)
 		subdev = fimc_is_scc_get_sd(is, i);
 		v4l2_device_unregister_subdev(subdev);
 
-                if (is->pipeline[i].subip_state[IS_SCP] != COMP_INVALID){
-                        subdev = fimc_is_scp_get_sd(is, i);
-                        v4l2_device_unregister_subdev(subdev);
-                }
+		if (is->pipeline[i].subip_state[IS_SCP] != COMP_INVALID) {
+			subdev = fimc_is_scp_get_sd(is, i);
+			v4l2_device_unregister_subdev(subdev);
+		}
 	}
 
 	v4l2_info(&fmd->v4l2_dev, "Unregistered all entities\n");
@@ -962,8 +963,7 @@ static int fimc_md_create_links(struct fimc_md *fmd)
 
 			csis = fmd->csis[pdata->mux_id].sd;
 			if (WARN(csis == NULL,
-				 "MIPI-CSI interface specified "
-				 "but s5p-csis module is not loaded!\n"))
+				 "MIPI-CSI interface specified but s5p-csis module is not loaded!\n"))
 				return -EINVAL;
 
 			pad = sensor->entity.num_pads - 1;
@@ -1186,10 +1186,10 @@ static const struct v4l2_async_notifier_operations subdev_notifier_ops = {
 static void fimc_md_capture_event_handler(struct v4l2_subdev *subdev,
 					  unsigned int event_id, void *arg)
 {
-        struct fimc_md *fmd;
+	struct fimc_md *fmd;
 
-        fmd = entity_to_fimc_mdev(&subdev->entity);
-        fimc_is_dispatch_events(fmd->is, event_id, arg);
+	fmd = entity_to_fimc_mdev(&subdev->entity);
+	fimc_is_dispatch_events(fmd->is, event_id, arg);
 }
 
 int exynos_camera_register(struct device *dev, struct fimc_md **md)
@@ -1216,7 +1216,7 @@ int exynos_camera_register(struct device *dev, struct fimc_md **md)
 
 	v4l2_dev = &fmd->v4l2_dev;
 	v4l2_dev->mdev = &fmd->media_dev;
-        v4l2_dev->notify = fimc_md_capture_event_handler;
+	v4l2_dev->notify = fimc_md_capture_event_handler;
 	strscpy(v4l2_dev->name, "exynos5-fimc-md", sizeof(v4l2_dev->name));
 
 	ret = v4l2_device_register(dev, v4l2_dev);

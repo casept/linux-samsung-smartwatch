@@ -19,7 +19,7 @@
 
 /**
  * @brief FIMC-IS firmware specific sub-blocks
- * 	  configuration options
+ *	  configuration options
  */
 #define PARAM_OTF_INPUT 0x01
 #define PARAM_DMA_INPUT 0x02
@@ -35,12 +35,12 @@
  * @meta_type      - Metadata layout type (basic vs extended)
  */
 struct fimc_is_fw_mem {
-        unsigned long fw_size;
-        unsigned long region_offset;
-        unsigned long shared_offset;
-        unsigned long dbg_offset;
-        unsigned long shot_size;
-        unsigned int  meta_type;
+	unsigned long fw_size;
+	unsigned long region_offset;
+	unsigned long shared_offset;
+	unsigned long dbg_offset;
+	unsigned long shot_size;
+	unsigned int  meta_type;
 };
 
 /*
@@ -68,28 +68,29 @@ enum {
  */
 struct fimc_is_fw_ops {
 	/* Get firmware specific memory layout information */
-	int (*mem_config)(struct fimc_is_fw_mem *);
+	int (*mem_config)(struct fimc_is_fw_mem *mem);
 	/* Tweak FIMC-IS subblock parameters specific for given firmware */
-	int (*tweak_param)(unsigned int, void *, void *);
+	int (*tweak_param)(unsigned int type, void *base_addr, void *data);
 	/* Setup initial shot configuration */
-	int (*config_shot)(void *);
+	int (*config_shot)(void *shot);
 	/* Set individual controls for camera shot */
-	int (*set_control)(void *, unsigned int, unsigned long);
+	int (*set_control)(void *shot, unsigned int config_id,
+			   unsigned long val);
 };
 
 extern const struct fimc_is_fw_ops *fimc_is_fw_ops;
 
 /**
  * @brief Perform requested operation on current firmware
- * 	  (if supported)
+ *	  (if supported)
  */
 #define FIMC_IS_FW_CALL_OP(op, args...)		\
-        ((fimc_is_fw_ops && fimc_is_fw_ops->op) \
-        ? fimc_is_fw_ops->op(args) : -EINVAL)
+	((fimc_is_fw_ops && fimc_is_fw_ops->op) \
+	? fimc_is_fw_ops->op(args) : -EINVAL)
 
 /**
  * @brief Init supported operations for requested firmware version
  */
-int fimc_is_fw_init_ops(unsigned int);
+int fimc_is_fw_init_ops(unsigned int fw_version);
 
 #endif /*FIMC_IS_FW_CONFIG_H*/
