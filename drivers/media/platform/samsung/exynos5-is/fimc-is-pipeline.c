@@ -493,6 +493,52 @@ int fimc_is_pipeline_destroy(struct fimc_is_pipeline *pipeline)
 	return fimc_is_pipeline_unregister_subdevs(pipeline);
 }
 
+/*
+ * The firmware has to be at the start of its 64 MB window, i.e. of the reserved
+ * memory, which the video buffers are allocated from as well. Allocate it when
+ * probing, before any buffer can take the start.
+ */
+int fimc_is_alloc_fw_mem(struct fimc_is *is)
+{
+	struct fimc_is_meminfo *minfo = &is->minfo;
+	struct device *dev = &is->pdev->dev;
+	struct fimc_is_fw_mem fw_minfo;
+	int ret;
+
+	ret = fimc_is_fw_init_ops(is->drvdata->fw_version);
+	if (ret)
+		return ret;
+
+	if (FIMC_IS_FW_CALL_OP(mem_config, &fw_minfo))
+		return -EINVAL;
+
+	minfo->fw.vaddr = dma_alloc_coherent(dev, fw_minfo.fw_size,
+					     &minfo->fw.paddr, GFP_KERNEL);
+	if (!minfo->fw.vaddr)
+		return -ENOMEM;
+	minfo->fw.size = fw_minfo.fw_size;
+
+	if (minfo->fw.paddr & FIMC_IS_FW_BASE_MASK) {
+		dev_err(dev, "FW memory not 64MB aligned\n");
+		fimc_is_free_fw_mem(is);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+void fimc_is_free_fw_mem(struct fimc_is *is)
+{
+	struct fimc_is_meminfo *minfo = &is->minfo;
+
+	if (!minfo->fw.vaddr)
+		return;
+
+	dma_free_coherent(&is->pdev->dev, minfo->fw.size, minfo->fw.vaddr,
+			  minfo->fw.paddr);
+	minfo->fw.vaddr = NULL;
+}
+
 static int fimc_is_pipeline_initmem(struct fimc_is_pipeline *pipeline)
 {
 	struct fimc_is_meminfo *minfo = pipeline->minfo;
@@ -504,21 +550,9 @@ static int fimc_is_pipeline_initmem(struct fimc_is_pipeline *pipeline)
                         "Failed to get firmware memory layout\n");
                 return -EINVAL;
         }
-	/* Allocate fw memory */
-        minfo->fw.vaddr = dma_alloc_coherent(pipeline->dev, fw_minfo.fw_size,
-			&minfo->fw.paddr, GFP_KERNEL);
-	if (minfo->fw.vaddr == NULL)
+	/* The firmware memory is allocated when probing */
+	if (!minfo->fw.vaddr)
 		return -ENOMEM;
-        minfo->fw.size = fw_minfo.fw_size;
-
-	/* FW memory should be 64MB aligned */
-	if ((u32)minfo->fw.paddr & FIMC_IS_FW_BASE_MASK) {
-		dev_err(pipeline->dev, "FW memory not 64MB aligned\n");
-		dma_free_coherent(pipeline->dev, minfo->fw.size,
-				minfo->fw.vaddr,
-				minfo->fw.paddr);
-		return -EIO;
-	}
 
 	/* Assigning memory regions */
         offset = fw_minfo.region_offset;
@@ -537,12 +571,8 @@ static int fimc_is_pipeline_initmem(struct fimc_is_pipeline *pipeline)
         minfo->shot.vaddr = dma_alloc_coherent(pipeline->dev,
                         fw_minfo.shot_size,
 			&minfo->shot.paddr, GFP_KERNEL);
-	if (minfo->shot.vaddr == NULL) {
-		dma_free_coherent(pipeline->dev, minfo->fw.size,
-				minfo->fw.vaddr,
-				minfo->fw.paddr);
+	if (minfo->shot.vaddr == NULL)
 		return -ENOMEM;
-	}
         minfo->shot.size = fw_minfo.shot_size;
         pipeline->config.metadata_mode = fw_minfo.meta_type;
 	return 0;
@@ -552,10 +582,6 @@ static void fimc_is_pipeline_freemem(struct fimc_is_pipeline *pipeline)
 {
 	struct fimc_is_meminfo *minfo = pipeline->minfo;
 
-	if (minfo->fw.vaddr)
-		dma_free_coherent(pipeline->dev, minfo->fw.size,
-				minfo->fw.vaddr,
-				minfo->fw.paddr);
 	if (minfo->shot.vaddr)
 		dma_free_coherent(pipeline->dev, minfo->shot.size,
 				minfo->shot.vaddr,

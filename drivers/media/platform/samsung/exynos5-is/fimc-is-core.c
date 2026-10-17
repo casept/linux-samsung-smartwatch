@@ -10,6 +10,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/of_graph.h>
 #include <linux/videodev2.h>
 
@@ -490,20 +491,36 @@ static int fimc_is_probe(struct platform_device *pdev)
 	is->drvdata	= match->data;
 	is->pdev	= pdev;
 
+	/* The firmware memory has to be aligned beyond what CMA guarantees */
+	ret = of_reserved_mem_device_init(dev);
+	if (ret && ret != -ENODEV)
+		return dev_err_probe(dev, ret,
+				     "Failed to set up the reserved memory\n");
+
+	ret = fimc_is_alloc_fw_mem(is);
+	if (ret)
+		goto err_rmem;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs = devm_ioremap_resource(dev, res);
-	if (IS_ERR(regs))
-		return PTR_ERR(regs);
+	if (IS_ERR(regs)) {
+		ret = PTR_ERR(regs);
+		goto err_fw_mem;
+	}
 
 	/* Get the PMU base */
 	node = of_parse_phandle(dev->of_node, "samsung,pmu", 0);
-	if (!node)
-		return -ENODEV;
+	if (!node) {
+		ret = -ENODEV;
+		goto err_fw_mem;
+	}
 
 	is->pmu_regs = of_iomap(node, 0);
 	of_node_put(node);
-	if (!is->pmu_regs)
-		return -ENOMEM;
+	if (!is->pmu_regs) {
+		ret = -ENOMEM;
+		goto err_fw_mem;
+	}
 
 	irq = irq_of_parse_and_map(dev->of_node, 0);
 	if (!irq) {
@@ -573,6 +590,10 @@ err_clk:
 	fimc_is_put_clocks(is);
 err_pmu:
 	iounmap(is->pmu_regs);
+err_fw_mem:
+	fimc_is_free_fw_mem(is);
+err_rmem:
+	of_reserved_mem_device_release(dev);
 
 	return ret;
 }
@@ -589,6 +610,8 @@ static void fimc_is_remove(struct platform_device *pdev)
 	fimc_is_pipelines_destroy(is);
 	fimc_is_put_clocks(is);
 	iounmap(is->pmu_regs);
+	fimc_is_free_fw_mem(is);
+	of_reserved_mem_device_release(dev);
 }
 
 static const struct dev_pm_ops fimc_is_pm_ops = {

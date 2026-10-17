@@ -139,6 +139,8 @@ int fimc_is_pipeline_shot_safe(struct fimc_is_pipeline *pipeline);
 int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline);
 int fimc_is_pipeline_start(struct fimc_is_pipeline *pipeline, int streamon);
 int fimc_is_pipeline_stop(struct fimc_is_pipeline *pipeline, int streamoff);
+int fimc_is_alloc_fw_mem(struct fimc_is *is);
+void fimc_is_free_fw_mem(struct fimc_is *is);
 int fimc_is_pipeline_init(struct fimc_is_pipeline *pipeline,
                         unsigned int instance,
                         void *is_ctx);
