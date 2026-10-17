@@ -9574,7 +9574,8 @@ static int mc_asoc_spi_probe(
 
 	TRACE_FUNC();
 
-	mc_asoc_priv	= kzalloc(sizeof(struct mc_asoc_priv), GFP_KERNEL);
+	mc_asoc_priv	= devm_kzalloc(&spi->dev, sizeof(struct mc_asoc_priv),
+				       GFP_KERNEL);
 	if (!mc_asoc_priv) {
 		err	= -ENOMEM;
 		goto err_alloc_priv;
@@ -9587,7 +9588,6 @@ static int mc_asoc_spi_probe(
 		mc_asoc->pdata = mc_asoc_parse_dt(&spi->dev);
 		if (IS_ERR(mc_asoc->pdata)) {
 			err = PTR_ERR(mc_asoc->pdata);
-			kfree(mc_asoc_priv);
 			return dev_err_probe(&spi->dev, err,
 					     "failed to parse DT data\n");
 		}
@@ -9612,7 +9612,6 @@ static int mc_asoc_spi_probe(
 	goto exit;
 
 err_reg_codec:
-	kfree(mc_asoc_priv);
 err_alloc_priv:
 	dev_err(&spi->dev, "err=%d: failed to probe MC_ASOC\n", err);
 
@@ -9628,18 +9627,13 @@ static void mc_asoc_spi_remove(struct spi_device *spi)
 	TRACE_FUNC();
 
 	mc_asoc = &mc_asoc_priv->data;
-	mc_asoc->pdata	=
-			(struct mc_asoc_platform_data *)spi->dev.platform_data;
 
 #ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	if (mc_asoc->pdata->set_codec_mclk)
+	if (mc_asoc->pdata && mc_asoc->pdata->set_codec_mclk)
 		mc_asoc->pdata->set_codec_mclk(0, 0);
 #endif
 
-	if (mc_asoc_priv != 0) {
-		mutex_destroy(&mc_asoc_priv->data.mutex);
-		kfree(mc_asoc_priv);
-	}
+	mutex_destroy(&mc_asoc_priv->data.mutex);
 }
 
 static const struct of_device_id mc_asoc_of_match[] = {
