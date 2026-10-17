@@ -76,6 +76,16 @@
 			no-map;
 			reg = <0x40000000 0x4000>;
 		};
+
+		/*
+		 * The FIMC-IS firmware has to sit at a 64 MiB boundary, which a
+		 * reusable pool can't guarantee. Same region as the Tizen kernel.
+		 */
+		fimc_is_mem: fimc-is@58000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x58000000 0x4000000>;
+			no-map;
+		};
 	};
 
 	sboot-upload {
@@ -504,6 +514,25 @@
 	status = "okay";
 };
 
+&csis_0 {
+	vddcore-supply = <&ldo6_reg>;
+	vddio-supply = <&ldo6_reg>;
+	status = "okay";
+
+	/* Camera B (3) MIPI CSI-2 (CSIS0) */
+	port@3 {
+		reg = <3>;
+
+		csis0_ep: endpoint {
+			remote-endpoint = <&s5k8b1_ep>;
+			/* What the downstream kernel uses */
+			data-lanes = <1>;
+			samsung,csis-hs-settle = <16>;
+			samsung,csis-wclk;
+		};
+	};
+};
+
 &dsi_0 {
 	vddcore-supply = <&ldo6_reg>;
 	vddio-supply = <&ldo6_reg>;
@@ -520,6 +549,17 @@
 		reset-gpios = <&gpe0 1 GPIO_ACTIVE_LOW>;
 		te-gpios = <&gpx0 6 GPIO_ACTIVE_HIGH>;
 	};
+};
+
+&fimc_is {
+	pinctrl-names = "default";
+	pinctrl-0 = <&cam_port_b_clk_active>;
+	memory-region = <&fimc_is_mem>;
+	status = "okay";
+};
+
+&fimc_lite_0 {
+	status = "okay";
 };
 
 &fimd {
@@ -941,6 +981,28 @@
 	};
 };
 
+&i2c0_isp {
+	image-sensor@6a {
+		compatible = "samsung,s5k8b1";
+		reg = <0x6a>;
+		vdda-supply = <&ldo13_reg>;
+		vddio-supply = <&ldo21_reg>;
+		vddd-supply = <&ldo22_reg>;
+		afvdd-supply = <&ldo18_reg>;
+		xshutdown-gpios = <&gpm2 3 GPIO_ACTIVE_LOW>;
+		clocks = <&cmu CLK_SCLK_CAM1>;
+		clock-names = "extclk";
+		clock-frequency = <24000000>;
+
+		port {
+			s5k8b1_ep: endpoint {
+				remote-endpoint = <&csis0_ep>;
+				data-lanes = <1>;
+			};
+		};
+	};
+};
+
 &i2s2 {
 	status = "okay";
 };
@@ -1240,7 +1302,6 @@
 		PIN_IN(gpm3-3, DOWN, LV1);
 		PIN_IN(gpm3-4, DOWN, LV1);
 
-		PIN_IN(gpm4-1, DOWN, LV1);
 		PIN_IN(gpm4-2, DOWN, LV1);
 		PIN_IN(gpm4-3, DOWN, LV1);
 		PIN_IN(gpm4-4, DOWN, LV1);
