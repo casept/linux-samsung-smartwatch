@@ -30,9 +30,6 @@
 #include "mcdevprof.h"
 #include "mcmachdep.h"
 #include "mcdefs.h"
-#if MCDRV_DEBUG_LEVEL
-#include "mcdebuglog.h"
-#endif
 
 
 
@@ -968,15 +965,9 @@ static const enum MCDRV_REG_ACCSESS	gawRegAccessAvailable_CD[256]	= {
  ****************************************************************************/
 void	McDevProf_SetDevId(enum MCDRV_DEV_ID eDevId)
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevProf_SetDevId");
-#endif
 
 	geDevID	= eDevId;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevProf_SetDevId", 0);
-#endif
 }
 
 /****************************************************************************
@@ -992,14 +983,7 @@ void	McDevProf_SetDevId(enum MCDRV_DEV_ID eDevId)
  ****************************************************************************/
 enum MCDRV_DEV_ID	McDevProf_GetDevId(void)
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= geDevID;
-	McDebugLog_FuncIn("McDevProf_GetDevId");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevProf_GetDevId", &sdRet);
-#endif
 
 	return geDevID;
 }
@@ -1021,15 +1005,7 @@ UINT8	McDevProf_GetSlaveAddr(
 {
 	UINT8	bData	= gabSlaveAddr[eSlaveAddrKind];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McDevProf_GetSlaveAddr");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bData;
-	McDebugLog_FuncOut("McDevProf_GetSlaveAddr", &sdRet);
-#endif
 
 	return bData;
 }
@@ -1051,10 +1027,6 @@ enum MCDRV_REG_ACCSESS	McDevProf_GetRegAccess(
 {
 	enum MCDRV_REG_ACCSESS	eAccess	= eMCDRV_ACCESS_DENY;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McDevProf_GetRegAccess");
-#endif
 
 	switch (psRegInfo->bRegType) {
 	case	MCDRV_REGTYPE_IF:
@@ -1225,10 +1197,6 @@ enum MCDRV_REG_ACCSESS	McDevProf_GetRegAccess(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= eAccess;
-	McDebugLog_FuncOut("McDevProf_GetRegAccess", &sdRet);
-#endif
 
 	return eAccess;
 }

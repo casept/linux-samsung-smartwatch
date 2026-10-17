@@ -38,9 +38,6 @@
 #include "mcbdspdrv.h"
 #include "mcedspdrv.h"
 #include "mcfdspdrv.h"
-#if MCDRV_DEBUG_LEVEL
-#include "mcdebuglog.h"
-#endif
 
 
 
@@ -184,9 +181,6 @@ SINT32	McPacket_AddInit(
 	struct MCDRV_INIT2_INFO	sInit2Info;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddInit");
-#endif
 
 
 	/*	CD_RST	*/
@@ -406,9 +400,6 @@ SINT32	McPacket_AddInit(
 
 	McPacket_AddHSDet();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddInit", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -431,9 +422,6 @@ static void	AddInitDigtalIO(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddInitDigtalIO");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetAecInfo(&sAecInfo);
@@ -501,9 +489,6 @@ static void	AddInitDigtalIO(
 			| (UINT32)MCI_PCMOUT_HIZ,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddInitDigtalIO", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -525,9 +510,6 @@ static void	AddInitGPIO(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_GP_MODE	sGPMode;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddInitGPIO");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetGPMode(&sGPMode);
@@ -619,9 +601,6 @@ static void	AddInitGPIO(
 			| (UINT32)MCI_PA2,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddInitGPIO", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -643,9 +622,6 @@ static SINT32	InitMBlock(
 	SINT32	sdRet	= MCDRV_SUCCESS;
 	UINT32	dUpdateFlg	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitMBlock");
-#endif
 
 	if (McDevProf_GetDevId() != eMCDRV_DEV_ID_80_90H) {
 		;
@@ -708,9 +684,6 @@ static SINT32	InitMBlock(
 		sdRet	= McDevIf_ExecutePacket();
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitMBlock", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -739,9 +712,6 @@ static void	SetupEReg(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_INIT2_INFO	sInit2Info;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetupEReg");
-#endif
 	McResCtrl_GetInitInfo(&sInitInfo, &sInit2Info);
 
 	bReg	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_IF, MCI_RST);
@@ -1317,9 +1287,6 @@ static void	SetupEReg(
 	}
 
 exit:;
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetupEReg", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -1352,9 +1319,6 @@ static SINT32	Offsetcancel(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_INIT2_INFO	sInit2Info;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("Offsetcancel");
-#endif
 	bSlaveAddrA	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_ANA);
 #ifndef _FOR_FPGA
 	McResCtrl_GetInitInfo(&sInitInfo, &sInit2Info);
@@ -1659,9 +1623,6 @@ static SINT32	Offsetcancel(
 	}
 #endif
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("Offsetcancel", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -1701,9 +1662,6 @@ SINT32	McPacket_AddPowerUp(
 	struct MCDRV_FDSP_INIT	stFDSPInit;
 	struct MCDRV_CDSP_INIT	stCDSPInit;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddPowerUp");
-#endif
 
 
 	McResCtrl_GetInitInfo(&sInitInfo, &sInit2Info);
@@ -2366,9 +2324,6 @@ SINT32	McPacket_AddPowerUp(
 		McDevIf_AddPacket(MCDRV_PACKET_TYPE_TIMWAIT | dWaitTime, 0);
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddPowerUp", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -2403,9 +2358,6 @@ SINT32	McPacket_AddPowerDown(
 	UINT8	bAddMKDetEn	= 0;
 	UINT8	bPlugDetDB	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddPowerDown");
-#endif
 
 
 	McResCtrl_GetInitInfo(&sInitInfo, &sInit2Info);
@@ -2806,9 +2758,6 @@ SINT32	McPacket_AddPowerDown(
 	}
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddPowerDown", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -2827,9 +2776,6 @@ void	McPacket_AddPathSet(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddPathSet");
-#endif
 
 	if ((McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_IF, MCI_RST_A) &
 							MCB_RST_A) == 0) {
@@ -2843,9 +2789,6 @@ void	McPacket_AddPathSet(
 		AddMixSet();
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddPathSet", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -2873,9 +2816,6 @@ static void	AddDIPad(
 	struct MCDRV_AEC_INFO	sAecInfo;
 	struct MCDRV_DIOPATH_INFO	sDioPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddDIPad");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetPathInfo(&sPathInfo);
@@ -3006,9 +2946,6 @@ static void	AddDIPad(
 			| (UINT32)MCI_DO2_DRV,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDIPad", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3035,10 +2972,6 @@ static void	GetDIState
 {
 	struct MCDRV_DIOPATH_INFO	sDioPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetDIState");
-#endif
 
 	McResCtrl_GetDioPathInfo(&sDioPathInfo);
 
@@ -3114,10 +3047,6 @@ static void	GetDIState
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= *pbIsUsedDIT<<8 | *pbIsUsedDIR;
-	McDebugLog_FuncOut("GetDIState", &sdRet);
-#endif
 }
 
 /****************************************************************************
@@ -3138,17 +3067,9 @@ static UINT8	GetLPort(
 	UINT8	bIsUsedDIR, bIsUsedDIT;
 	UINT8	bLPort	= 0xFF;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetLPort");
-#endif
 
 	GetDIState(bPhysPort, &bIsUsedDIR, &bIsUsedDIT, &bLPort);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bLPort;
-	McDebugLog_FuncOut("GetLPort", &sdRet);
-#endif
 	return bLPort;
 }
 
@@ -3171,9 +3092,6 @@ static void	AddPAD(
 	UINT32	dHifiSrc;
 	struct MCDRV_INIT_INFO	sInitInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddPAD");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 
@@ -3229,9 +3147,6 @@ static void	AddPAD(
 				bReg);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddPAD", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3256,9 +3171,6 @@ static void	AddSource(
 	UINT32	dSrc;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddSource");
-#endif
 
 	AddInMixSource(eMCDRV_DST_AE0,
 			MCI_IN0_MIX0,
@@ -3371,9 +3283,6 @@ static void	AddSource(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddSource", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -3393,10 +3302,6 @@ static UINT8	GetPreInput(
 {
 	UINT8	bReg	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetPreInput");
-#endif
 
 	switch (dSrcOnOff) {
 	case	MCDRV_D2SRC_ADC0_L_ON:
@@ -3424,10 +3329,6 @@ static UINT8	GetPreInput(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bReg;
-	McDebugLog_FuncOut("GetPreInput", &sdRet);
-#endif
 	return bReg;
 }
 
@@ -3455,9 +3356,6 @@ static void	AddInMixSource(
 	UINT32	dSrc;
 	UINT8	bReg0, bReg1, bCurReg0, bCurReg1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddInMixSource");
-#endif
 
 	bCurReg0
 		= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_MA, bRegAddr0);
@@ -3489,9 +3387,6 @@ static void	AddInMixSource(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddInMixSource", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -3512,10 +3407,6 @@ static UINT8	GetInMixReg
 {
 	UINT8	bReg	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetInMixReg");
-#endif
 
 	if ((dSrcOnOff & MCDRV_D1SRC_MUSICIN_ON) != 0)
 		bReg	|= IN_MIX_DIFI_0;
@@ -3538,10 +3429,6 @@ static UINT8	GetInMixReg
 	if ((dSrcOnOff & MCDRV_D1SRC_ADIF2_ON) != 0)
 		bReg	|= IN_MIX_ADI_2;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bReg;
-	McDebugLog_FuncOut("GetInMixReg", &sdRet);
-#endif
 	return bReg;
 }
 
@@ -3569,9 +3456,6 @@ static void	AddOutMixSource(
 	UINT32	dSrc;
 	UINT16	wReg0, wReg1, wCurReg0, wCurReg1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddOutMixSource");
-#endif
 
 	wCurReg0
 		= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_MA, bRegAddr0)<<8
@@ -3619,9 +3503,6 @@ static void	AddOutMixSource(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddOutMixSource", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -3642,9 +3523,6 @@ static void	AddOut2MixSource(
 	UINT32	dSrc;
 	UINT16	wReg0, wReg1, wCurReg0, wCurReg1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddOut2MixSource");
-#endif
 
 	wCurReg0
 		= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_MA,
@@ -3746,9 +3624,6 @@ static void	AddOut2MixSource(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddOut2MixSource", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -3768,10 +3643,6 @@ static UINT16	GetOutMixReg(
 {
 	UINT16	wReg	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetOutMixReg");
-#endif
 
 	if ((dSrcOnOff & MCDRV_D1SRC_MUSICIN_ON) != 0)
 		wReg	|= OUT_MIX_DIFI_0;
@@ -3806,10 +3677,6 @@ static UINT16	GetOutMixReg(
 	if ((dSrcOnOff & MCDRV_D1SRC_ADIF2_ON) != 0)
 		wReg	|= OUT_MIX_ADI_2;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)wReg;
-	McDebugLog_FuncOut("GetOutMixReg", &sdRet);
-#endif
 	return wReg;
 }
 
@@ -3831,9 +3698,6 @@ static void	AddMixSet(
 	UINT8	bReg;
 	struct MCDRV_PATH_INFO	sPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddMixSet");
-#endif
 
 	McResCtrl_GetPathInfo(&sPathInfo);
 
@@ -3868,9 +3732,6 @@ static void	AddMixSet(
 			| (UINT32)MCI_ADM_MIX,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddMixSet", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -3890,10 +3751,6 @@ static UINT8	GetMicMixBit(
 {
 	UINT8	bMicMix	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetMicMixBit");
-#endif
 
 	if ((dSrcOnOff & MCDRV_ASRC_MIC1_ON) != 0)
 		bMicMix |= MCB_AD_M1MIX;
@@ -3907,10 +3764,6 @@ static UINT8	GetMicMixBit(
 	if ((dSrcOnOff & MCDRV_ASRC_MIC4_ON) != 0)
 		bMicMix |= MCB_AD_M4MIX;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bMicMix;
-	McDebugLog_FuncOut("GetMicMixBit", &sdRet);
-#endif
 	return bMicMix;
 }
 
@@ -3931,9 +3784,6 @@ static void	AddDacStop(
 {
 	UINT8	bReg;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddDacStop");
-#endif
 	/*	DAC Stop	*/
 	bReg	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_E,
 					MCI_LPF_THR);
@@ -3948,9 +3798,6 @@ static void	AddDacStop(
 			| (UINT32)MCI_LPF_THR,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDacStop", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3972,10 +3819,6 @@ static UINT8	GetLP2Start(
 	struct MCDRV_DIO_INFO	sDioInfo;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetLP2Start");
-#endif
 	McResCtrl_GetDioInfo(&sDioInfo);
 	McResCtrl_GetAecInfo(&sAecInfo);
 
@@ -4075,10 +3918,6 @@ static UINT8	GetLP2Start(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bStart;
-	McDebugLog_FuncOut("GetLP2Start", &sdRet);
-#endif
 	return bStart;
 }
 
@@ -4101,10 +3940,6 @@ static UINT8	GetLP2Fs(
 	struct MCDRV_DIO_INFO	sDioInfo;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetLP2Fs");
-#endif
 
 	McResCtrl_GetDioInfo(&sDioInfo);
 	McResCtrl_GetAecInfo(&sAecInfo);
@@ -4134,10 +3969,6 @@ static UINT8	GetLP2Fs(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bFs;
-	McDebugLog_FuncOut("GetLP2Fs", &sdRet);
-#endif
 	return bFs;
 }
 
@@ -4161,9 +3992,6 @@ void	McPacket_AddStop(
 	UINT8	bDirect_Enb;
 	UINT32	dSrc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddStop");
-#endif
 
 	/*	LP*_START	*/
 	bReg	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_MB, MCI_LP0_START);
@@ -4342,9 +4170,6 @@ void	McPacket_AddStop(
 			| (UINT32)MCI_PDM_LOAD_TIM,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddStop", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -4373,9 +4198,6 @@ void	McPacket_AddDSPStartStop(
 	UINT8	bLP2Fs;
 	UINT8	bThru;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDSPStartStop");
-#endif
 
 	McResCtrl_GetAecInfo(&sAecInfo);
 
@@ -4502,9 +4324,6 @@ void	McPacket_AddDSPStartStop(
 				0);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDSPStartStop", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -4524,17 +4343,11 @@ void	McPacket_AddFDSPStop(
 {
 	UINT8	bStart	= McResCtrl_GetDspStart();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddFDSPStop");
-#endif
 
 	if (((bStart&MCDRV_DSP_START_F) == 0)
 	&& ((bStarted&MCDRV_DSP_START_F) != 0)) {
 		McFdsp_Stop();
 	}
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddFDSPStop", NULL);
-#endif
 }
 
 
@@ -4561,9 +4374,6 @@ static void	AddDIStart(
 	struct MCDRV_DIOPATH_INFO	sDioPathInfo;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddDIStart");
-#endif
 
 	McResCtrl_GetDioInfo(&sDioInfo);
 	McResCtrl_GetAecInfo(&sAecInfo);
@@ -4824,9 +4634,6 @@ static void	AddDIStart(
 				bStart);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDIStart", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4848,9 +4655,6 @@ static void	AddDacStart(
 	UINT8	bOsf0_Enb	= 0,
 		bOsf1_Enb	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddDacStart");
-#endif
 
 	/*	DAC Start	*/
 	bReg	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_E,
@@ -4873,9 +4677,6 @@ static void	AddDacStart(
 			| (UINT32)MCI_LPF_THR,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDacStart", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4901,9 +4702,6 @@ void	McPacket_AddStart(
 	UINT32	dSrc;
 	UINT8	bDirect_Enb	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddStart");
-#endif
 
 	/*	DIR*_START, DIT*_START	*/
 	AddDIStart();
@@ -5023,9 +4821,6 @@ void	McPacket_AddStart(
 			| (UINT32)MCI_PDM_LOAD_TIM,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddStart", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -5046,10 +4841,6 @@ static UINT8	GetSPath(
 	UINT8	bSPath	= 0x7F;
 	UINT32	dSrc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetSPath");
-#endif
 	dSrc	= McResCtrl_GetSource(eMCDRV_DST_DAC0, eMCDRV_DST_CH0);
 	if ((dSrc & MCDRV_D1SRC_MUSICIN_ON) != 0)
 		bSPath	|= MCB_SPATH_ON;
@@ -5136,10 +4927,6 @@ static UINT8	GetSPath(
 	}
 
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bSPath;
-	McDebugLog_FuncOut("GetSPath", &sdRet);
-#endif
 	return bSPath;
 }
 
@@ -5167,9 +4954,6 @@ void	McPacket_AddVol(
 	UINT8			bRegL, bRegR;
 	UINT8			bVolL, bVolR;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddVol");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetVolReg(&sVolInfo);
@@ -5587,9 +5371,6 @@ void	McPacket_AddVol(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddVol", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -5621,9 +5402,6 @@ static void	AddDigVolPacket(
 {
 	UINT8	bRegVolL, bRegVolR;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AddDigVolPacket");
-#endif
 
 	bRegVolL	= McResCtrl_GetRegVal((UINT16)dRegType, bVolLAddr);
 	bRegVolL	&= (UINT8)~bVSEP;
@@ -5706,9 +5484,6 @@ static void	AddDigVolPacket(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDigVolPacket", 0);
-#endif
 }
 
 
@@ -5727,9 +5502,6 @@ void	McPacket_AddDac0Mute(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDac0Mute");
-#endif
 	McDevIf_AddPacket(MCDRV_PACKET_TYPE_WRITE
 			| MCDRV_PACKET_REGTYPE_ANA
 			| (UINT32)MCI_HPVOL_L,
@@ -5750,9 +5522,6 @@ void	McPacket_AddDac0Mute(
 			| MCDRV_PACKET_REGTYPE_ANA
 			| (UINT32)MCI_LO1VOL_R,
 			MCDRV_REG_MUTE);
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDac0Mute", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5770,9 +5539,6 @@ void	McPacket_AddDac1Mute(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDac1Mute");
-#endif
 	McDevIf_AddPacket(MCDRV_PACKET_TYPE_WRITE
 			| MCDRV_PACKET_REGTYPE_ANA
 			| (UINT32)MCI_SPVOL_L,
@@ -5789,9 +5555,6 @@ void	McPacket_AddDac1Mute(
 			| MCDRV_PACKET_REGTYPE_ANA
 			| (UINT32)MCI_LO2VOL_R,
 			MCDRV_REG_MUTE);
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDac1Mute", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5809,9 +5572,6 @@ void	McPacket_AddDOutMute(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDOutMute");
-#endif
 	McDevIf_AddPacket(MCDRV_PACKET_TYPE_WRITE
 			| MCDRV_PACKET_REGTYPE_MA
 			| (UINT32)MCI_DIFO0_VOL0,
@@ -5861,9 +5621,6 @@ void	McPacket_AddDOutMute(
 			| (UINT32)MCI_DAO1_VOL1,
 			MCDRV_REG_MUTE);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDOutMute", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5881,9 +5638,6 @@ void	McPacket_AddAdifMute(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddAdifMute");
-#endif
 	McDevIf_AddPacket(MCDRV_PACKET_TYPE_WRITE
 			| MCDRV_PACKET_REGTYPE_MA
 			| (UINT32)MCI_ADI0_VOL0,
@@ -5909,9 +5663,6 @@ void	McPacket_AddAdifMute(
 			| (UINT32)MCI_ADI2_VOL1,
 			MCDRV_REG_MUTE);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddAdifMute", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5929,9 +5680,6 @@ void	McPacket_AddDPathDAMute(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDPathDAMute");
-#endif
 	McDevIf_AddPacket(MCDRV_PACKET_TYPE_WRITE
 			| MCDRV_PACKET_REGTYPE_E
 			| (UINT32)MCI_DPATH_DA_VOL_L,
@@ -5941,9 +5689,6 @@ void	McPacket_AddDPathDAMute(
 			| (UINT32)MCI_DPATH_DA_VOL_R,
 			MCDRV_REG_MUTE);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDPathDAMute", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5967,9 +5712,6 @@ void	McPacket_AddDigitalIO(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDigitalIO");
-#endif
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetAecInfo(&sAecInfo);
 
@@ -6097,9 +5839,6 @@ void	McPacket_AddDigitalIO(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDigitalIO", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -6121,10 +5860,6 @@ static void	AddDIOCommon(
 	UINT8	bRegOffset;
 	struct MCDRV_DIO_INFO	sDioInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("AddDIOCommon");
-#endif
 
 	McResCtrl_GetDioInfo(&sDioInfo);
 
@@ -6135,10 +5870,6 @@ static void	AddDIOCommon(
 	} else if (ePort == eMCDRV_DIO_2) {
 		bRegOffset	= MCI_LP2_MODE - MCI_LP0_MODE;
 	} else {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		sdRet	= MCDRV_ERROR;
-		McDebugLog_FuncOut("AddDIOCommon", &sdRet);
-#endif
 		return;
 	}
 
@@ -6184,9 +5915,6 @@ static void	AddDIOCommon(
 				bReg);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDIOCommon", 0);
-#endif
 }
 
 /****************************************************************************
@@ -6208,10 +5936,6 @@ static void	AddDIODIR(
 	UINT8	bRegOffset;
 	struct MCDRV_DIO_INFO	sDioInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("AddDIODIR");
-#endif
 
 	McResCtrl_GetDioInfo(&sDioInfo);
 
@@ -6222,10 +5946,6 @@ static void	AddDIODIR(
 	} else if (ePort == eMCDRV_DIO_2) {
 		bRegOffset	= MCI_LP2_MODE - MCI_LP0_MODE;
 	} else {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		sdRet	= MCDRV_ERROR;
-		McDebugLog_FuncOut("AddDIODIR", &sdRet);
-#endif
 		return;
 	}
 
@@ -6250,9 +5970,6 @@ static void	AddDIODIR(
 			| (UINT32)(MCI_LPR0_PCM+bRegOffset),
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDIODIR", 0);
-#endif
 }
 
 /****************************************************************************
@@ -6274,10 +5991,6 @@ static void	AddDIODIT(
 	UINT8	bRegOffset;
 	struct MCDRV_DIO_INFO	sDioInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("AddDIODIT");
-#endif
 
 	McResCtrl_GetDioInfo(&sDioInfo);
 
@@ -6288,10 +6001,6 @@ static void	AddDIODIT(
 	} else if (ePort == eMCDRV_DIO_2) {
 		bRegOffset	= MCI_LP2_MODE - MCI_LP0_MODE;
 	} else {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		sdRet	= MCDRV_ERROR;
-		McDebugLog_FuncOut("AddDIODIT", &sdRet);
-#endif
 		return;
 	}
 
@@ -6316,9 +6025,6 @@ static void	AddDIODIT(
 			| (UINT32)(MCI_LPT0_PCM+bRegOffset),
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AddDIODIT", 0);
-#endif
 }
 
 /****************************************************************************
@@ -6339,9 +6045,6 @@ void	McPacket_AddDigitalIOPath(
 	UINT8	bReg;
 	struct MCDRV_DIOPATH_INFO	sDioPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddDigitalIOPath");
-#endif
 	bReg	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_IF, MCI_RST);
 	if ((bReg & (MCB_PSW_M|MCB_RST_M)) != 0)
 		return;
@@ -6382,9 +6085,6 @@ void	McPacket_AddDigitalIOPath(
 			| (UINT32)MCI_LPT0_SLOT,
 			bReg);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddDigitalIOPath", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -6408,9 +6108,6 @@ void	McPacket_AddClockSw(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	UINT8	bClkMsk;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddClockSw");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetClockSwInfo(&sClockSwInfo);
@@ -6598,9 +6295,6 @@ void	McPacket_AddClockSw(
 				bReg);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddClockSwitch", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -6621,9 +6315,6 @@ void	McPacket_AddSwap(
 	struct MCDRV_SWAP_INFO	sSwapInfo;
 	UINT8	bReg;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddSwap");
-#endif
 	bReg	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_IF, MCI_RST);
 	if ((bReg & (MCB_PSW_M|MCB_RST_M)) != 0)
 		return;
@@ -6754,9 +6445,6 @@ void	McPacket_AddSwap(
 				bReg);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddSwap", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -6781,9 +6469,6 @@ void	McPacket_AddHSDet(
 	UINT8	bClkMsk;
 	UINT8	abData[2];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddHSDet");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetHSDet(&sHSDetInfo, &sHSDet2Info);
@@ -7088,9 +6773,6 @@ void	McPacket_AddHSDet(
 			| (UINT32)MCI_KEYOFFDLYTIM_K2,
 			sHSDetInfo.bKey2OffDlyTim);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddHSDet", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -7111,9 +6793,6 @@ void	McPacket_AddMKDetEnable(
 	UINT8	bReg;
 	struct MCDRV_HSDET_INFO	sHSDetInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddMKDetEnable");
-#endif
 	if (bCheckPlugDetDB != 0) {
 		bReg	= McResCtrl_GetPlugDetDB();
 		if ((bReg&MCB_RPLUGDET_DB) == 0) {
@@ -7167,9 +6846,6 @@ void	McPacket_AddMKDetEnable(
 			bReg);
 
 exit:;
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddMKDetEnable", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -7190,9 +6866,6 @@ void	McPacket_AddAEC(
 	UINT8	bReg;
 	struct MCDRV_AEC_INFO	sInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddAEC");
-#endif
 
 	McResCtrl_GetAecInfo(&sInfo);
 
@@ -7315,9 +6988,6 @@ void	McPacket_AddAEC(
 				sInfo.sOutput.bDng_Target_LineOut[1]);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddAEC", NULL);
-#endif
 }
 
 
@@ -7340,9 +7010,6 @@ void	McPacket_AddGPMode(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_GP_MODE	sGPMode;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddGPMode");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetGPMode(&sGPMode);
@@ -7405,9 +7072,6 @@ void	McPacket_AddGPMode(
 				bReg);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddGPMode", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -7428,9 +7092,6 @@ void	McPacket_AddGPMask(
 {
 	UINT8	bReg;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddGPMask");
-#endif
 
 	switch (dPadNo) {
 	case	0:
@@ -7470,9 +7131,6 @@ void	McPacket_AddGPMask(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddGPMask", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -7495,9 +7153,6 @@ void	McPacket_AddGPSet(
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_GP_MODE	sGPMode;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McPacket_AddGPSet");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetGPMode(&sGPMode);
@@ -7549,9 +7204,6 @@ void	McPacket_AddGPSet(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McPacket_AddGPSet", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -7627,10 +7279,6 @@ static UINT32	GetMaxWait
 	UINT32	dWaitTimeMax	= 0;
 	struct MCDRV_INIT_INFO	sInitInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetMaxWait");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 
@@ -7654,10 +7302,6 @@ static UINT32	GetMaxWait
 		if (sInitInfo.sWaitTime.dWaitTime[3] > dWaitTimeMax)
 			dWaitTimeMax	= sInitInfo.sWaitTime.dWaitTime[3];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)dWaitTimeMax;
-	McDebugLog_FuncOut("GetMaxWait", &sdRet);
-#endif
 
 	return dWaitTimeMax;
 }

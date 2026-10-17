@@ -39,9 +39,6 @@
 #include "mccdspdrv.h"
 #include "mcedspdrv.h"
 #include "mcfdspdrv.h"
-#if MCDRV_DEBUG_LEVEL
-#include "mcdebuglog.h"
-#endif
 
 
 
@@ -1495,10 +1492,6 @@ static	UINT8	IsPathAllOff
 	UINT8	bRet	= 1;
 	struct MCDRV_PATH_INFO	sCurPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsPathAllOff");
-#endif
 	McResCtrl_GetPathInfoVirtual(&sCurPathInfo);
 	if ((sCurPathInfo.asMusicOut[0].dSrcOnOff
 		!= gsPathInfoAllOff.asMusicOut[0].dSrcOnOff)
@@ -1597,10 +1590,6 @@ static	UINT8	IsPathAllOff
 	)
 		bRet	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsPathAllOff", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -3125,9 +3114,6 @@ static SINT32	BeginImpSense
 	UINT8	bSlaveAddrA;
 	UINT8	abData[2];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("BeginImpSense");
-#endif
 
 	bSlaveAddrA	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_ANA);
 	McResCtrl_GetCurPowerInfo(&sPowerInfo);
@@ -3346,9 +3332,6 @@ static SINT32	BeginImpSense
 	sdRet	= McDevIf_ExecutePacket();
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("BeginImpSense", &sdRet);
-#endif
 	return sdRet;
 }
 #endif
@@ -3371,10 +3354,6 @@ static	UINT8	IsLDOAOn
 {
 	UINT8	bRet	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsLDOAOn");
-#endif
 	if ((McResCtrl_HasSrc(eMCDRV_DST_ADC0, eMCDRV_DST_CH0) != 0)
 	|| (McResCtrl_HasSrc(eMCDRV_DST_ADC0, eMCDRV_DST_CH1) != 0)
 	|| (McResCtrl_HasSrc(eMCDRV_DST_ADC1, eMCDRV_DST_CH0) != 0)
@@ -3388,10 +3367,6 @@ static	UINT8	IsLDOAOn
 	|| (McResCtrl_IsASrcUsed(MCDRV_ASRC_DAC1_R_ON) != 0))
 		bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsLDOAOn", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -3416,10 +3391,6 @@ static	UINT8	IsValidInitParam
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidInitParam");
-#endif
 
 
 	if (McDevProf_GetDevId() == eMCDRV_DEV_ID_89_92H) {
@@ -3780,10 +3751,6 @@ static	UINT8	IsValidInitParam
 		}
 	}
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidInitParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -3806,10 +3773,6 @@ static	UINT8	IsValidReadRegParam
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidReadRegParam");
-#endif
 
 
 	if ((McResCtrl_GetRegAccess(psRegInfo) & eMCDRV_CAN_READ) ==
@@ -3817,10 +3780,6 @@ static	UINT8	IsValidReadRegParam
 		bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidReadRegParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -3843,10 +3802,6 @@ static	UINT8	IsValidWriteRegParam
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidWriteRegParam");
-#endif
 
 
 	if ((McResCtrl_GetRegAccess(psRegInfo) & eMCDRV_CAN_WRITE) ==
@@ -3854,10 +3809,6 @@ static	UINT8	IsValidWriteRegParam
 		bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidWriteRegParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -3880,10 +3831,6 @@ static	UINT8	IsValidClockSwParam
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidClockSwParam");
-#endif
 
 
 	if ((MCDRV_CLKSW_CLKA != psClockSwInfo->bClkSrc)
@@ -3891,10 +3838,6 @@ static	UINT8	IsValidClockSwParam
 		bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidClockSwParam", &sdRet);
-#endif
 
 	return bRet;
 }
@@ -3916,9 +3859,6 @@ static void	MaskIrregularPath
 )
 {
 	UINT8	bCh;
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("MaskIrregularPath");
-#endif
 
 	for (bCh = 0; bCh < MUSICOUT_PATH_CHANNELS; bCh++)
 		psPathInfo->asMusicOut[bCh].dSrcOnOff	&=
@@ -4080,9 +4020,6 @@ static void	MaskIrregularPath
 		(MCDRV_ASRC_MIC4_ON
 		|MCDRV_ASRC_MIC4_OFF);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("MaskIrregularPath", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -4116,10 +4053,6 @@ static UINT8	IsValidDioParam
 		bLPR3_start	= 0,
 		bLPT3_start	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= MCDRV_SUCCESS;
-	McDebugLog_FuncIn("IsValidDioParam");
-#endif
 
 
 	McResCtrl_GetDioInfo(&sDioInfo);
@@ -4288,10 +4221,6 @@ static UINT8	IsValidDioParam
 		bRet	= CheckDIODIT(psDioInfo, 2);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidDioParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -4322,10 +4251,6 @@ static UINT8	IsValidDioPathParam
 		bLP2_start	= 0,
 		bLP3_start	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= MCDRV_SUCCESS;
-	McDebugLog_FuncIn("IsValidDioPathParam");
-#endif
 
 
 	bRegVal	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_MB, MCI_LP0_START);
@@ -4555,10 +4480,6 @@ static UINT8	IsValidDioPathParam
 	}
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidDioPathParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -4583,10 +4504,6 @@ static UINT8	IsValidSwapParam
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidSwapParam");
-#endif
 
 
 	if ((dUpdateInfo & MCDRV_SWAP_ADIF0_UPDATE_FLAG) != 0UL) {
@@ -4734,10 +4651,6 @@ static UINT8	IsValidSwapParam
 			bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidSwapParam", &sdRet);
-#endif
 
 	return bRet;
 }
@@ -4765,10 +4678,6 @@ static UINT8	IsValidDspParam
 		bFdspUsed	= 0;
 	struct MCDRV_AEC_INFO	sCurAECInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidDspParam");
-#endif
 
 
 	McResCtrl_GetAecInfo(&sCurAECInfo);
@@ -4951,10 +4860,6 @@ static UINT8	IsValidDspParam
 	}
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidDspParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -4982,10 +4887,6 @@ static UINT8	IsValidHSDetParam
 	UINT8	bRet	= 1;
 	struct MCDRV_HSDET_INFO	sHSDetInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidHSDetParam");
-#endif
 
 
 	McResCtrl_GetHSDet(&sHSDetInfo, NULL);
@@ -5326,10 +5227,6 @@ static UINT8	IsValidHSDetParam
 	}
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidHSDetParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5354,10 +5251,6 @@ static UINT8	IsValidGpParam
 	UINT8	bPad;
 	struct MCDRV_INIT_INFO	sInitInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsValidGpParam");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 
@@ -5381,10 +5274,6 @@ static UINT8	IsValidGpParam
 			bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidGpParam", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5411,10 +5300,6 @@ static UINT8	IsValidMaskGp
 	struct MCDRV_INIT_INFO	sInitInfo;
 	struct MCDRV_GP_MODE	sGPMode;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= MCDRV_SUCCESS;
-	McDebugLog_FuncIn("IsValidMaskGp");
-#endif
 
 	McResCtrl_GetInitInfo(&sInitInfo, NULL);
 	McResCtrl_GetGPMode(&sGPMode);
@@ -5434,10 +5319,6 @@ static UINT8	IsValidMaskGp
 			bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("IsValidMaskGp", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5462,10 +5343,6 @@ static UINT8	CheckDIOCommon
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= MCDRV_SUCCESS;
-	McDebugLog_FuncIn("CheckDIOCommon");
-#endif
 
 
 	if (bPort == 3) {
@@ -5631,10 +5508,6 @@ static UINT8	CheckDIOCommon
 	}
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("CheckDIOCommon", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5657,10 +5530,6 @@ static UINT8	CheckDaFormat
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("CheckDaFormat");
-#endif
 
 
 	if ((psDaFormat->bBitSel != MCDRV_BITSEL_16)
@@ -5674,10 +5543,6 @@ static UINT8	CheckDaFormat
 		bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("CheckDaFormat", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5700,10 +5565,6 @@ static UINT8	CheckPcmFormat
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("CheckPcmFormat");
-#endif
 
 
 	if ((psPcmFormat->bMono != MCDRV_PCM_STEREO)
@@ -5734,10 +5595,6 @@ static UINT8	CheckPcmFormat
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("CheckPcmFormat", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5762,10 +5619,6 @@ static UINT8	CheckDIODIR
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("CheckDIODIR");
-#endif
 
 
 	bRet	= CheckPcmFormat(
@@ -5778,10 +5631,6 @@ static UINT8	CheckDIODIR
 			bRet	= 0;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("CheckDIODIR", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5806,10 +5655,6 @@ static UINT8	CheckDIODIT
 {
 	UINT8	bRet	= 1;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("CheckDIODIT");
-#endif
 
 
 	if ((psDioInfo->asPortInfo[bPort].sDit.bStMode != MCDRV_STMODE_ZERO)
@@ -5831,10 +5676,6 @@ static UINT8	CheckDIODIT
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("CheckDIODIT", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -5861,16 +5702,10 @@ static SINT32	SetVol
 {
 	SINT32	sdRet	= MCDRV_SUCCESS;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetVol");
-#endif
 
 	McPacket_AddVol(dUpdate, eMode, pdSVolDoneParam);
 	sdRet	= McDevIf_ExecutePacket();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetVol", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -5899,9 +5734,6 @@ static void	GetMuteParam
 {
 	UINT8	bVol;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("GetMuteParam");
-#endif
 
 	*pbDIRMuteParam	= 0;
 	*pbADCMuteParam	= 0;
@@ -6055,9 +5887,6 @@ static void	GetMuteParam
 			*pbADCMuteParam	|= MCB_ADI2_VFLAG1;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("GetMuteParam", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -6082,9 +5911,6 @@ static SINT32	SavePower
 	struct MCDRV_POWER_INFO	sPowerInfo;
 	struct MCDRV_POWER_UPDATE	sPowerUpdate;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SavePower");
-#endif
 
 	/*	unused path power down	*/
 	McResCtrl_GetPowerInfo(&sPowerInfo);
@@ -6098,9 +5924,6 @@ static SINT32	SavePower
 	if (sdRet == MCDRV_SUCCESS)
 		sdRet	= McDevIf_ExecutePacket();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SavePower", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -6131,9 +5954,6 @@ SINT32	McDrv_Ctrl(
 	SINT32	sdRet	= MCDRV_ERROR;
 	UINT8	bAP;
 
-#if MCDRV_DEBUG_LEVEL
-	McDebugLog_CmdIn(dCmd, pvPrm1, pvPrm2, dPrm);
-#endif
 
 	(void)pvPrm2;
 
@@ -6306,9 +6126,6 @@ SINT32	McDrv_Ctrl(
 		McSrv_Unlock();
 	}
 
-#if MCDRV_DEBUG_LEVEL
-	McDebugLog_CmdOut(dCmd, &sdRet, pvPrm1, pvPrm2, dPrm);
-#endif
 
 	return sdRet;
 }

@@ -34,9 +34,6 @@
 #include "mcdefs.h"
 #include "mcdevprof.h"
 #include "mcmachdep.h"
-#if MCDRV_DEBUG_LEVEL
-#include "mcdebuglog.h"
-#endif
 
 
 
@@ -242,9 +239,6 @@ SINT32	McResCtrl_SetHwId(
 {
 	SINT32	sdRet	= MCDRV_SUCCESS;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetHwId");
-#endif
 
 	if (((bHwId_dig&MCDRV_DEVID_MASK) == MCDRV_DEVID_DIG)
 	&& ((bHwId_ana&MCDRV_DEVID_MASK) == MCDRV_DEVID_ANA)) {
@@ -267,9 +261,6 @@ SINT32	McResCtrl_SetHwId(
 		sdRet	= MCDRV_ERROR_INIT;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetHwId", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -288,9 +279,6 @@ void	McResCtrl_Init(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_Init");
-#endif
 
 	InitPathInfo();
 	InitVolInfo();
@@ -316,9 +304,6 @@ void	McResCtrl_Init(
 
 	gsGlobalInfo.eAPMode	= eMCDRV_APM_ON;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_Init", 0);
-#endif
 }
 
 /****************************************************************************
@@ -338,9 +323,6 @@ void	McResCtrl_InitABlockReg(
 {
 	UINT16	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_InitABlockReg");
-#endif
 
 	for (i = 0; i < MCDRV_REG_NUM_A; i++)
 		gsGlobalInfo.abRegValA[i]	= 0;
@@ -366,9 +348,6 @@ void	McResCtrl_InitABlockReg(
 	gsGlobalInfo.abRegValA[MCI_PLL_MODE_A]	= MCI_PLL_MODE_A_DEF;
 	gsGlobalInfo.abRegValA[MCI_PLL_MODE_B]	= MCI_PLL_MODE_B_DEF;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_InitABlockReg", 0);
-#endif
 }
 
 /****************************************************************************
@@ -388,9 +367,6 @@ void	McResCtrl_InitMBlockReg(
 {
 	UINT16	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_InitMBlockReg");
-#endif
 
 	for (i = 0; i < MCDRV_REG_NUM_MA; i++)
 		gsGlobalInfo.abRegValMA[i]	= 0;
@@ -418,9 +394,6 @@ void	McResCtrl_InitMBlockReg(
 
 	McResCtrl_InitEReg();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_InitMBlockReg", 0);
-#endif
 }
 
 /****************************************************************************
@@ -440,9 +413,6 @@ void	McResCtrl_InitEReg(
 {
 	UINT16	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_InitEReg");
-#endif
 
 	for (i = 0; i < MCDRV_REG_NUM_E; i++)
 		gsGlobalInfo.abRegValE[i]	= 0;
@@ -518,9 +488,6 @@ void	McResCtrl_InitEReg(
 		gsGlobalInfo.abRegValE[100]	= 0x01;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_InitEReg", 0);
-#endif
 }
 
 /****************************************************************************
@@ -540,9 +507,6 @@ void	McResCtrl_SetRegDefault(
 {
 	UINT16	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetRegDefault");
-#endif
 
 	for (i = 0; i < MCDRV_REG_NUM_IF; i++)
 		gsGlobalInfo.abRegValIF[i]	= 0;
@@ -647,9 +611,6 @@ void	McResCtrl_SetRegDefault(
 		gsGlobalInfo.abRegValCD[39]	= 0x21;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetRegDefault", 0);
-#endif
 }
 
 /****************************************************************************
@@ -667,15 +628,9 @@ static void	InitClockSw(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitClockSw");
-#endif
 
 	gsGlobalInfo.sClockSwInfo.bClkSrc	= MCDRV_CLKSW_CLKA;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitClockSw", 0);
-#endif
 }
 
 /****************************************************************************
@@ -695,9 +650,6 @@ static void	InitPathInfo(
 {
 	UINT8	bCh;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitPathInfo");
-#endif
 
 	for (bCh = 0; bCh < MUSICOUT_PATH_CHANNELS; bCh++)
 		ClearD1SourceOnOff(
@@ -795,9 +747,6 @@ static void	InitPathInfo(
 
 	gsGlobalInfo.sPathInfoVirtual	= gsGlobalInfo.sPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitPathInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -817,9 +766,6 @@ static void	InitVolInfo(
 {
 	UINT8	bCh;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitVolInfo");
-#endif
 
 	for (bCh = 0; bCh < MUSICIN_VOL_CHANNELS; bCh++)
 		gsGlobalInfo.sVolInfo.aswD_MusicIn[bCh]	=
@@ -924,9 +870,6 @@ static void	InitVolInfo(
 		gsGlobalInfo.sVolInfo.aswA_HpDet[bCh]	=
 			MCDRV_LOGICAL_VOL_MUTE;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitVolInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -946,9 +889,6 @@ static void	InitDioInfo(
 {
 	UINT8	bPort, bPortNum;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitDioInfo");
-#endif
 	bPortNum	= GET_ARRAY_SIZE(gsGlobalInfo.sDioInfo.asPortInfo);
 
 	for (bPort = 0; bPort < bPortNum; bPort++) {
@@ -1005,9 +945,6 @@ static void	InitDioInfo(
 			= MCDRV_PCM_BITSEL_8;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitDioInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1025,9 +962,6 @@ static void	InitDioPathInfo(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitDioPathInfo");
-#endif
 
 	gsGlobalInfo.sDioPathInfo.abPhysPort[0]	= MCDRV_PHYSPORT_DIO0;
 	gsGlobalInfo.sDioPathInfo.abPhysPort[1]	= MCDRV_PHYSPORT_DIO1;
@@ -1041,9 +975,6 @@ static void	InitDioPathInfo(
 	gsGlobalInfo.sDioPathInfo.abMusicTSlot[1]	= 1;
 	gsGlobalInfo.sDioPathInfo.abMusicTSlot[2]	= 2;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitDioPathInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1061,9 +992,6 @@ static void	InitSwap(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitSwap");
-#endif
 
 	gsGlobalInfo.sSwapInfo.bAdif0		= MCDRV_SWAP_NORMAL;
 	gsGlobalInfo.sSwapInfo.bAdif1		= MCDRV_SWAP_NORMAL;
@@ -1084,9 +1012,6 @@ static void	InitSwap(
 	gsGlobalInfo.sSwapInfo.bVoiceOut	= MCDRV_SWSWAP_NORMAL;
 	gsGlobalInfo.sSwapInfo.bHifiOut		= MCDRV_SWSWAP_NORMAL;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitSwap", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1104,9 +1029,6 @@ static void	InitHSDet(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitHSDet");
-#endif
 
 	gsGlobalInfo.sHSDetInfo.bEnPlugDet	= MCDRV_PLUGDET_DISABLE;
 	gsGlobalInfo.sHSDetInfo.bEnPlugDetDb	= MCDRV_PLUGDETDB_DISABLE;
@@ -1156,9 +1078,6 @@ static void	InitHSDet(
 	gsGlobalInfo.sHSDet2Info.bKey1OffIrqType	= MCDRV_IRQTYPE_REF;
 	gsGlobalInfo.sHSDet2Info.bKey2OffIrqType	= MCDRV_IRQTYPE_REF;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitHSDet", 0);
-#endif
 }
 
 
@@ -1179,9 +1098,6 @@ static void	InitGpMode(
 {
 	UINT8	bGpioIdx;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitGpMode");
-#endif
 
 	for (bGpioIdx = 0; bGpioIdx < 3; bGpioIdx++) {
 		gsGlobalInfo.sGpMode.abGpDdr[bGpioIdx]
@@ -1192,9 +1108,6 @@ static void	InitGpMode(
 			= MCDRV_GPINV_NORMAL;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitGpMode", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1214,16 +1127,10 @@ static void	InitGpMask(
 {
 	UINT8	bGpioIdx;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitGpMask");
-#endif
 
 	for (bGpioIdx = 0; bGpioIdx < 3; bGpioIdx++)
 		gsGlobalInfo.abGpMask[bGpioIdx]	= MCDRV_GPMASK_ON;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitGpMask", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1243,9 +1150,6 @@ static void	InitAecInfo(
 {
 	UINT8	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("InitAecInfo");
-#endif
 
 	gsGlobalInfo.sAecInfo.sAecConfig.bFDspLocate			= 0;
 
@@ -1481,9 +1385,6 @@ static void	InitAecInfo(
 	gsGlobalInfo.sAecInfo.sControl.bParam[2]			= 0;
 	gsGlobalInfo.sAecInfo.sControl.bParam[3]			= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("InitAecInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1501,15 +1402,9 @@ void	McResCtrl_UpdateState(
 	enum MCDRV_STATE	eState
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_UpdateState");
-#endif
 
 	geState = eState;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_UpdateState", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1527,14 +1422,7 @@ enum MCDRV_STATE	McResCtrl_GetState(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= geState;
-	McDebugLog_FuncIn("McResCtrl_GetState");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetState", &sdRet);
-#endif
 
 	return geState;
 }
@@ -1558,10 +1446,6 @@ UINT8	McResCtrl_GetRegVal(
 {
 	UINT8	bVal	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetRegVal");
-#endif
 
 	switch (wRegType) {
 	case	MCDRV_PACKET_REGTYPE_IF:
@@ -1590,10 +1474,6 @@ UINT8	McResCtrl_GetRegVal(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bVal;
-	McDebugLog_FuncOut("McResCtrl_GetRegVal", &sdRet);
-#endif
 	return bVal;
 }
 
@@ -1616,9 +1496,6 @@ void	McResCtrl_SetRegVal(
 	UINT8	bRegVal
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetRegVal");
-#endif
 
 	switch (wRegType) {
 	case	MCDRV_PACKET_REGTYPE_IF:
@@ -1646,9 +1523,6 @@ void	McResCtrl_SetRegVal(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetRegVal", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1669,9 +1543,6 @@ void	McResCtrl_SetInitInfo(
 )
 {
 	int	i;
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetInitInfo");
-#endif
 
 	gsGlobalInfo.sInitInfo	= *psInitInfo;
 	if (psInit2Info != NULL) {
@@ -1687,9 +1558,6 @@ void	McResCtrl_SetInitInfo(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetInitInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1709,9 +1577,6 @@ void	McResCtrl_GetInitInfo(
 	struct MCDRV_INIT2_INFO	*psInit2Info
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetInitInfo");
-#endif
 
 	*psInitInfo	= gsGlobalInfo.sInitInfo;
 	if (psInit2Info != NULL) {
@@ -1719,9 +1584,6 @@ void	McResCtrl_GetInitInfo(
 		*psInit2Info	= gsGlobalInfo.sInit2Info;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetInitInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1739,15 +1601,9 @@ void	McResCtrl_SetClockSwInfo(
 	const struct MCDRV_CLOCKSW_INFO	*psClockSwInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetClockSw");
-#endif
 
 	gsGlobalInfo.sClockSwInfo	= *psClockSwInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetClockSw", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1765,15 +1621,9 @@ void	McResCtrl_GetClockSwInfo(
 	struct MCDRV_CLOCKSW_INFO	*psClockSwInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetClockSw");
-#endif
 
 	*psClockSwInfo	= gsGlobalInfo.sClockSwInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetClockSw", 0);
-#endif
 }
 
 /****************************************************************************
@@ -1797,9 +1647,6 @@ SINT32	McResCtrl_SetPathInfo(
 	int	i;
 	UINT8	bDone;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetPathInfo");
-#endif
 
 
 	gsGlobalInfo.sPathInfo	= gsGlobalInfo.sPathInfoVirtual;
@@ -1915,9 +1762,6 @@ SINT32	McResCtrl_SetPathInfo(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetPathInfo", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -1941,9 +1785,6 @@ static SINT32	CheckLpFp(
 	UINT32	bFP[4];
 	int	i, j;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("CheckLpFp");
-#endif
 
 	bFP[0]	=
 	bFP[1]	=
@@ -1997,9 +1838,6 @@ static SINT32	CheckLpFp(
 		}
 	}
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("CheckLpFp", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -2026,9 +1864,6 @@ static SINT32	IsValidPath(
 	UINT32	dAdifSrc[2];
 	UINT8	bUsed;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("IsValidPath");
-#endif
 
 	dDacSrc[0]	= gsGlobalInfo.sPathInfo.asDac0[0].dSrcOnOff;
 	dDacSrc[1]	= gsGlobalInfo.sPathInfo.asDac0[1].dSrcOnOff;
@@ -2283,9 +2118,6 @@ static SINT32	IsValidPath(
 		}
 	}
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("IsValidPath", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -2309,10 +2141,6 @@ static UINT8	ValidateADC(
 	UINT8	bHasSrc	= 0;
 	UINT32	dHifiSrc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("ValidateADC");
-#endif
 
 	if ((McResCtrl_HasSrc(eMCDRV_DST_ADIF0, eMCDRV_DST_CH0) != 0)
 	|| (McResCtrl_HasSrc(eMCDRV_DST_ADIF0, eMCDRV_DST_CH1) != 0))
@@ -2612,10 +2440,6 @@ static UINT8	ValidateADC(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("ValidateADC", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -2639,10 +2463,6 @@ static UINT8	ValidateDAC(
 	UINT8	bHasSrc	= 0;
 	UINT8	bUsed	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("ValidateDAC");
-#endif
 
 	if ((McResCtrl_HasSrc(eMCDRV_DST_DAC1, eMCDRV_DST_CH0) != 0)
 	|| (McResCtrl_HasSrc(eMCDRV_DST_DAC1, eMCDRV_DST_CH1) != 0))
@@ -2697,10 +2517,6 @@ static UINT8	ValidateDAC(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("ValidateDAC", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -2743,9 +2559,6 @@ static void	SetD1SourceOnOff(
 		{MCDRV_D1SRC_HIFIIN_ON,		MCDRV_D1SRC_HIFIIN_OFF},
 	};
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetD1SourceOnOff");
-#endif
 
 	for (bCh = 0; bCh < bChannels; bCh++) {
 		for (i = 0; i < GET_ARRAY_SIZE(sBlockInfo); i++) {
@@ -2759,9 +2572,6 @@ static void	SetD1SourceOnOff(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetD1SourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -2803,9 +2613,6 @@ static void	SetD2SourceOnOff(
 		{MCDRV_D2SRC_DAC1REF_ON,	MCDRV_D2SRC_DAC1REF_OFF}
 	};
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetD2SourceOnOff");
-#endif
 
 	for (bCh = 0; bCh < bChannels; bCh++) {
 		for (i = 0; i < GET_ARRAY_SIZE(sBlockInfo); i++) {
@@ -2830,9 +2637,6 @@ static void	SetD2SourceOnOff(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetD2SourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -2872,9 +2676,6 @@ static void	SetASourceOnOff(
 		{MCDRV_ASRC_LINEIN1_M_ON,	MCDRV_ASRC_LINEIN1_M_OFF},
 	};
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetASourceOnOff");
-#endif
 
 	for (bCh = 0; bCh < bChannels; bCh++) {
 		for (i = 0; i < GET_ARRAY_SIZE(sBlockInfo); i++) {
@@ -2886,9 +2687,6 @@ static void	SetASourceOnOff(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetASourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -2918,9 +2716,6 @@ static void	SetBiasSourceOnOff(
 		{0, MCDRV_ASRC_MIC4_ON,	MCDRV_ASRC_MIC4_OFF}
 	};
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetBiasSourceOnOff");
-#endif
 
 	for (bCh = 0; bCh < BIAS_PATH_CHANNELS; bCh++) {
 		for (bBlock = 0; bBlock < GET_ARRAY_SIZE(sBlockInfo); bBlock++
@@ -2933,9 +2728,6 @@ static void	SetBiasSourceOnOff(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetBiasSourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -2953,9 +2745,6 @@ static void	ClearD1SourceOnOff(
 	UINT32	*pdSrcOnOff
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("ClearD1SourceOnOff");
-#endif
 
 	if (pdSrcOnOff == NULL) {
 			;
@@ -2964,9 +2753,6 @@ static void	ClearD1SourceOnOff(
 		*pdSrcOnOff	= D1SRC_ALL_OFF;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("ClearD1SourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -2984,9 +2770,6 @@ static void	ClearD2SourceOnOff(
 	UINT32	*pdSrcOnOff
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("ClearD2SourceOnOff");
-#endif
 
 	if (pdSrcOnOff == NULL) {
 			;
@@ -2995,9 +2778,6 @@ static void	ClearD2SourceOnOff(
 		*pdSrcOnOff	= D2SRC_ALL_OFF;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("ClearD2SourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3015,9 +2795,6 @@ static void	ClearASourceOnOff(
 	UINT32	*pdSrcOnOff
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("ClearASourceOnOff");
-#endif
 
 	if (pdSrcOnOff == NULL) {
 			;
@@ -3036,9 +2813,6 @@ static void	ClearASourceOnOff(
 				| MCDRV_ASRC_LINEIN1_M_OFF;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("ClearASourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3063,9 +2837,6 @@ static void	SetSourceOnOff(
 	UINT32	dOff
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetSourceOnOff");
-#endif
 
 	if (pdDstOnOff == NULL) {
 			;
@@ -3079,9 +2850,6 @@ static void	SetSourceOnOff(
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetSourceOnOff", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3099,15 +2867,9 @@ void	McResCtrl_GetPathInfo(
 	struct MCDRV_PATH_INFO	*psPathInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetPathInfo");
-#endif
 
 	*psPathInfo	= gsGlobalInfo.sPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetPathInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3125,15 +2887,9 @@ void	McResCtrl_GetPathInfoVirtual(
 	struct MCDRV_PATH_INFO	*psPathInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetPathInfoVirtual");
-#endif
 
 	*psPathInfo	= gsGlobalInfo.sPathInfoVirtual;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetPathInfoVirtual", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3153,9 +2909,6 @@ void	McResCtrl_SetVolInfo(
 {
 	UINT8	bCh;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetVolInfo");
-#endif
 
 
 	for (bCh = 0; bCh < MUSICIN_VOL_CHANNELS; bCh++) {
@@ -3315,9 +3068,6 @@ void	McResCtrl_SetVolInfo(
 					& 0xFFFE);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetVolInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3335,15 +3085,9 @@ void	McResCtrl_GetVolInfo(
 	struct MCDRV_VOL_INFO	*psVolInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetVolInfo");
-#endif
 
 	*psVolInfo	= gsGlobalInfo.sVolInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetVolInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3363,9 +3107,6 @@ void	McResCtrl_SetDioInfo(
 	UINT32	dUpdateInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetDioInfo");
-#endif
 
 
 	if ((dUpdateInfo & MCDRV_MUSIC_COM_UPDATE_FLAG) != 0UL)
@@ -3395,9 +3136,6 @@ void	McResCtrl_SetDioInfo(
 	if ((dUpdateInfo & MCDRV_HIFI_DIT_UPDATE_FLAG) != 0UL)
 		SetDIODIT(psDioInfo, 3);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetDioInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3417,9 +3155,6 @@ static void	SetDIOCommon(
 	UINT8	bPort
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetDIOCommon");
-#endif
 
 	gsGlobalInfo.sDioInfo.asPortInfo[bPort].sDioCommon.bMasterSlave
 		= psDioInfo->asPortInfo[bPort].sDioCommon.bMasterSlave;
@@ -3443,9 +3178,6 @@ static void	SetDIOCommon(
 	gsGlobalInfo.sDioInfo.asPortInfo[bPort].sDioCommon.bPcmHighPeriod
 		= psDioInfo->asPortInfo[bPort].sDioCommon.bPcmHighPeriod;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetDIOCommon", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3465,9 +3197,6 @@ static void	SetDIODIR(
 	UINT8	bPort
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetDIODIR");
-#endif
 
 	gsGlobalInfo.sDioInfo.asPortInfo[bPort].sDir.sDaFormat.bBitSel
 		= psDioInfo->asPortInfo[bPort].sDir.sDaFormat.bBitSel;
@@ -3483,9 +3212,6 @@ static void	SetDIODIR(
 	gsGlobalInfo.sDioInfo.asPortInfo[bPort].sDir.sPcmFormat.bBitSel
 		= psDioInfo->asPortInfo[bPort].sDir.sPcmFormat.bBitSel;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetDIODIR", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3505,9 +3231,6 @@ static void	SetDIODIT(
 	UINT8	bPort
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("SetDIODIT");
-#endif
 
 	gsGlobalInfo.sDioInfo.asPortInfo[bPort].sDit.bStMode
 		= psDioInfo->asPortInfo[bPort].sDit.bStMode;
@@ -3528,9 +3251,6 @@ static void	SetDIODIT(
 	gsGlobalInfo.sDioInfo.asPortInfo[bPort].sDit.sPcmFormat.bBitSel
 		= psDioInfo->asPortInfo[bPort].sDit.sPcmFormat.bBitSel;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("SetDIODIT", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3548,15 +3268,9 @@ void	McResCtrl_GetDioInfo(
 	struct MCDRV_DIO_INFO	*psDioInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetDioInfo");
-#endif
 
 	*psDioInfo	= gsGlobalInfo.sDioInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetDioInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3576,9 +3290,6 @@ void	McResCtrl_SetDioPathInfo(
 	UINT32	dUpdateInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetDioPathInfo");
-#endif
 
 
 	if ((dUpdateInfo & MCDRV_MUSICNUM_UPDATE_FLAG) != 0UL)
@@ -3627,9 +3338,6 @@ void	McResCtrl_SetDioPathInfo(
 		gsGlobalInfo.sDioPathInfo.abMusicTSlot[2]
 				= psDioPathInfo->abMusicTSlot[2];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetDioPathInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3647,15 +3355,9 @@ void	McResCtrl_GetDioPathInfo(
 	struct MCDRV_DIOPATH_INFO	*psDioPathInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetDioPathInfo");
-#endif
 
 	*psDioPathInfo	= gsGlobalInfo.sDioPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetDioPathInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3675,9 +3377,6 @@ void	McResCtrl_SetSwap(
 	UINT32	dUpdateInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetSwap");
-#endif
 
 
 	if ((dUpdateInfo & MCDRV_SWAP_ADIF0_UPDATE_FLAG) != 0UL)
@@ -3734,9 +3433,6 @@ void	McResCtrl_SetSwap(
 	if ((dUpdateInfo & MCDRV_SWAP_HIFIOUT_UPDATE_FLAG) != 0UL)
 		gsGlobalInfo.sSwapInfo.bHifiOut	= psSwapInfo->bHifiOut;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetSwap", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3754,15 +3450,9 @@ void	McResCtrl_GetSwap(
 	struct MCDRV_SWAP_INFO	*psSwapInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetSwap");
-#endif
 
 	*psSwapInfo	= gsGlobalInfo.sSwapInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetSwap", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3784,9 +3474,6 @@ void	McResCtrl_SetHSDet(
 	UINT32	dUpdateInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetHSDet");
-#endif
 
 
 	if ((dUpdateInfo & MCDRV_ENPLUGDET_UPDATE_FLAG) != 0UL)
@@ -3943,9 +3630,6 @@ void	McResCtrl_SetHSDet(
 		gsGlobalInfo.sHSDetInfo.cbfunc
 			= psHSDetInfo->cbfunc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetHSDet", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3965,9 +3649,6 @@ void	McResCtrl_GetHSDet(
 	struct MCDRV_HSDET2_INFO	*psHSDet2Info
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetHSDet");
-#endif
 
 	*psHSDetInfo	= gsGlobalInfo.sHSDetInfo;
 	if (psHSDet2Info != NULL) {
@@ -3975,9 +3656,6 @@ void	McResCtrl_GetHSDet(
 		*psHSDet2Info	= gsGlobalInfo.sHSDet2Info;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetHSDet", 0);
-#endif
 }
 
 /****************************************************************************
@@ -3997,9 +3675,6 @@ void	McResCtrl_SetAecInfo(
 {
 	int	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetAecInfo");
-#endif
 
 
 	if (psAecInfo->sAecConfig.bFDspLocate != 0xFF)
@@ -4338,9 +4013,6 @@ void	McResCtrl_SetAecInfo(
 	else
 		gsGlobalInfo.sAecInfo.sAecAudioengine.bFDspOnOff	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetAecInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4358,16 +4030,10 @@ void	McResCtrl_ReplaceAecInfo(
 	const struct MCDRV_AEC_INFO	*psAecInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_ReplaceAecInfo");
-#endif
 
 
 	gsGlobalInfo.sAecInfo	= *psAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_ReplaceAecInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4385,16 +4051,10 @@ void	McResCtrl_GetAecInfo(
 	struct MCDRV_AEC_INFO	*psAecInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetAecInfo");
-#endif
 
 
 	*psAecInfo	= gsGlobalInfo.sAecInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetAec", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4412,14 +4072,8 @@ void	McResCtrl_SetDSPCBFunc(
 	SINT32 (*pcbfunc)(SINT32, UINT32, UINT32)
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetDSPCBFunc");
-#endif
 	gsGlobalInfo.pcbfunc	= pcbfunc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetDSPCBFunc", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4437,14 +4091,8 @@ void	McResCtrl_GetDSPCBFunc(
 	SINT32 (**pcbfunc)(SINT32, UINT32, UINT32)
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetDSPCBFunc");
-#endif
 	*pcbfunc	= gsGlobalInfo.pcbfunc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetDSPCBFunc", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4464,9 +4112,6 @@ void	McResCtrl_SetGPMode(
 {
 	UINT8	bPad;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetGPMode");
-#endif
 
 
 	for (bPad = 0; bPad < 3; bPad++) {
@@ -4489,9 +4134,6 @@ void	McResCtrl_SetGPMode(
 				= psGpMode->abGpInvert[bPad];
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetGPMode", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4509,15 +4151,9 @@ void	McResCtrl_GetGPMode(
 	struct MCDRV_GP_MODE	*psGpMode
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetGPMode");
-#endif
 
 	*psGpMode	= gsGlobalInfo.sGpMode;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetGPMode", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4537,15 +4173,9 @@ void	McResCtrl_SetGPMask(
 	UINT32	dPadNo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetGPMask");
-#endif
 
 	gsGlobalInfo.abGpMask[dPadNo]	= bMask;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetGPMask", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4563,11 +4193,6 @@ UINT8	McResCtrl_GetGPMask(
 	UINT32	dPadNo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= gsGlobalInfo.abGpMask[dPadNo];
-	McDebugLog_FuncIn("McResCtrl_GetGPMask");
-	McDebugLog_FuncOut("McResCtrl_GetGPMask", &sdRet);
-#endif
 	return	gsGlobalInfo.abGpMask[dPadNo];
 }
 
@@ -4588,15 +4213,9 @@ void	McResCtrl_SetGPPad(
 	UINT32	dPadNo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetGPPad");
-#endif
 
 	gsGlobalInfo.abGpPad[dPadNo]	= bPad;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetGPPad", 0);
-#endif
 }
 
 /****************************************************************************
@@ -4616,17 +4235,9 @@ UINT8	McResCtrl_GetGPPad(
 {
 	UINT8	bRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetGPPad");
-#endif
 
 	bRet	= gsGlobalInfo.abGpPad[dPadNo];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("McResCtrl_GetGPPad", &sdRet);
-#endif
 	return bRet;
 }
 
@@ -4645,15 +4256,9 @@ void	McResCtrl_SetClkSel(
 	UINT8	bClkSel
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetClkSel");
-#endif
 
 	gsGlobalInfo.bClkSel	= bClkSel;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetClkSel", 0);
-#endif
 }
 /****************************************************************************
  *	McResCtrl_GetClkSel
@@ -4670,15 +4275,7 @@ UINT8	McResCtrl_GetClkSel(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetClkSel");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= gsGlobalInfo.bClkSel;
-	McDebugLog_FuncOut("McResCtrl_SetClkSel", &sdRet);
-#endif
 	return gsGlobalInfo.bClkSel;
 }
 /****************************************************************************
@@ -4696,15 +4293,9 @@ void	McResCtrl_SetEClkSel(
 	UINT8	bEClkSel
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetEClkSel");
-#endif
 
 	gsGlobalInfo.bEClkSel	= bEClkSel;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetEClkSel", 0);
-#endif
 }
 /****************************************************************************
  *	McResCtrl_GetEClkSel
@@ -4721,15 +4312,7 @@ UINT8	McResCtrl_GetEClkSel(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetEClkSel");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= gsGlobalInfo.bEClkSel;
-	McDebugLog_FuncOut("McResCtrl_GetEClkSel", &sdRet);
-#endif
 	return gsGlobalInfo.bEClkSel;
 }
 
@@ -4748,15 +4331,9 @@ void	McResCtrl_SetCClkSel(
 	UINT8	bCClkSel
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetCClkSel");
-#endif
 
 	gsGlobalInfo.bCClkSel	= bCClkSel;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetCClkSel", 0);
-#endif
 }
 /****************************************************************************
  *	McResCtrl_GetCClkSel
@@ -4773,15 +4350,7 @@ UINT8	McResCtrl_GetCClkSel(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetCClkSel");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= gsGlobalInfo.bCClkSel;
-	McDebugLog_FuncOut("McResCtrl_GetCClkSel", &sdRet);
-#endif
 	return gsGlobalInfo.bCClkSel;
 }
 /****************************************************************************
@@ -4799,15 +4368,9 @@ void	McResCtrl_SetFClkSel(
 	UINT8	bFClkSel
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetFClkSel");
-#endif
 
 	gsGlobalInfo.bFClkSel	= bFClkSel;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetFClkSel", 0);
-#endif
 }
 /****************************************************************************
  *	McResCtrl_GetFClkSel
@@ -4824,15 +4387,7 @@ UINT8	McResCtrl_GetFClkSel(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetFClkSel");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= gsGlobalInfo.bFClkSel;
-	McDebugLog_FuncOut("McResCtrl_GetFClkSel", &sdRet);
-#endif
 	return gsGlobalInfo.bFClkSel;
 }
 
@@ -4852,15 +4407,9 @@ void	McResCtrl_SetPlugDetDB(
 	UINT8	bPlugDetDB
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_SetPlugDetDB");
-#endif
 
 	gsGlobalInfo.bPlugDetDB	= bPlugDetDB;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_SetPlugDetDB", 0);
-#endif
 }
 /****************************************************************************
  *	McResCtrl_GetPlugDetDB
@@ -4877,15 +4426,7 @@ UINT8	McResCtrl_GetPlugDetDB(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetPlugDetDB");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= gsGlobalInfo.bPlugDetDB;
-	McDebugLog_FuncOut("McResCtrl_GetPlugDetDB", &sdRet);
-#endif
 	return gsGlobalInfo.bPlugDetDB;
 }
 
@@ -4911,9 +4452,6 @@ void	McResCtrl_GetVolReg(
 		eMCDRV_DST_CH0, eMCDRV_DST_CH1};
 	SINT16	aswD_DpathDa[DPATH_VOL_CHANNELS];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetVolReg");
-#endif
 
 
 	*psVolInfo	= gsGlobalInfo.sVolInfo;
@@ -5181,9 +4719,6 @@ void	McResCtrl_GetVolReg(
 	psVolInfo->aswA_HpDet[0]	=
 		GetAnaOutVolReg(gsGlobalInfo.sVolInfo.aswA_HpDet[0]);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetVolReg", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5203,9 +4738,6 @@ SINT16	McResCtrl_GetDigitalVolReg(
 {
 	SINT32	sdRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetDigitalVolReg");
-#endif
 
 	if (sdVol < (-95*256))
 		sdRet	= 0;
@@ -5217,9 +4749,6 @@ SINT16	McResCtrl_GetDigitalVolReg(
 	if (sdRet > 114L)
 		sdRet	= 114;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetDigitalVolReg", &sdRet);
-#endif
 
 	return (SINT16)sdRet;
 }
@@ -5242,10 +4771,6 @@ static SINT16	GetAnaInVolReg(
 {
 	SINT16	swRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetAnaInVolReg");
-#endif
 
 	if (swVol < (-30*256))
 		swRet	= 0;
@@ -5263,10 +4788,6 @@ static SINT16	GetAnaInVolReg(
 	else if (swRet > 0x3F)
 		swRet	= 0x3F;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= swRet;
-	McDebugLog_FuncOut("GetAnaInVolReg", &sdRet);
-#endif
 	return swRet;
 }
 
@@ -5287,10 +4808,6 @@ static SINT16	GetAnaOutVolReg(
 {
 	SINT16	swRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetAnaOutVolReg");
-#endif
 
 	if (swVol < (-36*256))
 		swRet	= 0;
@@ -5306,10 +4823,6 @@ static SINT16	GetAnaOutVolReg(
 	else if (swRet > 0x6F)
 		swRet	= 0x6F;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= swRet;
-	McDebugLog_FuncOut("GetAnaOutVolReg", &sdRet);
-#endif
 	return swRet;
 }
 
@@ -5330,10 +4843,6 @@ static SINT16	GetSpVolReg(
 {
 	SINT16	swRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetSpVolReg");
-#endif
 
 	if (swVol < (-36*256))
 		swRet	= 0;
@@ -5351,10 +4860,6 @@ static SINT16	GetSpVolReg(
 	else if (swRet > 0x7F)
 		swRet	= 0x7F;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= swRet;
-	McDebugLog_FuncOut("GetSpVolReg", &sdRet);
-#endif
 	return swRet;
 }
 
@@ -5375,10 +4880,6 @@ static SINT16	GetLOutVolReg(
 {
 	SINT16	swRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetLOutVolReg");
-#endif
 
 	if (swVol < (-38*256))
 		swRet	= 0;
@@ -5398,10 +4899,6 @@ static SINT16	GetLOutVolReg(
 	else if (swRet > 0x77)
 		swRet	= 0x77;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= swRet;
-	McDebugLog_FuncOut("GetLOutVolReg", &sdRet);
-#endif
 	return swRet;
 }
 
@@ -5422,10 +4919,6 @@ static SINT16	GetHpVolReg(
 {
 	SINT16	swRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetHpVolReg");
-#endif
 
 	if (swVol < (-36*256))
 		swRet	= 0;
@@ -5445,10 +4938,6 @@ static SINT16	GetHpVolReg(
 
 
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= swRet;
-	McDebugLog_FuncOut("GetHpVolReg", &sdRet);
-#endif
 
 	return swRet;
 }
@@ -5470,9 +4959,6 @@ void	McResCtrl_GetPowerInfo(
 {
 	UINT32	dHifiSrc;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetPowerInfo");
-#endif
 
 
 	psPowerInfo->bDigital	= MCDRV_POWINFO_D_PLL_PD
@@ -5697,9 +5183,6 @@ void	McResCtrl_GetPowerInfo(
 		psPowerInfo->abAnalog[0] &= (UINT8)~(MCB_AP_LDOD|MCB_AP_BGR);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetPowerInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5719,9 +5202,6 @@ void	McResCtrl_GetPowerInfoRegAccess(
 	struct MCDRV_POWER_INFO	*psPowerInfo
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetPowerInfoRegAccess");
-#endif
 
 
 	McResCtrl_GetPowerInfo(psPowerInfo);
@@ -5740,9 +5220,6 @@ void	McResCtrl_GetPowerInfoRegAccess(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetPowerInfoRegAccess", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5762,9 +5239,6 @@ void	McResCtrl_GetCurPowerInfo(
 {
 	UINT8	bReg;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_GetCurPowerInfo");
-#endif
 
 
 	psPowerInfo->bDigital	= 0;
@@ -5788,9 +5262,6 @@ void	McResCtrl_GetCurPowerInfo(
 	psPowerInfo->abAnalog[3]	= gsGlobalInfo.abRegValANA[MCI_AP_MIC];
 	psPowerInfo->abAnalog[4]	= gsGlobalInfo.abRegValANA[MCI_AP_AD];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetCurPowerInfo", 0);
-#endif
 }
 
 /****************************************************************************
@@ -5812,10 +5283,6 @@ static UINT32	GetD1Source(
 {
 	UINT32	dSrc	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetD1Source");
-#endif
 
 	if (pasD != NULL) {
 		if ((pasD[eCh].dSrcOnOff & MCDRV_D1SRC_MUSICIN_ON) != 0)
@@ -5843,10 +5310,6 @@ static UINT32	GetD1Source(
 		if ((pasD[eCh].dSrcOnOff & MCDRV_D1SRC_HIFIIN_ON) != 0)
 			dSrc	|= MCDRV_D1SRC_HIFIIN_ON;
 	}
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= dSrc;
-	McDebugLog_FuncOut("GetD1Source", &sdRet);
-#endif
 
 	return dSrc;
 }
@@ -5870,10 +5333,6 @@ static UINT32	GetD2Source(
 {
 	UINT32	dSrc	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("GetD2Source");
-#endif
 
 	if (pasD != NULL) {
 		if ((pasD[eCh].dSrcOnOff & MCDRV_D2SRC_VOICEIN_ON) != 0)
@@ -5901,10 +5360,6 @@ static UINT32	GetD2Source(
 		if ((pasD[eCh].dSrcOnOff & MCDRV_D2SRC_DAC1REF_ON) != 0)
 			dSrc	|= MCDRV_D2SRC_DAC1REF_ON;
 	}
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= dSrc;
-	McDebugLog_FuncOut("GetD2Source", &sdRet);
-#endif
 
 	return dSrc;
 }
@@ -5927,10 +5382,6 @@ UINT8	McResCtrl_IsD1SrcUsed(
 	UINT8	bUsed	= 0;
 	UINT8	bCh;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsD1SrcUsed");
-#endif
 
 	for (bCh = 0; bCh < MUSICOUT_PATH_CHANNELS && bUsed == 0; bCh++) {
 		if ((gsGlobalInfo.sPathInfo.asMusicOut[bCh].dSrcOnOff
@@ -5972,10 +5423,6 @@ UINT8	McResCtrl_IsD1SrcUsed(
 			bUsed	= 1;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bUsed;
-	McDebugLog_FuncOut("IsD1SrcUsed", &sdRet);
-#endif
 
 	return bUsed;
 }
@@ -5998,10 +5445,6 @@ UINT8	McResCtrl_IsD2SrcUsed(
 	UINT8	bUsed	= 0;
 	UINT8	bCh;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsD2SrcUsed");
-#endif
 
 	for (bCh = 0; bCh < VOICEOUT_PATH_CHANNELS && bUsed == 0; bCh++) {
 		if ((gsGlobalInfo.sPathInfo.asVoiceOut[bCh].dSrcOnOff
@@ -6039,10 +5482,6 @@ UINT8	McResCtrl_IsD2SrcUsed(
 			bUsed	= 1;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bUsed;
-	McDebugLog_FuncOut("IsD2SrcUsed", &sdRet);
-#endif
 
 	return bUsed;
 }
@@ -6065,10 +5504,6 @@ UINT8	McResCtrl_IsASrcUsed(
 	UINT8	bUsed	= 0;
 	UINT8	bCh;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("IsASrcUsed");
-#endif
 
 	for (bCh = 0; bCh < ADC0_PATH_CHANNELS && bUsed == 0; bCh++) {
 		if ((gsGlobalInfo.sPathInfo.asAdc0[bCh].dSrcOnOff
@@ -6106,10 +5541,6 @@ UINT8	McResCtrl_IsASrcUsed(
 			bUsed	= 1;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bUsed;
-	McDebugLog_FuncOut("IsASrcUsed", &sdRet);
-#endif
 
 	return bUsed;
 }
@@ -6135,10 +5566,6 @@ UINT8	McResCtrl_HasSrc(
 	struct MCDRV_PATH_INFO *psPathInfo	= &gsGlobalInfo.sPathInfo;
 	UINT32	dSrcOnOff;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_HasSrc");
-#endif
 
 	switch (eType) {
 	case	eMCDRV_DST_MUSICOUT:
@@ -6410,10 +5837,6 @@ UINT8	McResCtrl_HasSrc(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bUsed;
-	McDebugLog_FuncOut("McResCtrl_HasSrc", &sdRet);
-#endif
 
 	return bUsed;
 }
@@ -6438,10 +5861,6 @@ UINT32	McResCtrl_GetSource(
 	UINT32	dSrc	= 0;
 	struct MCDRV_PATH_INFO *psPathInfo	= &gsGlobalInfo.sPathInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetSource");
-#endif
 
 	switch (eType) {
 	case	eMCDRV_DST_MUSICOUT:
@@ -6564,10 +5983,6 @@ UINT32	McResCtrl_GetSource(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= dSrc;
-	McDebugLog_FuncOut("McResCtrl_GetSource", &sdRet);
-#endif
 
 	return dSrc;
 }
@@ -6589,10 +6004,6 @@ UINT8	McResCtrl_GetDspStart(
 {
 	UINT8	bStart	= 0;
 	UINT32	dHifiSrc;
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetDspStart");
-#endif
 
 	dHifiSrc	= gsGlobalInfo.sPathInfo.asHifiOut[0].dSrcOnOff;
 
@@ -6722,10 +6133,6 @@ UINT8	McResCtrl_GetDspStart(
 	|| (McResCtrl_HasSrc(eMCDRV_DST_EXTOUT, eMCDRV_DST_CH1) != 0))
 		bStart	|= MCDRV_DSP_START_M;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bStart;
-	McDebugLog_FuncOut("McResCtrl_GetDspStart", &sdRet);
-#endif
 
 	return bStart;
 }
@@ -6747,17 +6154,9 @@ enum MCDRV_REG_ACCSESS	McResCtrl_GetRegAccess(
 {
 	enum MCDRV_REG_ACCSESS	eAccess	= eMCDRV_ACCESS_DENY;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_GetRegAccess");
-#endif
 
 	eAccess	= McDevProf_GetRegAccess(psRegInfo);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= eAccess;
-	McDebugLog_FuncOut("McResCtrl_GetRegAccess", &sdRet);
-#endif
 
 	return eAccess;
 }
@@ -6778,14 +6177,7 @@ enum MCDRV_PMODE	McResCtrl_GetAPMode(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet	= gsGlobalInfo.eAPMode;
-	McDebugLog_FuncIn("McResCtrl_GetAPMode");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_GetAPMode", &sdRet);
-#endif
 
 	return gsGlobalInfo.eAPMode;
 }
@@ -6806,24 +6198,13 @@ struct MCDRV_PACKET	*McResCtrl_AllocPacketBuf(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_AllocPacketBuf");
-#endif
 
 	if (eMCDRV_PACKETBUF_ALLOCATED == gsGlobalInfo.ePacketBufAlloc) {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		sdRet	= 0;
-		McDebugLog_FuncOut("McResCtrl_AllocPacketBuf", &sdRet);
-#endif
 		return NULL;
 	}
 
 	gsGlobalInfo.ePacketBufAlloc	= eMCDRV_PACKETBUF_ALLOCATED;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_AllocPacketBuf", 0);
-#endif
 	return gasPacket;
 }
 
@@ -6842,15 +6223,9 @@ void	McResCtrl_ReleasePacketBuf(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_ReleasePacketBuf");
-#endif
 
 	gsGlobalInfo.ePacketBufAlloc = eMCDRV_PACKETBUF_FREE;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_ReleasePacketBuf", 0);
-#endif
 }
 
 /****************************************************************************
@@ -6868,9 +6243,6 @@ void	McResCtrl_InitRegUpdate(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_InitRegUpdate");
-#endif
 
 	gsGlobalInfo.sCtrlPacket.wDataNum	= 0;
 	gsGlobalInfo.wCurSlaveAddr		= 0xFFFF;
@@ -6879,9 +6251,6 @@ void	McResCtrl_InitRegUpdate(
 	gsGlobalInfo.wDataContinueCount		= 0;
 	gsGlobalInfo.wPrevAddrIndex		= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_InitRegUpdate", 0);
-#endif
 }
 
 /****************************************************************************
@@ -6917,9 +6286,6 @@ void	McResCtrl_AddRegUpdate(
 	UINT16		wSlaveAddr;
 	struct MCDRV_REG_INFO	sRegInfo;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_AddRegUpdate");
-#endif
 
 	switch (wRegType) {
 	case	MCDRV_PACKET_REGTYPE_IF:
@@ -7033,17 +6399,11 @@ void	McResCtrl_AddRegUpdate(
 		break;
 
 	default:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		McDebugLog_FuncOut("McResCtrl_AddRegUpdate", 0);
-#endif
 		return;
 	}
 
 	sRegInfo.bAddress	= (UINT8)wAddr;
 	if ((McResCtrl_GetRegAccess(&sRegInfo) & eMCDRV_CAN_WRITE) == 0) {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		McDebugLog_FuncOut("McResCtrl_AddRegUpdate", 0);
-#endif
 		return;
 	}
 
@@ -7179,9 +6539,6 @@ void	McResCtrl_AddRegUpdate(
 		pbRegVal[wAddr] = bData;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_AddRegUpdate", 0);
-#endif
 }
 
 /****************************************************************************
@@ -7199,9 +6556,6 @@ void	McResCtrl_ExecuteRegUpdate(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_ExecuteRegUpdate");
-#endif
 
 	if (0 != gsGlobalInfo.sCtrlPacket.wDataNum) {
 		McSrv_WriteReg((UINT8)gsGlobalInfo.wCurSlaveAddr,
@@ -7209,9 +6563,6 @@ void	McResCtrl_ExecuteRegUpdate(
 			gsGlobalInfo.sCtrlPacket.wDataNum);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_ExecuteRegUpdate", 0);
-#endif
 }
 
 /****************************************************************************
@@ -7238,9 +6589,6 @@ SINT32	McResCtrl_WaitEvent(
 	UINT8	bSlaveAddr;
 	UINT8	abWriteData[2];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McResCtrl_WaitEvent");
-#endif
 
 
 	switch (dEvent) {
@@ -7567,9 +6915,6 @@ SINT32	McResCtrl_WaitEvent(
 		sdRet	= MCDRV_ERROR_ARGUMENT;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McResCtrl_WaitEvent", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -7602,9 +6947,6 @@ static SINT32	WaitBitSet(
 	UINT32	dCycles;
 	SINT32	sdRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("WaitBitSet");
-#endif
 
 
 	dCycles	= 0;
@@ -7621,9 +6963,6 @@ static SINT32	WaitBitSet(
 		dCycles++;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("WaitBitSet", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -7656,9 +6995,6 @@ static SINT32	WaitBitRelease(
 	UINT32	dCycles;
 	SINT32	sdRet;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("WaitBitRelease");
-#endif
 
 
 	dCycles	= 0;
@@ -7675,9 +7011,6 @@ static SINT32	WaitBitRelease(
 		dCycles++;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("WaitBitRelease", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -7715,9 +7048,6 @@ static SINT32	WaitDSPBitSet(
 	SINT32	sdRet;
 	UINT8	abWriteData[2];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("WaitDSPBitSet");
-#endif
 
 
 	dCycles	= 0;
@@ -7738,9 +7068,6 @@ static SINT32	WaitDSPBitSet(
 		dCycles++;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("WaitDSPBitSet", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -7778,9 +7105,6 @@ static SINT32	WaitDSPBitRelease(
 	SINT32	sdRet;
 	UINT8	abWriteData[2];
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("WaitCDSPBitRelease");
-#endif
 
 
 	dCycles	= 0;
@@ -7801,9 +7125,6 @@ static SINT32	WaitDSPBitRelease(
 		dCycles++;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("WaitCDSPBitRelease", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -7825,15 +7146,7 @@ UINT8	McResCtrl_IsEnableIRQ(
 {
 	UINT8	bRet	= 0;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McResCtrl_IsEnableIRQ");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= bRet;
-	McDebugLog_FuncOut("McResCtrl_IsEnableIRQ", &sdRet);
-#endif
 	return bRet;
 }
 

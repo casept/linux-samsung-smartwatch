@@ -33,9 +33,6 @@
 #include "mcresctrl.h"
 #include "mcdevprof.h"
 #include "mcmachdep.h"
-#if MCDRV_DEBUG_LEVEL
-#include "mcdebuglog.h"
-#endif
 
 
 
@@ -60,9 +57,6 @@ SINT32	McDevIf_AllocPacketBuf(
 {
 	SINT32	sdRet	= MCDRV_SUCCESS;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_AllocPacketBuf");
-#endif
 
 	gpsPacket	= McResCtrl_AllocPacketBuf();
 	if (gpsPacket == NULL) {
@@ -72,9 +66,6 @@ SINT32	McDevIf_AllocPacketBuf(
 		McDevIf_ClearPacket();
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_AllocPacketBuf", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -94,15 +85,9 @@ void	McDevIf_ReleasePacketBuf(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_ReleasePacketBuf");
-#endif
 
 	McResCtrl_ReleasePacketBuf();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_ReleasePacketBuf", 0);
-#endif
 }
 
 /****************************************************************************
@@ -120,25 +105,14 @@ void	McDevIf_ClearPacket(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McDevIf_ClearPacket");
-#endif
 
 	if (gpsPacket == NULL) {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-		sdRet	= MCDRV_ERROR;
-		McDebugLog_FuncOut("McDevIf_ClearPacket", &sdRet);
-#endif
 		return;
 	}
 
 	gdPackets	= 0;
 	gpsPacket[0].dDesc	= MCDRV_PACKET_TYPE_TERMINATE;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_ClearPacket", 0);
-#endif
 }
 
 /****************************************************************************
@@ -158,9 +132,6 @@ void	McDevIf_AddPacket(
 	UINT8	bData
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_AddPacket");
-#endif
 
 	if (gpsPacket == NULL) {
 		;
@@ -175,9 +146,6 @@ void	McDevIf_AddPacket(
 		gpsPacket[++gdPackets].dDesc	= MCDRV_PACKET_TYPE_TERMINATE;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_AddPacket", 0);
-#endif
 }
 
 /****************************************************************************
@@ -201,18 +169,12 @@ void	McDevIf_AddPacketRepeat(
 {
 	UINT32	dCount;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_AddPacketRepeat");
-#endif
 
 	for (dCount = 0; dCount < dDataCount; dCount++) {
 		;
 		McDevIf_AddPacket(dDesc, pbData[dCount]);
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_AddPacketRepeat", 0);
-#endif
 }
 
 /****************************************************************************
@@ -240,9 +202,6 @@ SINT32	McDevIf_ExecutePacket(
 	UINT16	wRegType;
 	enum MCDRV_UPDATE_MODE	eUpdateMode;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_ExecutePacket");
-#endif
 
 	if (gpsPacket == NULL) {
 		sdRet	= MCDRV_ERROR_RESOURCEOVER;
@@ -313,9 +272,6 @@ SINT32	McDevIf_ExecutePacket(
 		McDevIf_ClearPacket();
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_ExecutePacket", &sdRet);
-#endif
 
 	return sdRet;
 }
@@ -343,9 +299,6 @@ void	McDevIf_ReadDirect(
 	UINT8	abData[2];
 	UINT8	bAddr	= (UINT8)(dDesc&MCDRV_PACKET_ADR_MASK);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_ReadDirect");
-#endif
 
 	switch (dDesc&MCDRV_PACKET_REGTYPE_MASK) {
 	case	MCDRV_PACKET_REGTYPE_IF:
@@ -402,9 +355,6 @@ void	McDevIf_ReadDirect(
 		break;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_ReadDirect", NULL);
-#endif
 }
 
 /****************************************************************************
@@ -426,16 +376,10 @@ void	McDevIf_WriteDirect(
 {
 	UINT8	bSlaveAddr;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McDevIf_WriteDirect");
-#endif
 
 	bSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 	McSrv_WriteReg(bSlaveAddr, pbData, dSize);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McDevIf_WriteDirect", NULL);
-#endif
 }
 
 

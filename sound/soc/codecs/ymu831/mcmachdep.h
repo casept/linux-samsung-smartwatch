@@ -38,8 +38,6 @@
 
 #define	MCDRV_AP_LDOD			(0x00)
 
-#define	MCDRV_DEBUG_LEVEL		(0)
-
 
 void	machdep_SystemInit(void);
 void	machdep_SystemTerm(void);
@@ -58,7 +56,6 @@ void	machdep_Unlock(void);
 void	machdep_PreLDODStart(void);
 void	machdep_PostLDODStart(void);
 UINT8	machdep_GetBusSelect(void);
-void	machdep_DebugPrint(UINT8 *pbLogString);
 
 
 #endif /* _MCMACHDEP_H_ */

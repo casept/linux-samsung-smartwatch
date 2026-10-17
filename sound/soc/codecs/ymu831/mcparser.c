@@ -36,9 +36,6 @@
 #include "mcedspdrv.h"
 #include "mcfdspdrv.h"
 
-#if MCDRV_DEBUG_LEVEL
-#include "mcdebuglog.h"
-#endif
 
 
 
@@ -139,9 +136,6 @@ SINT32	McParser_GetD7Chunk(
 	UINT32	dChunkSize;
 	UINT32	dPos;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("");
-#endif
 	if (dSize < (UINT32)AEC_MIN_BYTES) {
 		sdRet	= MCDRV_ERROR_ARGUMENT;
 		goto exit;
@@ -218,9 +212,6 @@ SINT32	McParser_GetD7Chunk(
 		sdRet	= MCDRV_ERROR_ARGUMENT;
 
 exit:
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McParser_GetD7Chunk", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -250,9 +241,6 @@ SINT32	McParser_AnalyzeD7Chunk(
 	SINT32	sdRet	= MCDRV_SUCCESS;
 	int	n;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McParser_AnalyzeD7Chunk");
-#endif
 	pbPrm		= psD7Info->pbChunkTop;
 	dChunkEnd	= psD7Info->dChunkSize-1;
 
@@ -1027,9 +1015,6 @@ SINT32	McParser_AnalyzeD7Chunk(
 	}
 
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McParser_AnalyzeD7Chunk", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -1060,9 +1045,6 @@ static SINT32	AnalyzeAESubChunk
 	UINT32	dChunkId;
 	UINT32	dChunkSize;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AnalyzeAESubChunk");
-#endif
 
 	while (*pdSubChunkSize > 0) {
 		if (*pdSubChunkSize < 8) {
@@ -1124,9 +1106,6 @@ static SINT32	AnalyzeAESubChunk
 		*pdSubChunkSize	-= dChunkSize;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AnalyzeAESubChunk", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -1156,9 +1135,6 @@ static SINT32	AnalyzeVBoxSubChunk(
 	UINT32	dChunkId;
 	UINT32	dChunkSize;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AnalyzeVBoxSubChunk");
-#endif
 
 	while (*pdSubChunkSize > 0) {
 		if (*pdSubChunkSize < 8) {
@@ -1238,9 +1214,6 @@ static SINT32	AnalyzeVBoxSubChunk(
 		*pdSubChunkSize	-= dChunkSize;
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AnalyzeVBoxSubChunk", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -1271,9 +1244,6 @@ static SINT32	AnalyzeSysEqExSubChunk
 	UINT32	dChunkId;
 	UINT32	dChunkSize;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AnalyzeSysEqExSubChunk");
-#endif
 
 	while (*pdSubChunkSize > 0) {
 		if (*pdSubChunkSize < 8) {
@@ -1345,9 +1315,6 @@ static SINT32	AnalyzeSysEqExSubChunk
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AnalyzeSysEqExSubChunk", &sdRet);
-#endif
 	return sdRet;
 }
 
@@ -1378,9 +1345,6 @@ static SINT32	AnalyzeEDSPSubChunk
 	UINT32	dChunkId;
 	UINT32	dChunkSize;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("AnalyzeEDSPSubChunk");
-#endif
 
 	while (*pdSubChunkSize > 0 && sdRet == MCDRV_SUCCESS) {
 		if (*pdSubChunkSize < 8) {
@@ -1421,9 +1385,6 @@ static SINT32	AnalyzeEDSPSubChunk
 		}
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("AnalyzeEDSPSubChunk", &sdRet);
-#endif
 	return sdRet;
 }
 

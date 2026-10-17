@@ -32,9 +32,6 @@
 #include "mcmachdep.h"
 #include "mcresctrl.h"
 #include "mcdevprof.h"
-#if (MCDRV_DEBUG_LEVEL >= 4)
-#include "mcdebuglog.h"
-#endif
 
 
 /****************************************************************************
@@ -52,15 +49,9 @@ void	McSrv_SystemInit(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_SystemInit");
-#endif
 
 	machdep_SystemInit();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_SystemInit", 0);
-#endif
 }
 
 /****************************************************************************
@@ -78,15 +69,9 @@ void	McSrv_SystemTerm(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_SystemTerm");
-#endif
 
 	machdep_SystemTerm();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_SystemTerm", 0);
-#endif
 }
 
 /****************************************************************************
@@ -104,15 +89,9 @@ void	McSrv_ClockStart(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_ClockStart");
-#endif
 
 	machdep_ClockStart();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_ClockStart", 0);
-#endif
 }
 
 /****************************************************************************
@@ -130,15 +109,9 @@ void	McSrv_ClockStop(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_ClockStop");
-#endif
 
 	machdep_ClockStop();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_ClockStop", 0);
-#endif
 }
 
 /****************************************************************************
@@ -160,17 +133,11 @@ void	McSrv_WriteReg(
 	UINT32	dSize
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_WriteReg");
-#endif
 
 	McSrv_DisableIrq();
 	machdep_WriteReg(bSlaveAddr, pbData, dSize);
 	McSrv_EnableIrq();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_WriteReg", 0);
-#endif
 }
 
 /****************************************************************************
@@ -192,19 +159,11 @@ UINT8	McSrv_ReadReg(
 {
 	UINT8	bReg;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McSrv_ReadReg");
-#endif
 
 	McSrv_DisableIrq();
 	machdep_ReadReg(bSlaveAddr, dRegAddr, &bReg, 1);
 	McSrv_EnableIrq();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)bReg;
-	McDebugLog_FuncOut("McSrv_ReadReg", &sdRet);
-#endif
 
 	return bReg;
 }
@@ -230,18 +189,10 @@ void	McSrv_ReadRegN(
 	UINT32	dSize
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	SINT32	sdRet;
-	McDebugLog_FuncIn("McSrv_ReadRegN");
-#endif
 	McSrv_DisableIrq();
 	machdep_ReadReg(bSlaveAddr, dRegAddr, pbData, dSize);
 	McSrv_EnableIrq();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	sdRet	= (SINT32)dSize;
-	McDebugLog_FuncOut("McSrv_ReadRegN", &sdRet);
-#endif
 }
 
 /***************************************************************************
@@ -259,15 +210,9 @@ void	McSrv_Sleep(
 	UINT32	dSleepTime
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_Sleep");
-#endif
 
 	machdep_Sleep(dSleepTime);
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_Sleep", 0);
-#endif
 }
 
 /****************************************************************************
@@ -285,15 +230,9 @@ void	McSrv_Lock(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_Lock");
-#endif
 
 	machdep_Lock();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_Lock", 0);
-#endif
 }
 
 /***************************************************************************
@@ -311,15 +250,9 @@ void	McSrv_Unlock(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_Unlock");
-#endif
 
 	machdep_Unlock();
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_Unlock", 0);
-#endif
 }
 
 /***************************************************************************
@@ -343,18 +276,12 @@ void	McSrv_MemCopy(
 {
 	UINT32	i;
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_MemCopy");
-#endif
 
 	for (i = 0; i < dSize; i++) {
 		;
 		pbDest[i] = pbSrc[i];
 	}
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_MemCopy", 0);
-#endif
 }
 
 /***************************************************************************
@@ -372,13 +299,7 @@ void	McSrv_DisableIrq(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_DisableIrq");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_DisableIrq", 0);
-#endif
 }
 
 /***************************************************************************
@@ -396,12 +317,6 @@ void	McSrv_EnableIrq(
 	void
 )
 {
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncIn("McSrv_EnableIrq");
-#endif
 
-#if (MCDRV_DEBUG_LEVEL >= 4)
-	McDebugLog_FuncOut("McSrv_EnableIrq", 0);
-#endif
 }
 
