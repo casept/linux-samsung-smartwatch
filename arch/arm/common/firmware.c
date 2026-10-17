@@ -5,6 +5,7 @@
  * Tomasz Figa <t.figa@samsung.com>
  */
 
+#include <linux/export.h>
 #include <linux/kernel.h>
 #include <linux/suspend.h>
 
@@ -13,3 +14,4 @@
 static const struct firmware_ops default_firmware_ops;
 
 const struct firmware_ops *firmware_ops = &default_firmware_ops;
+EXPORT_SYMBOL_GPL(firmware_ops);
