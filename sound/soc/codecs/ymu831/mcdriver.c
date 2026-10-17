@@ -5991,6 +5991,15 @@ SINT32	McDrv_Ctrl(
 			}
 			break;
 
+		case	MCDRV_SET_PORT_HOLD:
+			if (!pvPrm1) {
+				sdRet	= MCDRV_ERROR_ARGUMENT;
+				break;
+			}
+			McResCtrl_SetPortHold(*(UINT8 *)pvPrm1);
+			sdRet	= MCDRV_SUCCESS;
+			break;
+
 		case	MCDRV_GET_VOLUME:
 			sdRet	= get_volume((struct MCDRV_VOL_INFO *)pvPrm1);
 			break;

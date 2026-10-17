@@ -227,6 +227,8 @@ void	McResCtrl_Init(
 	gsGlobalInfo.bCClkSel	= 0;
 	gsGlobalInfo.bFClkSel	= 0;
 	gsGlobalInfo.bPlugDetDB	= 0;
+	gsGlobalInfo.bPortHold	= 0;
+	gsGlobalInfo.bPortHoldNext	= 0;
 
 	gsGlobalInfo.ePacketBufAlloc	= eMCDRV_PACKETBUF_FREE;
 	gsGlobalInfo.pcbfunc		= NULL;
@@ -234,6 +236,18 @@ void	McResCtrl_Init(
 
 	gsGlobalInfo.eAPMode	= eMCDRV_APM_ON;
 
+}
+
+/*
+ * Ports in the hold mask count as in use, so they keep running (and keep
+ * their clocks going as clock provider) with no path through them. The
+ * mask takes effect with the next path update, together with the path:
+ * set_path() compares the state from before the update with the state
+ * after it, e.g. to start the DSPs.
+ */
+void McResCtrl_SetPortHold(UINT8 bPortHold)
+{
+	gsGlobalInfo.bPortHoldNext	= bPortHold;
 }
 
 /****************************************************************************
@@ -1580,6 +1594,7 @@ SINT32	McResCtrl_SetPathInfo(
 
 
 	gsGlobalInfo.sPathInfo	= gsGlobalInfo.sPathInfoVirtual;
+	gsGlobalInfo.bPortHold	= gsGlobalInfo.bPortHoldNext;
 
 	/*	MusicOut source on/off	*/
 	SetD1SourceOnOff(psPathInfo->asMusicOut,
@@ -4955,6 +4970,12 @@ void	McResCtrl_GetPowerInfo(
 		psPowerInfo->bDigital	&= (UINT8)~MCDRV_POWINFO_D_PLL_PD;
 	}
 
+	/* held ports run with no path through them */
+	if (gsGlobalInfo.bPortHold)
+		psPowerInfo->bDigital &= (UINT8)~(MCDRV_POWINFO_D_PE_CLK_PD |
+						  MCDRV_POWINFO_D_PM_CLK_PD |
+						  MCDRV_POWINFO_D_PLL_PD);
+
 	if ((psPowerInfo->bDigital & MCDRV_POWINFO_D_PM_CLK_PD) != 0) {
 		if ((McResCtrl_IsD1SrcUsed(MCDRV_D1SRC_MUSICIN_ON) != 0)
 		|| (McResCtrl_IsD1SrcUsed(MCDRV_D1SRC_EXTIN_ON) != 0)
@@ -5311,7 +5332,15 @@ UINT8	McResCtrl_IsD1SrcUsed(
 {
 	UINT8	bUsed	= 0;
 	UINT8	bCh;
+	UINT8	bHold	= gsGlobalInfo.bPortHold;
 
+	if (((dSrcOnOff & MCDRV_D1SRC_MUSICIN_ON) &&
+	     (bHold & MCDRV_PORT_HOLD_MUSIC_RX)) ||
+	    ((dSrcOnOff & MCDRV_D1SRC_EXTIN_ON) &&
+	     (bHold & MCDRV_PORT_HOLD_EXT_RX)) ||
+	    ((dSrcOnOff & MCDRV_D1SRC_HIFIIN_ON) &&
+	     (bHold & MCDRV_PORT_HOLD_HIFI_RX)))
+		return 1;
 
 	for (bCh = 0; bCh < MUSICOUT_PATH_CHANNELS && bUsed == 0; bCh++) {
 		if ((gsGlobalInfo.sPathInfo.asMusicOut[bCh].dSrcOnOff
@@ -5375,6 +5404,9 @@ UINT8	McResCtrl_IsD2SrcUsed(
 	UINT8	bUsed	= 0;
 	UINT8	bCh;
 
+	if ((dSrcOnOff & MCDRV_D2SRC_VOICEIN_ON) &&
+	    (gsGlobalInfo.bPortHold & MCDRV_PORT_HOLD_VOICE_RX))
+		return 1;
 
 	for (bCh = 0; bCh < VOICEOUT_PATH_CHANNELS && bUsed == 0; bCh++) {
 		if ((gsGlobalInfo.sPathInfo.asVoiceOut[bCh].dSrcOnOff
@@ -5503,6 +5535,8 @@ UINT8	McResCtrl_HasSrc(
 			;
 			break;
 		}
+		if (gsGlobalInfo.bPortHold & MCDRV_PORT_HOLD_MUSIC_TX)
+			bUsed	= 1;
 		if (GetD1Source(psPathInfo->asMusicOut, eCh) != 0) {
 			;
 			bUsed	= 1;
@@ -5513,6 +5547,8 @@ UINT8	McResCtrl_HasSrc(
 			;
 			break;
 		}
+		if (gsGlobalInfo.bPortHold & MCDRV_PORT_HOLD_EXT_TX)
+			bUsed	= 1;
 		if (GetD1Source(psPathInfo->asExtOut, eCh) != 0) {
 			;
 			bUsed	= 1;
@@ -5523,6 +5559,8 @@ UINT8	McResCtrl_HasSrc(
 			;
 			break;
 		}
+		if (gsGlobalInfo.bPortHold & MCDRV_PORT_HOLD_HIFI_TX)
+			bUsed	= 1;
 		if (GetD1Source(psPathInfo->asHifiOut, eCh) != 0) {
 			;
 			bUsed	= 1;
@@ -5599,6 +5637,8 @@ UINT8	McResCtrl_HasSrc(
 			;
 			break;
 		}
+		if (gsGlobalInfo.bPortHold & MCDRV_PORT_HOLD_VOICE_TX)
+			bUsed	= 1;
 		if (GetD2Source(psPathInfo->asVoiceOut, eCh) != 0)
 			bUsed	= 1;
 		break;

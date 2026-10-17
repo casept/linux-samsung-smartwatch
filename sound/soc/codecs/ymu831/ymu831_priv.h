@@ -119,6 +119,7 @@ struct mc_asoc_port_params {
 	unsigned int	bclk_ratio;
 	UINT8	channels;
 	UINT8	stream;	/* bit0: Playback, bit1: Capture */
+	UINT8	hold[SNDRV_PCM_STREAM_LAST + 1];	/* core port hold bit */
 };
 
 struct mc_asoc_dsp_param {
@@ -148,6 +149,7 @@ struct mc_asoc_data {
 	struct mc_asoc_jack		jack;
 	struct ymu831_dapm		dapm;
 	int				mbsel4;
+	UINT8				port_hold;
 	struct regmap			*regmap;
 	struct clk			*mclk;
 	bool				mclk_enabled;

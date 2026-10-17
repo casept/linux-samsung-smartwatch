@@ -1276,6 +1276,49 @@ static int setup_dai(struct snd_soc_component *codec, int id,
 	return 0;
 }
 
+/* the core port hold bits, by port and stream direction */
+static const UINT8 ymu831_port_hold[][SNDRV_PCM_STREAM_LAST + 1] = {
+	[YMU831_PORT_MUSIC] = { MCDRV_PORT_HOLD_MUSIC_RX,
+				MCDRV_PORT_HOLD_MUSIC_TX },
+	[YMU831_PORT_EXT] = { MCDRV_PORT_HOLD_EXT_RX, MCDRV_PORT_HOLD_EXT_TX },
+	[YMU831_PORT_VOICE] = { MCDRV_PORT_HOLD_VOICE_RX,
+				MCDRV_PORT_HOLD_VOICE_TX },
+	[YMU831_PORT_HIFI] = { MCDRV_PORT_HOLD_HIFI_RX,
+			       MCDRV_PORT_HOLD_HIFI_TX },
+};
+
+/*
+ * The core only runs a port while a path goes through it, but as clock
+ * provider the port has to run for as long as a stream does, routed or not.
+ * Holding a port makes the core treat it as in use. With @apply the change
+ * takes effect immediately, otherwise with the next path update.
+ */
+static int ymu831_set_port_hold(struct mc_asoc_data *mc_asoc, UINT8 hold,
+				bool apply)
+{
+	struct MCDRV_PATH_INFO path_info;
+	int err;
+
+	if (hold == mc_asoc->port_hold)
+		return 0;
+
+	err = _McDrv_Ctrl(MCDRV_SET_PORT_HOLD, &hold, NULL, 0);
+	if (err != MCDRV_SUCCESS)
+		return map_drv_error(err);
+	mc_asoc->port_hold = hold;
+
+	if (!apply)
+		return 0;
+
+	err = _McDrv_Ctrl(MCDRV_GET_PATH, &path_info, NULL, 0);
+	if (err == MCDRV_SUCCESS)
+		err = _McDrv_Ctrl(MCDRV_SET_PATH, &path_info, NULL, 0);
+	if (err != MCDRV_SUCCESS)
+		return map_drv_error(err);
+
+	return 0;
+}
+
 static struct mc_asoc_port_params *mc_asoc_dai_port(struct snd_soc_dai *dai)
 {
 	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(dai->component);
@@ -1393,6 +1436,7 @@ static int mc_asoc_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *codec = dai->component;
+	struct mc_asoc_data *mc_asoc = mc_asoc_get_mc_asoc(codec);
 	struct mc_asoc_port_params *port = mc_asoc_dai_port(dai);
 	struct MCDRV_DIOPATH_INFO sDioPathInfo;
 	int dir = substream->stream;
@@ -1512,11 +1556,27 @@ static int mc_asoc_hw_params(struct snd_pcm_substream *substream,
 		}
 	}
 
+	/* a hold from an earlier call must not keep the port up for setup */
+	err = ymu831_set_port_hold(mc_asoc, mc_asoc->port_hold & ~port->hold[dir],
+				   false);
+	if (err)
+		goto out;
+	port->hold[dir] = 0;
+
 	err = setup_dai(codec, id, port, dir);
 	if (err) {
 		dev_err(codec->dev, "failed to set up port %d: %d\n", id, err);
 		goto out;
 	}
+
+	err = ymu831_set_port_hold(mc_asoc,
+				   mc_asoc->port_hold | ymu831_port_hold[id][dir],
+				   true);
+	if (err) {
+		dev_err(codec->dev, "failed to start port %d: %d\n", id, err);
+		goto out;
+	}
+	port->hold[dir] = ymu831_port_hold[id][dir];
 
 	port->stream |= 1 << dir;
 
@@ -1528,10 +1588,18 @@ out:
 static int mc_asoc_hw_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
+	struct mc_asoc_data *mc_asoc = mc_asoc_get_mc_asoc(dai->component);
 	struct mc_asoc_port_params *port = mc_asoc_dai_port(dai);
+	int dir = substream->stream;
+	int err;
 
 	mc_asoc_lock("mc_asoc_hw_free");
-	port->stream &= ~(1 << substream->stream);
+	port->stream &= ~(1 << dir);
+	err = ymu831_set_port_hold(mc_asoc, mc_asoc->port_hold & ~port->hold[dir],
+				   true);
+	if (err)
+		dev_err(dai->dev, "failed to stop port: %d\n", err);
+	port->hold[dir] = 0;
 	mc_asoc_unlock("mc_asoc_hw_free");
 
 	return 0;
@@ -2182,7 +2250,7 @@ static void ymu831_dapm_update_locked(struct snd_soc_component *codec)
 		dev_err(codec->dev, "failed to set path: %d\n", err);
 		goto unlock;
 	}
-	if (!active)
+	if (!active && !mc_asoc->port_hold)
 		auto_powerdown(codec);
 
 	ymu_dapm->requested	= path_info;
@@ -3030,6 +3098,7 @@ static int mc_asoc_probe(
 		goto error_init_hw;
 	}
 	mc_asoc->mbsel4		= -1;
+	mc_asoc->port_hold	= 0;
 	mc_asoc->dapm.valid	= false;
 
 	reg_info.bRegType	= MCDRV_REGTYPE_ANA;

@@ -455,6 +455,11 @@ static void mc_asoc_dump_hsdet_info(const void *pvPrm, UINT32 dPrm)
 		dbg_info("cbfunc = %8p\n", info->cbfunc);
 }
 
+static void mc_asoc_dump_port_hold(const void *pvPrm, UINT32 dPrm)
+{
+	dbg_info("port hold = 0x%02x\n", *(const UINT8 *)pvPrm);
+}
+
 struct mc_asoc_dump_func {
 	char *name;
 	void (*func)(const void *, UINT32);
@@ -489,6 +494,7 @@ static const struct mc_asoc_dump_func mc_asoc_dump_func_map[] = {
 	{"MCDRV_CONFIG_GP", NULL},
 	{"MCDRV_MASK_GP", NULL},
 	{"MCDRV_GETSET_GP", NULL},
+	{"MCDRV_SET_PORT_HOLD", mc_asoc_dump_port_hold},
 };
 
 SINT32 McDrv_Ctrl_dbg(UINT32 dCmd, void *pvPrm1, void *pvPrm2, UINT32 dPrm)

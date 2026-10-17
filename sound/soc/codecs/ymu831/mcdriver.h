@@ -91,7 +91,19 @@ SINT32	McDrv_Ctrl(UINT32 dCmd, void *pvPrm1, void *pvPrm2, UINT32 dPrm);
 #define	MCDRV_MASK_GP			(26)
 #define	MCDRV_GETSET_GP			(27)
 
+#define	MCDRV_SET_PORT_HOLD		(28)
+
 /*	pvPrm	*/
+/*	port hold: ports kept running with no path through them	*/
+#define	MCDRV_PORT_HOLD_MUSIC_RX	(0x01)
+#define	MCDRV_PORT_HOLD_MUSIC_TX	(0x02)
+#define	MCDRV_PORT_HOLD_EXT_RX		(0x04)
+#define	MCDRV_PORT_HOLD_EXT_TX		(0x08)
+#define	MCDRV_PORT_HOLD_VOICE_RX	(0x10)
+#define	MCDRV_PORT_HOLD_VOICE_TX	(0x20)
+#define	MCDRV_PORT_HOLD_HIFI_RX		(0x40)
+#define	MCDRV_PORT_HOLD_HIFI_TX		(0x80)
+
 /*	init	*/
 /*	MCDRV_INIT_INFO bCkSel setting	*/
 #define	MCDRV_CKSEL_CMOS_CMOS		(0x00)

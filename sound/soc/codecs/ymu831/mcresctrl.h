@@ -367,6 +367,8 @@ struct MCDRV_GLOBAL_INFO {
 	UINT8				bCClkSel;
 	UINT8				bFClkSel;
 	UINT8				bPlugDetDB;
+	UINT8				bPortHold;
+	UINT8				bPortHoldNext;
 
 
 	enum MCDRV_PMODE		eAPMode;
@@ -376,6 +378,7 @@ struct MCDRV_GLOBAL_INFO {
 
 SINT32		McResCtrl_SetHwId(UINT8 bHwId_dig, UINT8 bHwId_ana);
 void		McResCtrl_Init(void);
+void		McResCtrl_SetPortHold(UINT8 bPortHold);
 void		McResCtrl_InitABlockReg(void);
 void		McResCtrl_InitMBlockReg(void);
 void		McResCtrl_InitEReg(void);
