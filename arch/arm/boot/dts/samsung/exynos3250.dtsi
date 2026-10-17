@@ -857,6 +857,7 @@
 			dma-names = "tx", "rx";
 			pinctrl-0 = <&i2s2_bus>;
 			pinctrl-names = "default";
+			#sound-dai-cells = <1>;
 			status = "disabled";
 		};
 
