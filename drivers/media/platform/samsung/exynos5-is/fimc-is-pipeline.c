@@ -480,6 +480,10 @@ int fimc_is_pipeline_destroy(struct fimc_is_pipeline *pipeline)
 	if (!test_bit(PIPELINE_INIT, &pipeline->state))
 		return -EINVAL;
 
+	/* Power down the firmware and free its memory if still open */
+	if (test_bit(PIPELINE_OPEN, &pipeline->state))
+		fimc_is_pipeline_close(pipeline);
+
 	cancel_work_sync(&pipeline->work);
 	cancel_delayed_work_sync(&pipeline->wdg_work);
 
@@ -1993,6 +1997,12 @@ int fimc_is_pipeline_stop(struct fimc_is_pipeline *pipeline, int streamoff)
 					pipeline->instance);
 		if (ret) {
 			dev_err(pipeline->dev, "Stream Off failed\n");
+			/*
+			 * Give up on the firmware, so that closing the pipeline
+			 * still powers it down and releases its resources.
+			 */
+			set_bit(PIPELINE_RESET, &pipeline->state);
+			clear_bit(PIPELINE_START, &pipeline->state);
 			ret = -EINVAL;
 			goto err_exit;
 		}
@@ -2179,17 +2189,21 @@ int fimc_is_pipeline_close(struct fimc_is_pipeline *pipeline)
 	int ret;
 	struct fimc_is *is = pipeline->is;
 
+	/*
+	 * A pipeline can be left started, for example when stopping it failed.
+	 * Try to stop it again, and give up on the firmware if that fails too,
+	 * the pipeline has to be closed to power down and free its memory.
+	 */
+	if (test_bit(PIPELINE_START, &pipeline->state) &&
+	    fimc_is_pipeline_stop(pipeline, 1)) {
+		set_bit(PIPELINE_RESET, &pipeline->state);
+		clear_bit(PIPELINE_START, &pipeline->state);
+	}
+
 	mutex_lock(&pipeline->pipe_lock);
 
 	if (!test_bit(PIPELINE_OPEN, &pipeline->state)) {
 		dev_err(pipeline->dev, "Pipeline not opened\n");
-		ret = -EINVAL;
-		goto err_exit;
-	}
-
-	if (test_bit(PIPELINE_START, &pipeline->state)
-	&& !(test_bit(PIPELINE_RESET, &pipeline->state))) {
-		dev_err(pipeline->dev, "Cannot close pipeline when its started\n");
 		ret = -EINVAL;
 		goto err_exit;
 	}
