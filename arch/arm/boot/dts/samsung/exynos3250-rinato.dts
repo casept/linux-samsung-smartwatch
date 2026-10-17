@@ -352,7 +352,7 @@
 		pullup-uv = <1800000>;
 		pullup-ohm = <100000>;
 		pulldown-ohm = <100000>;
-		io-channels = <&adc 0>;
+		io-channels = <&adc 1>;
 		#thermal-sensor-cells = <0>;
 	};
 
@@ -361,7 +361,7 @@
 		pullup-uv = <1800000>;
 		pullup-ohm = <100000>;
 		pulldown-ohm = <100000>;
-		io-channels = <&adc 1>;
+		io-channels = <&adc 0>;
 		#thermal-sensor-cells = <0>;
 	};
 };
