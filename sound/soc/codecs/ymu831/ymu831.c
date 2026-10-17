@@ -423,12 +423,13 @@ static unsigned int	mc_asoc_tlv_aout[]	= {
 	0x44,	0x57,	TLV_DB_SCALE_ITEM(-1550, 50, 0),
 	0x58,	0x6F,	TLV_DB_SCALE_ITEM(-575, 25, 0),
 };
+/* volmap_sp[4], which all but the first CODEC revision use */
 static unsigned int	mc_asoc_tlv_sp[]	= {
 	TLV_DB_RANGE_HEAD(4),
 	0x00,	0x2E,	TLV_DB_SCALE_ITEM(-9600, 0, 1),
-	0x2F,	0x43,	TLV_DB_SCALE_ITEM(-3600, 100, 0),
-	0x44,	0x57,	TLV_DB_SCALE_ITEM(-1550, 50, 0),
-	0x58,	0x6F,	TLV_DB_SCALE_ITEM(-575, 25, 0),
+	0x2F,	0x43,	TLV_DB_SCALE_ITEM(-3200, 100, 0),
+	0x44,	0x57,	TLV_DB_SCALE_ITEM(-1150, 50, 0),
+	0x58,	0x6F,	TLV_DB_SCALE_ITEM(-175, 25, 0),
 };
 static unsigned int	mc_asoc_tlv_lout[]	= {
 	TLV_DB_RANGE_HEAD(4),
@@ -651,7 +652,7 @@ static const struct snd_kcontrol_new	mc_asoc_snd_controls[]	= {
 		MC_ASOC_AVOL_HP, 7, 15, 1, 0),
 
 	SOC_DOUBLE_TLV("Speaker Playback Volume",
-		MC_ASOC_AVOL_SP, 0, 8, 127, 0, mc_asoc_tlv_sp),
+		MC_ASOC_AVOL_SP, 0, 8, 0x6F, 0, mc_asoc_tlv_sp),
 	SOC_DOUBLE("Speaker Playback Switch",
 		MC_ASOC_AVOL_SP, 7, 15, 1, 0),
 
