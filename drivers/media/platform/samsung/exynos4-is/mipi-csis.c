@@ -208,7 +208,7 @@ struct csis_pktbuf {
  * @hss_mask:            HS-RX settle time mask
  * @num_virt_channels:   number of available virtual channels
  * @num_dlanes_reg:      register for data lanes configuration
- * @sclk_csis            IP support for SCLK_CSIS clock
+ * @sclk_csis:           IP support for SCLK_CSIS clock
  */
 struct csis_drvdata {
 	u32		interrupt_mask;
@@ -216,7 +216,7 @@ struct csis_drvdata {
 	u32		hss_mask;
 	unsigned short	num_virt_channels;
 	unsigned short	num_dlanes_reg;
-	unsigned int    sclk_csis:1;
+	unsigned int	sclk_csis:1;
 };
 
 /**
