@@ -283,10 +283,10 @@ struct mc_asoc_data {
 	struct mc_asoc_dsp_param	param_store[4][2];
 	struct mc_asoc_jack		jack;
 	struct clk			*mclk;
+	bool				mclk_enabled;
 	struct gpio_desc		*ldo_gpio;
 	struct gpio_desc		*ext_micbias_gpio;
 	int				irq;
-	int	(*penableclkfn)(struct snd_soc_component *, int, bool);
 };
 
 struct mc_asoc_priv {

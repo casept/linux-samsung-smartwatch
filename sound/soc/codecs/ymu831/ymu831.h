@@ -123,9 +123,6 @@ struct ymc_dspdata_args {
 #define YMC_NOTITY_HOLD_OFF		(0)
 #define YMC_NOTITY_HOLD_ON		(1)
 
-void	mc_asoc_set_enable_clock_func(
-		int (*penableclkfn)(struct snd_soc_component *, int, bool));
-
 int	ymu831_get_codec_suspended(struct snd_soc_component *codec);
 
 #endif

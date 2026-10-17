@@ -1387,20 +1387,29 @@ UINT8 mc_asoc_get_bus_select(void)
 	return BUS_SELECT;
 }
 
-void mc_asoc_set_enable_clock_func(
-	int (*pcbfunc)(struct snd_soc_component *, int, bool))
-{
-	struct mc_asoc_data	*mc_asoc	= NULL;
-
-	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-	mc_asoc->penableclkfn	= pcbfunc;
-}
-
+/*
+ * Called by the core when it powers the PLL up or down, i.e. exactly when
+ * the codec starts and stops needing its reference clock.
+ */
 void mc_asoc_enable_clock(int enable)
 {
-#ifdef FEATURE_MCLK_CONTROL_BY_YMU831
-	/* To do */
-#endif
+	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
+	int	err;
+
+	if (!mc_asoc || mc_asoc->mclk_enabled == !!enable)
+		return;
+
+	if (enable) {
+		err = clk_prepare_enable(mc_asoc->mclk);
+		if (err) {
+			dev_err(mc_asoc_get_dev(), "failed to enable MCLK: %d\n",
+				err);
+			return;
+		}
+	} else {
+		clk_disable_unprepare(mc_asoc->mclk);
+	}
+	mc_asoc->mclk_enabled	= !!enable;
 }
 
 static void mc_asoc_lock(char *fn)
@@ -8506,6 +8515,7 @@ static void mc_asoc_remove(struct snd_soc_component *codec)
 			err	= -EIO;
 		}
 	}
+	mc_asoc_enable_clock(0);
 
 	destroy_workqueue(workq_mb4);
 	destroy_workqueue(workq_mkdeten);
@@ -8582,19 +8592,6 @@ static int mc_asoc_suspend(
 		goto error;
 	}
 
-#ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	if ((mixer_ctl_info.audio_mode_play == 0)
-	&& (mixer_ctl_info.audio_mode_cap == 0)
-	&& (mixer_ctl_info.mainmic_play == 0)
-	&& (mixer_ctl_info.submic_play == 0)
-	&& (mixer_ctl_info.msmic_play == 0)
-	&& (mixer_ctl_info.hsmic_play == 0)
-	&& (mixer_ctl_info.btmic_play == 0)
-	&& (mixer_ctl_info.lin1_play == 0)
-	&& (mixer_ctl_info.dtmf_control == 0)) {
-		clk_disable_unprepare(mc_asoc->mclk);
-	}
-#endif
 	mc_asoc_suspended	= 1;
 
 error:
@@ -8620,14 +8617,6 @@ static int mc_asoc_resume(
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if (mc_asoc == NULL)
 		return -EINVAL;
-
-#ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	err = clk_prepare_enable(mc_asoc->mclk);
-	if (err) {
-		dev_err(codec->dev, "failed to enable MCLK: %d\n", err);
-		return err;
-	}
-#endif
 
 	mc_asoc_suspended	= 0;
 
@@ -8912,12 +8901,8 @@ static int mc_asoc_spi_probe(
 				     PTR_ERR(mc_asoc->ext_micbias_gpio),
 				     "failed to get ext-micbias GPIO\n");
 
-#ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	/* The codec needs MCLK whenever it is not suspended */
-	mc_asoc->mclk = devm_clk_get_optional_enabled(&spi->dev, "mclk");
-#else
+	/* gated by the core, see mc_asoc_enable_clock() */
 	mc_asoc->mclk = devm_clk_get_optional(&spi->dev, "mclk");
-#endif
 	if (IS_ERR(mc_asoc->mclk))
 		return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->mclk),
 				     "failed to get MCLK\n");
