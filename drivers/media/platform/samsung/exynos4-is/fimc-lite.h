@@ -69,7 +69,7 @@ struct flite_drvdata {
 	unsigned short out_hor_offs_align;
 	unsigned short max_dma_bufs;
 	unsigned short num_instances;
-	unsigned int   has_out_local_enable:1;
+	unsigned int has_out_local_enable:1;
 };
 
 struct fimc_lite_events {

@@ -1631,7 +1631,7 @@ static struct flite_drvdata fimc_lite_drvdata_exynos3250 = {
 	.out_hor_offs_align	= 8,
 	.max_dma_bufs		= 32,
 	.num_instances		= 2,
-	.has_out_local_enable   = 1,
+	.has_out_local_enable	= 1,
 };
 
 /* EXYNOS4212, EXYNOS4412 */
@@ -1654,7 +1654,7 @@ static struct flite_drvdata fimc_lite_drvdata_exynos5 = {
 	.out_hor_offs_align	= 8,
 	.max_dma_bufs		= 32,
 	.num_instances		= 3,
-	.has_out_local_enable   = 1,
+	.has_out_local_enable	= 1,
 };
 
 static const struct of_device_id flite_of_match[] = {

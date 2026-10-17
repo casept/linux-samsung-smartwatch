@@ -83,6 +83,7 @@ void flite_hw_set_interrupt_mask(struct fimc_lite *dev)
 void flite_hw_clear_interrupt_mask(struct fimc_lite *dev)
 {
 	u32 cfg = readl(dev->regs + FLITE_REG_CIGCTRL);
+
 	cfg |= FLITE_REG_CIGCTRL_IRQ_DISABLE_MASK;
 	writel(cfg, dev->regs + FLITE_REG_CIGCTRL);
 }
@@ -302,15 +303,15 @@ void flite_hw_mask_dma_buffer(struct fimc_lite *dev, u32 index)
 }
 
 /* Enable/disable DMA/local output path */
-void flite_hw_set_output_path(struct fimc_lite* dev, bool dma, bool local)
+void flite_hw_set_output_path(struct fimc_lite *dev, bool dma, bool local)
 {
 	u32 cfg = readl(dev->regs + FLITE_REG_CIGCTRL);
 
 	if (dev->dd->has_out_local_enable) {
 		if (local)
-		cfg &= ~FLITE_REG_CIGCTRL_OUT_LOCAL_DISABLE;
+			cfg &= ~FLITE_REG_CIGCTRL_OUT_LOCAL_DISABLE;
 		else
-		cfg |= FLITE_REG_CIGCTRL_OUT_LOCAL_DISABLE;
+			cfg |= FLITE_REG_CIGCTRL_OUT_LOCAL_DISABLE;
 	}
 
 	if (dma)
@@ -320,7 +321,7 @@ void flite_hw_set_output_path(struct fimc_lite* dev, bool dma, bool local)
 
 	writel(cfg, dev->regs + FLITE_REG_CIGCTRL);
 }
- 
+
 /* Configure output DMA, set output pixel size and offsets (composition) */
 void flite_hw_configure_output_dma(struct fimc_lite *dev, struct flite_frame *f)
 {
