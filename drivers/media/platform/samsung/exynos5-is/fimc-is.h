@@ -49,7 +49,7 @@
  * @pdev: pointer to FIMC-IS platform device
  * @pdata: platform data for FIMC-IS
  * @clock: FIMC-IS clocks
- * @pmu_regs: PMU reg base address
+ * @pmu: PMU register map
  * @num_pipelines: number of pipelines opened
  * @minfo: internal memory organization info
  * @drvdata: fimc-is driver data
@@ -62,7 +62,7 @@ struct fimc_is {
 	struct fimc_md			*md;
 
         struct clk			*clocks[IS_CLKS_MAX];
-	void __iomem			*pmu_regs;
+	struct regmap			*pmu;
 	unsigned int			num_pipelines;
 
 	struct fimc_is_meminfo		minfo;
@@ -209,12 +209,15 @@ static inline void fimc_is_dispatch_events(struct fimc_is *is, unsigned int even
 
 static inline void pmu_is_write(u32 v, struct fimc_is *is, unsigned int offset)
 {
-	writel(v, is->pmu_regs + offset);
+	regmap_write(is->pmu, offset, v);
 }
 
 static inline u32 pmu_is_read(struct fimc_is *is, unsigned int offset)
 {
-	return readl(is->pmu_regs + offset);
+	u32 v = 0;
+
+	regmap_read(is->pmu, offset, &v);
+	return v;
 }
 
 #endif

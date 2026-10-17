@@ -6,6 +6,7 @@
  * Arun Kumar K <arun.kk@samsung.com>
  */
 
+#include <linux/mfd/syscon.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
@@ -471,7 +472,6 @@ static int fimc_is_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct fimc_is *is;
 	void __iomem *regs;
-	struct device_node *node;
 	int irq, ret;
 	int i;
 
@@ -508,17 +508,11 @@ static int fimc_is_probe(struct platform_device *pdev)
 		goto err_fw_mem;
 	}
 
-	/* Get the PMU base */
-	node = of_parse_phandle(dev->of_node, "samsung,pmu", 0);
-	if (!node) {
-		ret = -ENODEV;
-		goto err_fw_mem;
-	}
-
-	is->pmu_regs = of_iomap(node, 0);
-	of_node_put(node);
-	if (!is->pmu_regs) {
-		ret = -ENOMEM;
+	is->pmu = syscon_regmap_lookup_by_phandle(dev->of_node,
+						  "samsung,pmu-syscon");
+	if (IS_ERR(is->pmu)) {
+		ret = dev_err_probe(dev, PTR_ERR(is->pmu),
+				    "Failed to get the PMU\n");
 		goto err_fw_mem;
 	}
 
@@ -526,7 +520,7 @@ static int fimc_is_probe(struct platform_device *pdev)
 	if (!irq) {
 		dev_err(dev, "Failed to get IRQ\n");
 		ret = -EINVAL;
-		goto err_pmu;
+		goto err_fw_mem;
 	}
 
         ret = fimc_is_get_clocks(is);
@@ -588,8 +582,6 @@ err_sd:
 	fimc_is_pipelines_destroy(is);
 err_clk:
 	fimc_is_put_clocks(is);
-err_pmu:
-	iounmap(is->pmu_regs);
 err_fw_mem:
 	fimc_is_free_fw_mem(is);
 err_rmem:
@@ -609,7 +601,6 @@ static void fimc_is_remove(struct platform_device *pdev)
 	pm_runtime_set_suspended(dev);
 	fimc_is_pipelines_destroy(is);
 	fimc_is_put_clocks(is);
-	iounmap(is->pmu_regs);
 	fimc_is_free_fw_mem(is);
 	of_reserved_mem_device_release(dev);
 }
