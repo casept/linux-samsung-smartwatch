@@ -7897,17 +7897,43 @@ static ssize_t headset_print_name(struct switch_dev *sdev, char *buf)
 }
 #endif	/*	SW_DRV	*/
 
-static struct snd_soc_jack	hs_jack;
-static struct snd_soc_jack_pin hs_jack_pins[] = {
-	{
-		.pin	= "Mic Jack",
-		.mask	= SND_JACK_MICROPHONE,
-	},
-	{
-		.pin	= "Headphone Jack",
-		.mask	= SND_JACK_HEADPHONE,
-	},
-};
+/*
+ * Headset detection is only armed while a jack is attached via set_jack(),
+ * boards without a headset socket keep plug, mic and key detection off.
+ */
+static SINT32 mc_asoc_set_hsdet(void *info, void *info2, UINT32 update)
+{
+	struct mc_asoc_data *mc_asoc = mc_asoc_get_mc_asoc(mc_asoc_codec);
+	struct MCDRV_HSDET_INFO hsdet = *(struct MCDRV_HSDET_INFO *)info;
+
+	if (!mc_asoc || !mc_asoc->jack.hs_jack) {
+		hsdet.bEnPlugDet	= MCDRV_PLUGDET_DISABLE;
+		hsdet.bEnPlugDetDb	= MCDRV_PLUGDETDB_DISABLE;
+		hsdet.bEnMicDet		= MCDRV_MICDET_DISABLE;
+		hsdet.bEnDlyKeyOff	= MCDRV_KEYEN_D_D_D;
+		hsdet.bEnDlyKeyOn	= MCDRV_KEYEN_D_D_D;
+		hsdet.bEnKeyOff		= MCDRV_KEYEN_D_D_D;
+		hsdet.bEnKeyOn		= MCDRV_KEYEN_D_D_D;
+	}
+
+	return _McDrv_Ctrl(MCDRV_SET_HSDET, &hsdet, info2, update);
+}
+
+static void mc_asoc_jack_report(int status, int mask)
+{
+	struct mc_asoc_data *mc_asoc = mc_asoc_get_mc_asoc(mc_asoc_codec);
+
+	if (mc_asoc && mc_asoc->jack.hs_jack)
+		snd_soc_jack_report(mc_asoc->jack.hs_jack, status, mask);
+}
+
+static void mc_asoc_report_key(unsigned int code, int value)
+{
+	if (!inp_dev)
+		return;
+	input_report_key(inp_dev, code, value);
+	input_sync(inp_dev);
+}
 
 static struct workqueue_struct	*workq_mb4;
 static struct delayed_work	delayed_work_mb4;
@@ -7977,8 +8003,8 @@ static void work_mkdeten(struct work_struct *work)
 			stHSDetInfo.bEnDlyKeyOn		= MCDRV_KEYEN_D_D_D;
 			stHSDetInfo.bEnKeyOff		= MCDRV_KEYEN_D_D_D;
 			stHSDetInfo.bEnKeyOn		= MCDRV_KEYEN_D_D_D;
-			err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					(void *)&stHSDetInfo, NULL, 0x7C);
+			err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL,
+						    0x7C);
 		}
 		if (err < MCDRV_SUCCESS) {
 			;
@@ -7993,10 +8019,9 @@ static void work_mkdeten(struct work_struct *work)
 	if (jack_status != mc_asoc_jack_status) {
 		if (mc_asoc_jack_status != 0) {
 			;
-			snd_soc_jack_report(&hs_jack, 0, SND_JACK_HEADSET);
+			mc_asoc_jack_report(0, SND_JACK_HEADSET);
 		}
-		snd_soc_jack_report(&hs_jack,
-			mc_asoc_jack_status, SND_JACK_HEADSET);
+		mc_asoc_jack_report(mc_asoc_jack_status, SND_JACK_HEADSET);
 	}
 	mutex_unlock(&hsdet_mutex);
 }
@@ -8119,14 +8144,14 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 			stHSDetInfo.bHsDetDbnc		= bHsDetDbnc;
 			stHSDetInfo.bDbncNumPlug	= bDbncNumPlug;
 			stHSDetInfo.cbfunc		= NULL;
-			err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					(void *)&stHSDetInfo, NULL, 0x410000FE);
+			err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL,
+						    0x410000FE);
 			if (err < MCDRV_SUCCESS)
 				dbg_info("%d: Error in MCDRV_SET_HSDET\n", err);
 
 			stHSDetInfo.cbfunc	= hsdet_cb;
-			err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					(void *)&stHSDetInfo, NULL, 0x40000000);
+			err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL,
+						    0x40000000);
 			if (err < MCDRV_SUCCESS)
 				dbg_info("%d: Error in MCDRV_SET_HSDET\n", err);
 			mc_asoc_hpimpclass	= (UINT8)-1;
@@ -8169,8 +8194,9 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 					stHSDetInfo.bEnKeyOff	&= ~1;
 					stHSDetInfo.bKey0OnDlyTim	=
 					    bKey0OnDlyTim;
-					err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					  (void *)&stHSDetInfo, NULL, 0x2020);
+					err	= mc_asoc_set_hsdet((void *)&stHSDetInfo,
+								    NULL,
+								    0x2020);
 					if (err < MCDRV_SUCCESS)
 						dbg_info(
 					"%d: Error in MCDRV_SET_HSDET\n", err);
@@ -8189,8 +8215,9 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 					stHSDetInfo.bEnKeyOff	&= ~2;
 					stHSDetInfo.bKey1OnDlyTim	=
 					    bKey1OnDlyTim;
-					err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					  (void *)&stHSDetInfo, NULL, 0x4020);
+					err	= mc_asoc_set_hsdet((void *)&stHSDetInfo,
+								    NULL,
+								    0x4020);
 					if (err < MCDRV_SUCCESS)
 						dbg_info(
 					"%d: Error in MCDRV_SET_HSDET\n", err);
@@ -8209,8 +8236,9 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 					stHSDetInfo.bEnKeyOff	&= ~4;
 					stHSDetInfo.bKey2OnDlyTim	=
 					    bKey2OnDlyTim;
-					err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					  (void *)&stHSDetInfo, NULL, 0x8020);
+					err	= mc_asoc_set_hsdet((void *)&stHSDetInfo,
+								    NULL,
+								    0x8020);
 					if (err < MCDRV_SUCCESS)
 						dbg_info(
 					"%d: Error in MCDRV_SET_HSDET\n", err);
@@ -8221,18 +8249,15 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		if (dFlags & MCDRV_HSDET_EVT_DLYKEYON0_FLAG) {
 			dbg_info("DLYKEYON_0\n");
 			if ((bEnDlyKeyOn & MCDRV_KEYEN_D_D_E) != 0) {
-				input_report_key(inp_dev,
-					MC_ASOC_EV_KEY_DELAYKEYON0, 1);
-				input_sync(inp_dev);
-				input_report_key(inp_dev,
-					MC_ASOC_EV_KEY_DELAYKEYON0, 0);
-				input_sync(inp_dev);
+				mc_asoc_report_key(MC_ASOC_EV_KEY_DELAYKEYON0, 1);
+				mc_asoc_report_key(MC_ASOC_EV_KEY_DELAYKEYON0, 0);
 				if ((mc_asoc_ver_id == 0)
 				&& (bKey0OnDlyTim2 == 0)) {
 					stHSDetInfo.bEnKeyOff	|= 1;
 					stHSDetInfo.bKey0OnDlyTim	= 0;
-					err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					  (void *)&stHSDetInfo, NULL, 0x2020);
+					err	= mc_asoc_set_hsdet((void *)&stHSDetInfo,
+								    NULL,
+								    0x2020);
 					if (err < MCDRV_SUCCESS)
 						dbg_info(
 					"%d: Error in MCDRV_SET_HSDET\n", err);
@@ -8241,19 +8266,16 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		} else if (dFlags & MCDRV_HSDET_EVT_DLYKEYON1_FLAG) {
 			dbg_info("DLYKEYON_1\n");
 			if ((bEnDlyKeyOn & MCDRV_KEYEN_D_E_D) != 0) {
-				input_report_key(inp_dev,
-					MC_ASOC_EV_KEY_DELAYKEYON1, 1);
-				input_sync(inp_dev);
-				input_report_key(inp_dev,
-					MC_ASOC_EV_KEY_DELAYKEYON1, 0);
-				input_sync(inp_dev);
+				mc_asoc_report_key(MC_ASOC_EV_KEY_DELAYKEYON1, 1);
+				mc_asoc_report_key(MC_ASOC_EV_KEY_DELAYKEYON1, 0);
 
 				if ((mc_asoc_ver_id == 0)
 				&& (bKey1OnDlyTim2 == 0)) {
 					stHSDetInfo.bEnKeyOff	|= 2;
 					stHSDetInfo.bKey1OnDlyTim	= 0;
-					err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					  (void *)&stHSDetInfo, NULL, 0x4020);
+					err	= mc_asoc_set_hsdet((void *)&stHSDetInfo,
+								    NULL,
+								    0x4020);
 					if (err < MCDRV_SUCCESS)
 						dbg_info(
 					"%d: Error in MCDRV_SET_HSDET\n", err);
@@ -8262,19 +8284,16 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		} else if (dFlags & MCDRV_HSDET_EVT_DLYKEYON2_FLAG) {
 			dbg_info("DLYKEYON_2\n");
 			if ((bEnDlyKeyOn & MCDRV_KEYEN_E_D_D) != 0) {
-				input_report_key(inp_dev,
-					MC_ASOC_EV_KEY_DELAYKEYON2, 1);
-				input_sync(inp_dev);
-				input_report_key(inp_dev,
-					MC_ASOC_EV_KEY_DELAYKEYON2, 0);
-				input_sync(inp_dev);
+				mc_asoc_report_key(MC_ASOC_EV_KEY_DELAYKEYON2, 1);
+				mc_asoc_report_key(MC_ASOC_EV_KEY_DELAYKEYON2, 0);
 
 				if ((mc_asoc_ver_id == 0)
 				&& (bKey2OnDlyTim2 == 0)) {
 					stHSDetInfo.bEnKeyOff	|= 4;
 					stHSDetInfo.bKey2OnDlyTim	= 0;
-					err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					  (void *)&stHSDetInfo, NULL, 0x8020);
+					err	= mc_asoc_set_hsdet((void *)&stHSDetInfo,
+								    NULL,
+								    0x8020);
 					if (err < MCDRV_SUCCESS)
 						dbg_info(
 					"%d: Error in MCDRV_SET_HSDET\n", err);
@@ -8285,38 +8304,20 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		if (dFlags & MCDRV_HSDET_EVT_DLYKEYOFF0_FLAG) {
 			dbg_info("DLYKEYOFF_0\n");
 			if ((bEnDlyKeyOff & MCDRV_KEYEN_D_D_E) != 0) {
-				input_report_key(inp_dev,
-				  mc_asoc_ev_key_delaykeyoff0[psRes->bKeyCnt0],
-					1);
-				input_sync(inp_dev);
-				input_report_key(inp_dev,
-				  mc_asoc_ev_key_delaykeyoff0[psRes->bKeyCnt0],
-					0);
-				input_sync(inp_dev);
+				mc_asoc_report_key(mc_asoc_ev_key_delaykeyoff0[psRes->bKeyCnt0], 1);
+				mc_asoc_report_key(mc_asoc_ev_key_delaykeyoff0[psRes->bKeyCnt0], 0);
 			}
 		} else if (dFlags & MCDRV_HSDET_EVT_DLYKEYOFF1_FLAG) {
 			dbg_info("DLYKEYOFF_1\n");
 			if ((bEnDlyKeyOff & MCDRV_KEYEN_D_E_D) != 0) {
-				input_report_key(inp_dev,
-				  mc_asoc_ev_key_delaykeyoff1[psRes->bKeyCnt1],
-				  1);
-				input_sync(inp_dev);
-				input_report_key(inp_dev,
-				  mc_asoc_ev_key_delaykeyoff1[psRes->bKeyCnt1],
-				  0);
-				input_sync(inp_dev);
+				mc_asoc_report_key(mc_asoc_ev_key_delaykeyoff1[psRes->bKeyCnt1], 1);
+				mc_asoc_report_key(mc_asoc_ev_key_delaykeyoff1[psRes->bKeyCnt1], 0);
 			}
 		} else if (dFlags & MCDRV_HSDET_EVT_DLYKEYOFF2_FLAG) {
 			dbg_info("DLYKEYOFF_2\n");
 			if ((bEnDlyKeyOff & MCDRV_KEYEN_E_D_D) != 0) {
-				input_report_key(inp_dev,
-				  mc_asoc_ev_key_delaykeyoff2[psRes->bKeyCnt2],
-				  1);
-				input_sync(inp_dev);
-				input_report_key(inp_dev,
-				  mc_asoc_ev_key_delaykeyoff2[psRes->bKeyCnt2],
-				  0);
-				input_sync(inp_dev);
+				mc_asoc_report_key(mc_asoc_ev_key_delaykeyoff2[psRes->bKeyCnt2], 1);
+				mc_asoc_report_key(mc_asoc_ev_key_delaykeyoff2[psRes->bKeyCnt2], 0);
 			}
 		}
 	}
@@ -8378,13 +8379,13 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		stHSDetInfo.bHsDetDbnc		= HSUNDETDBNC;
 		stHSDetInfo.bDbncNumPlug	= HSUNDETDBNCNUM;
 		stHSDetInfo.cbfunc		= NULL;
-		err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-				(void *)&stHSDetInfo, NULL, 0x410000FE);
+		err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL,
+					    0x410000FE);
 		if (err < MCDRV_SUCCESS)
 			dbg_info("%d: Error in MCDRV_SET_HSDET\n", err);
 		stHSDetInfo.cbfunc	= hsdet_cb;
-		err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-				(void *)&stHSDetInfo, NULL, 0x40000000);
+		err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL,
+					    0x40000000);
 		if (err < MCDRV_SUCCESS)
 			dbg_info("%d: Error in MCDRV_SET_HSDET\n", err);
 		if (stHSDetInfo.bSgnlNum == 0xFF)
@@ -8404,8 +8405,8 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 			stHSDetInfo.bEnDlyKeyOn		= MCDRV_KEYEN_D_D_D;
 			stHSDetInfo.bEnKeyOff		= MCDRV_KEYEN_D_D_D;
 			stHSDetInfo.bEnKeyOn		= MCDRV_KEYEN_D_D_D;
-			err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-					(void *)&stHSDetInfo, NULL, 0x7C);
+			err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL,
+						    0x7C);
 			if (err < MCDRV_SUCCESS)
 				dbg_info("%d: Error in MCDRV_SET_HSDET\n", err);
 		} else {
@@ -8450,16 +8451,15 @@ exit:
 		dbg_info("mc_asoc_jack_status=%d\n", mc_asoc_jack_status);
 		if (mc_asoc_jack_status != 0) {
 			;
-			snd_soc_jack_report(&hs_jack, 0, SND_JACK_HEADSET);
+			mc_asoc_jack_report(0, SND_JACK_HEADSET);
 		}
-		snd_soc_jack_report(&hs_jack,
-			mc_asoc_jack_status, SND_JACK_HEADSET);
+		mc_asoc_jack_report(mc_asoc_jack_status, SND_JACK_HEADSET);
 	}
 	if (jack_btn_on != 0) {
-		snd_soc_jack_report(&hs_jack, jack_btn_stat, jack_btn_on);
+		mc_asoc_jack_report(jack_btn_stat, jack_btn_on);
 	}
 	if (jack_btn_off != 0) {
-		snd_soc_jack_report(&hs_jack, 0, jack_btn_off);
+		mc_asoc_jack_report(0, jack_btn_off);
 	}
 	mutex_unlock(&hsdet_mutex);
 }
@@ -8566,7 +8566,6 @@ static int mc_asoc_probe(
 	struct snd_soc_component *codec
 )
 {
-	int	i;
 	struct mc_asoc_data	*mc_asoc	= NULL;
 	struct device		*dev		= NULL;
 	struct MCDRV_DIO_INFO	sDioInfo;
@@ -8793,44 +8792,6 @@ static int mc_asoc_probe(
 	write_cache(codec, MC_ASOC_MIC4_BIAS, mc_asoc_mic4_bias);
 #endif
 
-	/* Headset jack detection */
-	snd_soc_card_jack_new(codec->card, "Headset",
-			      SND_JACK_HEADSET | SND_JACK_BTN_0 |
-			      SND_JACK_BTN_1 | SND_JACK_BTN_2,
-			      &hs_jack);
-
-	snd_jack_set_key(hs_jack.jack, SND_JACK_BTN_0, KEY_MEDIA);
-	snd_jack_set_key(hs_jack.jack, SND_JACK_BTN_1, KEY_VOLUMEUP);
-	snd_jack_set_key(hs_jack.jack, SND_JACK_BTN_2, KEY_VOLUMEDOWN);
-
-	snd_soc_jack_add_pins(&hs_jack,
-		ARRAY_SIZE(hs_jack_pins),
-		hs_jack_pins);
-
-	mc_asoc->jack.hs_jack = &hs_jack;
-
-	inp_dev	= input_allocate_device();
-	inp_dev->name = "Headset keys";
-	input_set_capability(inp_dev, EV_KEY, MC_ASOC_EV_KEY_DELAYKEYON0);
-	input_set_capability(inp_dev, EV_KEY, MC_ASOC_EV_KEY_DELAYKEYON1);
-	input_set_capability(inp_dev, EV_KEY, MC_ASOC_EV_KEY_DELAYKEYON2);
-	for (i = 0; i < 8; i++) {
-		input_set_capability(inp_dev,
-			EV_KEY,
-			mc_asoc_ev_key_delaykeyoff0[i]);
-		input_set_capability(inp_dev,
-			EV_KEY,
-			mc_asoc_ev_key_delaykeyoff1[i]);
-		input_set_capability(inp_dev,
-			EV_KEY,
-			mc_asoc_ev_key_delaykeyoff2[i]);
-	}
-	err	= input_register_device(inp_dev);
-	if (err != 0) {
-		dev_err(dev, "%d: Error in input_register_device\n", err);
-		goto error_set_mode;
-	}
-
 #ifdef SW_DRV
 	h2w_sdev	= kzalloc(sizeof(struct switch_dev), GFP_KERNEL);
 	h2w_sdev->name	= "h2w";
@@ -8904,8 +8865,8 @@ static int mc_asoc_probe(
 		;
 		mc_asoc->hsdet_store.bIrqType	= MCDRV_IRQTYPE_NORMAL;
 	}
-	err	= _McDrv_Ctrl(MCDRV_SET_HSDET, (void *)&mc_asoc->hsdet_store,
-			(void *)&stHSDet2Info_Default, 0x7fffffff);
+	err	= mc_asoc_set_hsdet((void *)&mc_asoc->hsdet_store,
+				    (void *)&stHSDet2Info_Default, 0x7fffffff);
 	if (err < MCDRV_SUCCESS) {
 		dev_err(dev, "%d: Error in MCDRV_SET_HSDET\n", err);
 		goto error_set_mode;
@@ -8923,10 +8884,6 @@ static int mc_asoc_probe(
 		dev_err(dev, "%d: Error in init_irq\n", err);
 		goto error_set_mode;
 	}
-
-#ifdef HSDET_WHILE_SUSPEND
-	device_init_wakeup(dev, 1);
-#endif
 
 	set_bias_level(codec, SND_SOC_BIAS_OFF);
 	goto exit;
@@ -8970,7 +8927,10 @@ static void mc_asoc_remove(struct snd_soc_component *codec)
 	/* IRQ terminate */
 	term_irq();
 
-	input_unregister_device(inp_dev);
+	if (inp_dev) {
+		input_unregister_device(inp_dev);
+		inp_dev = NULL;
+	}
 #ifdef SW_DRV
 	if (h2w_sdev != NULL) {
 		switch_dev_unregister(h2w_sdev);
@@ -9075,16 +9035,14 @@ static int mc_asoc_suspend(
 	}
 	stHSDetInfo.bEnPlugDetDb	&= mc_asoc->hsdet_store.bEnPlugDetDb;
 	stHSDetInfo.bEnMicDet		&= mc_asoc->hsdet_store.bEnMicDet;
-	err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-			(void *)&stHSDetInfo, NULL, 0x7fffffff);
+	err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL, 0x7fffffff);
 	if (err != MCDRV_SUCCESS) {
 		dev_err(codec->dev, "%d: Error in mc_asoc_suspend\n", err);
 		err	= -EIO;
 		goto error;
 	}
 	stHSDetInfo.cbfunc	= hsdet_cb;
-	err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-			(void *)&stHSDetInfo, NULL, 0x40000000);
+	err	= mc_asoc_set_hsdet((void *)&stHSDetInfo, NULL, 0x40000000);
 	if (err != MCDRV_SUCCESS) {
 		dev_err(codec->dev, "%d: Error in mc_asoc_suspend\n", err);
 		err	= -EIO;
@@ -9222,16 +9180,16 @@ static int mc_asoc_resume(
 					stHSDetInfo_Default.bEnKeyOn;
 	}
 	mc_asoc->hsdet_store.cbfunc	= NULL;
-	err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-			(void *)&mc_asoc->hsdet_store, NULL, 0x7fffffff);
+	err	= mc_asoc_set_hsdet((void *)&mc_asoc->hsdet_store, NULL,
+				    0x7fffffff);
 	if (err != MCDRV_SUCCESS) {
 		dev_err(codec->dev, "%d: Error in mc_asoc_resume\n", err);
 		err	= -EIO;
 		goto error;
 	}
 	mc_asoc->hsdet_store.cbfunc	= hsdet_cb;
-	err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-			(void *)&mc_asoc->hsdet_store, NULL, 0x40000000);
+	err	= mc_asoc_set_hsdet((void *)&mc_asoc->hsdet_store, NULL,
+				    0x40000000);
 	if (err != MCDRV_SUCCESS) {
 		dev_err(codec->dev, "%d: Error in mc_asoc_resume\n", err);
 		err	= -EIO;
@@ -9321,10 +9279,8 @@ static int mc_asoc_resume(
 
 	mc_asoc->hsdet_store.bEnPlugDetDb	=
 					stHSDetInfo_Default.bEnPlugDetDb;
-	err	= _McDrv_Ctrl(MCDRV_SET_HSDET,
-			(void *)&mc_asoc->hsdet_store,
-			(void *)&mc_asoc->hsdet2_store,
-			0x7fffffff);
+	err	= mc_asoc_set_hsdet((void *)&mc_asoc->hsdet_store,
+				    (void *)&mc_asoc->hsdet2_store, 0x7fffffff);
 	if (err != MCDRV_SUCCESS) {
 		dev_err(codec->dev, "%d: Error in mc_asoc_resume\n", err);
 		err	= -EIO;
@@ -9361,6 +9317,79 @@ static int mc_asoc_set_bias_level(
 	return 0;
 }
 
+static int mc_asoc_register_keys(struct device *dev)
+{
+	int	i, err;
+
+	inp_dev	= input_allocate_device();
+	if (!inp_dev)
+		return -ENOMEM;
+
+	inp_dev->name = "Headset keys";
+	input_set_capability(inp_dev, EV_KEY, MC_ASOC_EV_KEY_DELAYKEYON0);
+	input_set_capability(inp_dev, EV_KEY, MC_ASOC_EV_KEY_DELAYKEYON1);
+	input_set_capability(inp_dev, EV_KEY, MC_ASOC_EV_KEY_DELAYKEYON2);
+	for (i = 0; i < 8; i++) {
+		input_set_capability(inp_dev, EV_KEY,
+				     mc_asoc_ev_key_delaykeyoff0[i]);
+		input_set_capability(inp_dev, EV_KEY,
+				     mc_asoc_ev_key_delaykeyoff1[i]);
+		input_set_capability(inp_dev, EV_KEY,
+				     mc_asoc_ev_key_delaykeyoff2[i]);
+	}
+	err	= input_register_device(inp_dev);
+	if (err != 0) {
+		dev_err(dev, "%d: Error in input_register_device\n", err);
+		input_free_device(inp_dev);
+		inp_dev	= NULL;
+	}
+	return err;
+}
+
+/*
+ * Headset detection is opt-in: a machine driver for a board with a headset
+ * socket passes its jack here, which arms plug, mic and button detection.
+ */
+static int mc_asoc_set_jack(struct snd_soc_component *codec,
+			    struct snd_soc_jack *jack, void *data)
+{
+	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(codec);
+	int	err;
+
+	if (!mc_asoc)
+		return -EINVAL;
+
+	if (jack) {
+		snd_jack_set_key(jack->jack, SND_JACK_BTN_0, KEY_MEDIA);
+		snd_jack_set_key(jack->jack, SND_JACK_BTN_1, KEY_VOLUMEUP);
+		snd_jack_set_key(jack->jack, SND_JACK_BTN_2, KEY_VOLUMEDOWN);
+		if (!inp_dev) {
+			err	= mc_asoc_register_keys(codec->dev);
+			if (err)
+				return err;
+		}
+	}
+
+	mc_asoc_lock("mc_asoc_set_jack");
+	mc_asoc->jack.hs_jack	= jack;
+	err	= mc_asoc_set_hsdet((void *)&mc_asoc->hsdet_store,
+				    (void *)&stHSDet2Info_Default, 0x7fffffff);
+	mc_asoc_unlock("mc_asoc_set_jack");
+	if (err < MCDRV_SUCCESS)
+		dev_err(codec->dev, "%d: Error in MCDRV_SET_HSDET\n", err);
+
+#ifdef HSDET_WHILE_SUSPEND
+	device_init_wakeup(codec->dev, !!jack);
+#endif
+
+	if (!jack && inp_dev) {
+		input_unregister_device(inp_dev);
+		inp_dev	= NULL;
+	}
+
+	return map_drv_error(err);
+}
+
 static const struct snd_soc_component_driver mc_asoc_codec_dev = {
 	.probe		= mc_asoc_probe,
 	.remove		= mc_asoc_remove,
@@ -9370,7 +9399,8 @@ static const struct snd_soc_component_driver mc_asoc_codec_dev = {
 	.write		= mc_asoc_write_reg,
 	.endianness	= 1,
 	.idle_bias_on	= 0,
-	.set_bias_level	= mc_asoc_set_bias_level
+	.set_bias_level	= mc_asoc_set_bias_level,
+	.set_jack	= mc_asoc_set_jack,
 };
 
 static int spi_rw(u8 *tx, u8 *rx, int len)
