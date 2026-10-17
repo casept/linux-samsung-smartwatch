@@ -417,6 +417,20 @@ snd-soc-wm-hubs-y := wm_hubs.o
 snd-soc-wsa881x-y := wsa881x.o
 snd-soc-wsa883x-y := wsa883x.o
 snd-soc-wsa884x-y := wsa884x.o
+snd-soc-ymu831-y := ymu831/ymu831.o \
+			ymu831/ymu831_dbg.o \
+			ymu831/mcbdspdrv.o \
+			ymu831/mccdspdrv.o \
+			ymu831/mcdevif.o \
+			ymu831/mcdevprof.o \
+			ymu831/mcdriver.o \
+			ymu831/mcedspdrv.o \
+			ymu831/mcfdspdrv.o \
+			ymu831/mcmachdep.o \
+			ymu831/mcpacking.o \
+			ymu831/mcparser.o \
+			ymu831/mcresctrl.o \
+			ymu831/mcservice.o
 snd-soc-zl38060-y := zl38060.o
 # Amp
 snd-soc-max9877-y := max9877.o
@@ -859,7 +873,7 @@ obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_WSA881X)	+= snd-soc-wsa881x.o
 obj-$(CONFIG_SND_SOC_WSA883X)	+= snd-soc-wsa883x.o
 obj-$(CONFIG_SND_SOC_WSA884X)	+= snd-soc-wsa884x.o
-obj-$(CONFIG_SND_SOC_YAMAHA_YMU831)	+= ymu831/
+obj-$(CONFIG_SND_SOC_YMU831)	+= snd-soc-ymu831.o
 obj-$(CONFIG_SND_SOC_ZL38060)	+= snd-soc-zl38060.o
 
 # Amp
