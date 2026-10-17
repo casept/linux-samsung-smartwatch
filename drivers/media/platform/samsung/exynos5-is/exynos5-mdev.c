@@ -580,9 +580,9 @@ static int register_fimc_is_entity(struct fimc_md *fmd,
 
 		/* Create default links: vdev -> ISP */
 		vdev = fimc_is_isp_get_vfd(is, i);
-		ret = media_create_pad_link(&subdev->entity,
+		ret = media_create_pad_link(&vdev->entity, 0,
+					&subdev->entity,
 					ISP_SD_PAD_SINK_DMA,
-					&vdev->entity, 0,
 					MEDIA_LNK_FL_IMMUTABLE |
 					MEDIA_LNK_FL_ENABLED);
 		if (ret)

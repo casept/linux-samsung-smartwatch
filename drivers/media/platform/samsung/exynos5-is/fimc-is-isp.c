@@ -368,7 +368,7 @@ static int isp_subdev_registered(struct v4l2_subdev *sd)
 	if (ret < 0)
 		return ret;
 
-	isp->vd_pad.flags = MEDIA_PAD_FL_SINK;
+	isp->vd_pad.flags = MEDIA_PAD_FL_SOURCE;
 	ret = media_entity_pads_init(&vfd->entity, 1, &isp->vd_pad);
 	if (ret < 0)
 		return ret;
