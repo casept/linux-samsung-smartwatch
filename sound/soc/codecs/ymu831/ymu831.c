@@ -35,7 +35,6 @@
 #include <linux/io.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
-#include <sound/hwdep.h>
 #include <sound/initval.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -1350,7 +1349,6 @@ struct device *mc_asoc_get_dev(void)
 }
 
 static UINT8	mc_asoc_ver_id		= 1;
-static UINT8	mc_asoc_hold		= YMC_NOTITY_HOLD_OFF;
 static UINT8	mc_asoc_suspended;
 static UINT8	mc_asoc_hpimpclass	= (UINT8)-1;
 static UINT8	mc_asoc_jack_status;
@@ -1504,6 +1502,7 @@ static UINT8 *get_dsp_mem(int size)
 }
 
 #include <linux/firmware.h>
+#include <linux/unaligned.h>
 static int load_file(const char *fn, char **fp)
 {
 	int	ret;
@@ -4658,10 +4657,6 @@ static int connect_path(
 
 	/* TRACE_FUNC(); */
 
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON) {
-		dbg_info("hold=on\n");
-		return 0;
-	}
 
 	if (get_mixer_path_ctl_info(codec, &mixer_ctl_info) < 0)
 		return -EIO;
@@ -5726,9 +5721,6 @@ static int set_audio_mode_play(
 	if (ret < 0)
 		return ret;
 
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON)
-		return 0;
-
 	if (value == 0)
 		del_dsp_prm(mc_asoc);
 
@@ -5764,9 +5756,6 @@ static int set_audio_mode_cap(
 	ret	= write_cache(codec, MC_ASOC_AUDIO_MODE_CAP, value);
 	if (ret < 0)
 		return ret;
-
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON)
-		return 0;
 
 	if (value == 0)
 		del_dsp_prm(mc_asoc);
@@ -5812,9 +5801,6 @@ static int set_incall_mic(
 		}
 		dsp_prm	= dsp_prm->next;
 	}
-
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON)
-		return 0;
 
 	ret	= connect_path(codec);
 	return ret;
@@ -5867,9 +5853,6 @@ static int set_ain_playback(
 	&& (audio_mode_cap == MC_ASOC_AUDIO_MODE_INCOMM))
 		return 0;
 
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON)
-		return 0;
-
 	ret	= connect_path(codec);
 	if (value == 0)
 		auto_powerdown(codec);
@@ -5890,9 +5873,6 @@ static int set_dtmf_control(
 	if (ret < 0)
 		return ret;
 
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON)
-		return 0;
-
 	ret	= connect_path(codec);
 	if (value == 0)
 		auto_powerdown(codec);
@@ -5912,9 +5892,6 @@ static int set_dtmf_output(
 	ret	= write_cache(codec, reg, value);
 	if (ret < 0)
 		return ret;
-
-	if (mc_asoc_hold == YMC_NOTITY_HOLD_ON)
-		return 0;
 
 	ret	= connect_path(codec);
 	return ret;
@@ -7313,292 +7290,197 @@ static int mc_asoc_add_widgets(struct snd_soc_component *codec)
 }
 
 /*
- * Hwdep interface
+ * DSP parameter and data controls
+ *
+ * The controls take standard TLV containers: a type word, the payload
+ * length in bytes and the payload, as written by alsa-lib (e.g. UCM's
+ * cset-tlv).
  */
-static int mc_asoc_hwdep_open(struct snd_hwdep *hw, struct file *file)
+struct mc_asoc_dsp_ctl {
+	struct soc_bytes_ext	ext;
+	unsigned long		option;
+};
+
+#define MC_ASOC_TLV_HDR_SIZE	(2 * sizeof(unsigned int))
+
+static int mc_asoc_tlv_payload_len(const unsigned int __user *bytes,
+				   unsigned int size, unsigned int *len)
 {
-	/* Nothing to do */
-	mc_asoc_lock("mc_asoc_hwdep_open");
-	mc_asoc_unlock("mc_asoc_hwdep_open");
+	unsigned int hdr[2];
+
+	if (size < MC_ASOC_TLV_HDR_SIZE)
+		return -EINVAL;
+	if (copy_from_user(hdr, bytes, sizeof(hdr)))
+		return -EFAULT;
+	if (!hdr[1] || hdr[1] > size - MC_ASOC_TLV_HDR_SIZE ||
+	    hdr[1] > MAX_YMS_CTRL_PARAM_SIZE)
+		return -EINVAL;
+
+	*len = hdr[1];
 	return 0;
 }
 
-static int mc_asoc_hwdep_release(struct snd_hwdep *hw, struct file *file)
+/*
+ * TLV payloads are made of 32 bit words, so a parameter blob may arrive
+ * padded. The core wants exactly the length the blob's header declares.
+ */
+static unsigned int mc_asoc_dsp_blob_len(const UINT8 *param, unsigned int len)
 {
-	/* Nothing to do */
-	mc_asoc_lock("mc_asoc_hwdep_release");
-	mc_asoc_unlock("mc_asoc_hwdep_release");
-	return 0;
+	u32 declared;
+
+	if (len < 8 || memcmp(param, "AEC", 3))
+		return len;
+
+	declared = get_unaligned_be32(param + 4);
+	return declared <= len - 8 ? declared + 8 : len;
 }
 
-static int hwdep_ioctl_read_reg(struct MCDRV_REG_INFO *args)
+static int mc_asoc_dsp_param_put(struct snd_kcontrol *kcontrol,
+				 const unsigned int __user *bytes,
+				 unsigned int size)
 {
-	int	err;
-	struct MCDRV_REG_INFO	reg_info;
+	struct snd_soc_component *codec = snd_kcontrol_chip(kcontrol);
+	struct mc_asoc_dsp_ctl *ctl = container_of((void *)kcontrol->private_value,
+						   struct mc_asoc_dsp_ctl, ext);
+	unsigned int len;
+	UINT8 *param;
+	int err;
 
-	if (!access_ok(args, sizeof(struct MCDRV_REG_INFO)))
-		return -EFAULT;
-	if (copy_from_user(&reg_info, args, sizeof(struct MCDRV_REG_INFO))
-		!= 0)
-		return -EFAULT;
+	err = mc_asoc_tlv_payload_len(bytes, size, &len);
+	if (err)
+		return err;
 
-	err	= _McDrv_Ctrl(MCDRV_READ_REG, &reg_info, NULL, 0);
-	if (err != MCDRV_SUCCESS)
-		return map_drv_error(err);
-	else if (copy_to_user(args, &reg_info, sizeof(struct MCDRV_REG_INFO))
-		!= 0)
-		err	= -EFAULT;
+	mc_asoc_lock("mc_asoc_dsp_param_put");
+	param = get_dsp_mem(len);
+	if (!param)
+		err = -ENOMEM;
+	else if (copy_from_user(param, bytes + 2, len))
+		err = -EFAULT;
+	else
+		err = set_dsp(codec, param, mc_asoc_dsp_blob_len(param, len),
+			      ctl->option);
+	mc_asoc_unlock("mc_asoc_dsp_param_put");
 
-	return 0;
-}
-
-static int hwdep_ioctl_write_reg(const struct MCDRV_REG_INFO *args)
-{
-	int	err;
-	struct MCDRV_REG_INFO	reg_info;
-
-	if (!access_ok(args, sizeof(struct MCDRV_REG_INFO)))
-		return -EFAULT;
-
-	if (copy_from_user(&reg_info, args, sizeof(struct MCDRV_REG_INFO))
-		!= 0)
-		return -EFAULT;
-
-	err	= _McDrv_Ctrl(MCDRV_WRITE_REG, &reg_info, NULL, 0);
-	if (err != MCDRV_SUCCESS)
-		return map_drv_error(err);
-	return 0;
-}
-
-static int hwdep_ioctl_get_dsp_data(struct ymc_dspdata_args *args)
-{
-	int	ret	= 0;
-	struct ymc_dspdata_args	ymc_dspdata;
-	UINT8	*param	= NULL;
-
-	if (!access_ok(args, sizeof(struct ymc_dspdata_args)))
-		return -EFAULT;
-
-	if (copy_from_user(&ymc_dspdata, args, sizeof(struct ymc_dspdata_args))
-		!= 0)
-		return -EFAULT;
-	if (ymc_dspdata.bufsize == 0)
-		return 0;
-
-	if (MAX_YMS_CTRL_PARAM_SIZE < ymc_dspdata.bufsize)
-		return -ENOMEM;
-
-	param	= kzalloc(ymc_dspdata.bufsize, GFP_KERNEL);
-	if (param == NULL)
-		return -ENOMEM;
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DSP_DATA, param, NULL,
-				ymc_dspdata.bufsize);
-	if (ret < MCDRV_SUCCESS) {
-		ret	= map_drv_error(ret);
-		goto EXIT;
-	}
-
-	ymc_dspdata.size	= ret;
-	if (copy_to_user(args, &ymc_dspdata,
-			sizeof(struct ymc_dspdata_args)) != 0) {
-		ret	= -EFAULT;
-		goto EXIT;
-	}
-	if (copy_to_user(args->buf, param, ymc_dspdata.size) != 0) {
-		ret	= -EFAULT;
-		goto EXIT;
-	}
-EXIT:
-	if (param != NULL)
-		kfree(param);
-	return ret;
-}
-
-static int hwdep_ioctl_set_dsp_data(struct ymc_dspdata_args *args)
-{
-	int	ret	= 0;
-	struct ymc_dspdata_args	ymc_dspdata;
-	UINT8	*param	= NULL;
-
-	if (!access_ok(args, sizeof(struct ymc_dspdata_args)))
-		return -EFAULT;
-
-	if (copy_from_user(&ymc_dspdata, args, sizeof(struct ymc_dspdata_args))
-		!= 0)
-		return -EFAULT;
-
-	if (ymc_dspdata.bufsize == 0)
-		return 0;
-
-	if (MAX_YMS_CTRL_PARAM_SIZE < ymc_dspdata.bufsize)
-		return -ENOMEM;
-
-	param	= kzalloc(ymc_dspdata.bufsize, GFP_KERNEL);
-	if (param == NULL)
-		return -ENOMEM;
-	if (copy_from_user(param, ymc_dspdata.buf, ymc_dspdata.bufsize) != 0) {
-		ret	= EFAULT;
-		goto EXIT;
-	}
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DSP_DATA, param, NULL,
-				ymc_dspdata.bufsize);
-	if (ret < MCDRV_SUCCESS) {
-		ret	= map_drv_error(ret);
-		goto EXIT;
-	}
-	ymc_dspdata.size	= ret;
-	if (copy_to_user(args, &ymc_dspdata,
-			sizeof(struct ymc_dspdata_args)) != 0) {
-		ret	= -EFAULT;
-		goto EXIT;
-	}
-EXIT:
-	if (param != NULL)
-		kfree(param);
-	return ret;
-}
-
-static int mc_asoc_hwdep_ioctl(
-	struct snd_hwdep *hw,
-	struct file *file,
-	unsigned int cmd,
-	unsigned long arg)
-{
-	int	err	= 0;
-	UINT8	*param	= NULL;
-	struct snd_soc_component	*codec	= NULL;
-	struct ymc_ctrl_args	ymc_ctrl_arg;
-	UINT32	hold;
-
-	if (hw != NULL)
-		codec	= hw->private_data;
-
-	mc_asoc_lock("mc_asoc_hwdep_ioctl");
-
-	switch (cmd) {
-	case YMC_IOCTL_SET_CTRL:
-		if (!access_ok((struct ymc_ctrl_args *)arg,
-			       sizeof(struct ymc_ctrl_args))) {
-			err	= -EFAULT;
-			break;
-		}
-		if (copy_from_user(&ymc_ctrl_arg,
-			(struct ymc_ctrl_args *)arg,
-			sizeof(struct ymc_ctrl_args)) != 0) {
-			err	= -EFAULT;
-			break;
-		}
-		if (ymc_ctrl_arg.size == 0)
-			break;
-		if (MAX_YMS_CTRL_PARAM_SIZE < ymc_ctrl_arg.size) {
-			err	= -ENOMEM;
-			break;
-		}
-
-		param	= get_dsp_mem(ymc_ctrl_arg.size);
-		if (param == NULL) {
-			err	= -ENOMEM;
-			break;
-		}
-		if (copy_from_user(param, ymc_ctrl_arg.param,
-			ymc_ctrl_arg.size) != 0) {
-			err	= -EFAULT;
-			break;
-		}
-		err	= set_dsp(codec, param, ymc_ctrl_arg.size,
-							ymc_ctrl_arg.option);
-		break;
-
-	case YMC_IOCTL_READ_REG:
-		err	= hwdep_ioctl_read_reg((struct MCDRV_REG_INFO *)arg);
-		dbg_info("err=%d, RegType=%d, Addr=%d, Data=0x%02X\n",
-				err,
-				((struct MCDRV_REG_INFO *)arg)->bRegType,
-				((struct MCDRV_REG_INFO *)arg)->bAddress,
-				((struct MCDRV_REG_INFO *)arg)->bData);
-		break;
-
-	case YMC_IOCTL_WRITE_REG:
-		err	= hwdep_ioctl_write_reg((struct MCDRV_REG_INFO *)arg);
-		dbg_info("err=%d, RegType=%d, Addr=%d, Data=0x%02X\n",
-				err,
-				((struct MCDRV_REG_INFO *)arg)->bRegType,
-				((struct MCDRV_REG_INFO *)arg)->bAddress,
-				((struct MCDRV_REG_INFO *)arg)->bData);
-		break;
-
-	case YMC_IOCTL_NOTIFY_HOLD:
-		if (!access_ok((UINT32 *)arg, sizeof(UINT32))) {
-			err	= -EFAULT;
-			break;
-		}
-		if (copy_from_user(&hold, (UINT32 *)arg, sizeof(UINT32)) != 0
-		) {
-			err	= -EFAULT;
-			break;
-		}
-		dbg_info("hold=%ld\n", hold);
-		switch (hold) {
-		case	YMC_NOTITY_HOLD_OFF:
-			mc_asoc_hold	= (UINT8)hold;
-			err	= connect_path(codec);
-			if (err == 0)
-				auto_powerdown(codec);
-			break;
-		case	YMC_NOTITY_HOLD_ON:
-			mc_asoc_hold	= (UINT8)hold;
-			break;
-		default:
-			err	= -EINVAL;
-			break;
-		}
-		break;
-
-	case YMC_IOCTL_GET_DSP_DATA:
-		err	= hwdep_ioctl_get_dsp_data(
-				(struct ymc_dspdata_args *)arg);
-		break;
-	case YMC_IOCTL_SET_DSP_DATA:
-		err	= hwdep_ioctl_set_dsp_data(
-				(struct ymc_dspdata_args *)arg);
-		break;
-	default:
-		err	= -EINVAL;
-	}
-
-	mc_asoc_unlock("mc_asoc_hwdep_ioctl");
 	return err;
 }
 
-static int mc_asoc_add_hwdep(struct snd_soc_component *codec)
+static int mc_asoc_dsp_data_get(struct snd_kcontrol *kcontrol,
+				unsigned int __user *bytes, unsigned int size)
 {
-	struct snd_hwdep	*hw;
-	struct mc_asoc_data	*mc_asoc	= NULL;
-	int	err;
+	unsigned int hdr[2] = { 0, 0 };
+	UINT8 *data;
+	int ret;
 
-	mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	if (mc_asoc == NULL)
+	if (size <= MC_ASOC_TLV_HDR_SIZE)
 		return -EINVAL;
+	size = min_t(unsigned int, size - MC_ASOC_TLV_HDR_SIZE,
+		     MAX_YMS_CTRL_PARAM_SIZE);
 
-	err	= snd_hwdep_new((struct snd_card *)codec->card->snd_card,
-				MC_ASOC_HWDEP_ID, 0, &hw);
-	if (err < 0)
-		return err;
+	data = kzalloc(size, GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
 
-	/* FIXME: the vendor hwdep interface ID is not in the mainline uapi */
-	hw->iface		= SNDRV_HWDEP_IFACE_OPL2;
-	hw->private_data	= codec;
-	hw->ops.open		= mc_asoc_hwdep_open;
-	hw->ops.release		= mc_asoc_hwdep_release;
-	hw->ops.ioctl		= mc_asoc_hwdep_ioctl;
-	hw->exclusive		= 1;
-	strcpy(hw->name, MC_ASOC_HWDEP_ID);
-	mc_asoc->hwdep		= hw;
+	mc_asoc_lock("mc_asoc_dsp_data_get");
+	ret = _McDrv_Ctrl(MCDRV_GET_DSP_DATA, data, NULL, size);
+	mc_asoc_unlock("mc_asoc_dsp_data_get");
+	if (ret < MCDRV_SUCCESS) {
+		ret = map_drv_error(ret);
+		goto out;
+	}
 
-	return 0;
+	hdr[1] = ret;
+	ret = 0;
+	if (copy_to_user(bytes, hdr, sizeof(hdr)) ||
+	    copy_to_user(bytes + 2, data, hdr[1]))
+		ret = -EFAULT;
+out:
+	kfree(data);
+	return ret;
 }
+
+static int mc_asoc_dsp_data_put(struct snd_kcontrol *kcontrol,
+				const unsigned int __user *bytes,
+				unsigned int size)
+{
+	unsigned int len;
+	void *data;
+	int ret;
+
+	ret = mc_asoc_tlv_payload_len(bytes, size, &len);
+	if (ret)
+		return ret;
+
+	data = memdup_user(bytes + 2, len);
+	if (IS_ERR(data))
+		return PTR_ERR(data);
+
+	mc_asoc_lock("mc_asoc_dsp_data_put");
+	ret = _McDrv_Ctrl(MCDRV_SET_DSP_DATA, data, NULL, len);
+	mc_asoc_unlock("mc_asoc_dsp_data_put");
+	kfree(data);
+
+	return ret < MCDRV_SUCCESS ? map_drv_error(ret) : 0;
+}
+
+#define MC_ASOC_TLV_MAX		(MAX_YMS_CTRL_PARAM_SIZE + MC_ASOC_TLV_HDR_SIZE)
+
+#define MC_ASOC_DSP_PARAM(xoption)					\
+	{								\
+		.ext = { .max = MC_ASOC_TLV_MAX,			\
+			 .put = mc_asoc_dsp_param_put },		\
+		.option = (xoption),					\
+	}
+
+/*
+ * The base parameter groups. The core also knows per-route overrides, but
+ * those only exist to swap parameters behind userspace's back when the
+ * route changes, which is up to the route configuration in userspace.
+ */
+static struct mc_asoc_dsp_ctl mc_asoc_dsp_ctls[] = {
+	MC_ASOC_DSP_PARAM(YMC_DSP_OUTPUT_BASE),
+	MC_ASOC_DSP_PARAM(YMC_DSP_INPUT_BASE),
+	MC_ASOC_DSP_PARAM(YMC_DSP_VOICECALL_BASE_COMMON),
+	MC_ASOC_DSP_PARAM(YMC_DSP_VOICECALL_BASE_1MIC),
+	MC_ASOC_DSP_PARAM(YMC_DSP_VOICECALL_BASE_2MIC),
+};
+
+static struct soc_bytes_ext mc_asoc_dsp_data_ext = {
+	.max = MC_ASOC_TLV_MAX,
+	.get = mc_asoc_dsp_data_get,
+	.put = mc_asoc_dsp_data_put,
+};
+
+#define MC_ASOC_TLV_BYTES(xname, xaccess, xext)				\
+	{								\
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,			\
+		.name = xname,						\
+		.access = (xaccess) |					\
+			  SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK,		\
+		.tlv.c = snd_soc_bytes_tlv_callback,			\
+		.info = snd_soc_bytes_info_ext,				\
+		.private_value = (unsigned long)(xext),			\
+	}
+
+static const struct snd_kcontrol_new mc_asoc_dsp_controls[] = {
+	MC_ASOC_TLV_BYTES("DSP Output Parameters",
+			  SNDRV_CTL_ELEM_ACCESS_TLV_WRITE,
+			  &mc_asoc_dsp_ctls[0].ext),
+	MC_ASOC_TLV_BYTES("DSP Input Parameters",
+			  SNDRV_CTL_ELEM_ACCESS_TLV_WRITE,
+			  &mc_asoc_dsp_ctls[1].ext),
+	MC_ASOC_TLV_BYTES("Voice Call Parameters",
+			  SNDRV_CTL_ELEM_ACCESS_TLV_WRITE,
+			  &mc_asoc_dsp_ctls[2].ext),
+	MC_ASOC_TLV_BYTES("Voice Call 1MIC Parameters",
+			  SNDRV_CTL_ELEM_ACCESS_TLV_WRITE,
+			  &mc_asoc_dsp_ctls[3].ext),
+	MC_ASOC_TLV_BYTES("Voice Call 2MIC Parameters",
+			  SNDRV_CTL_ELEM_ACCESS_TLV_WRITE,
+			  &mc_asoc_dsp_ctls[4].ext),
+	MC_ASOC_TLV_BYTES("C-DSP Data",
+			  SNDRV_CTL_ELEM_ACCESS_TLV_READWRITE,
+			  &mc_asoc_dsp_data_ext),
+};
 
 static struct input_dev		*inp_dev;
 
@@ -8289,11 +8171,11 @@ static int mc_asoc_probe(
 		goto error_add_ctl;
 	}
 
-	/* hwdep */
-	err	= mc_asoc_add_hwdep(codec);
+	err	= snd_soc_add_component_controls(codec, mc_asoc_dsp_controls,
+						 ARRAY_SIZE(mc_asoc_dsp_controls));
 	if (err < 0) {
-		dev_err(dev, "%d: Error in mc_asoc_add_hwdep\n", err);
-		goto error_add_hwdep;
+		dev_err(dev, "%d: Error adding DSP controls\n", err);
+		goto error_add_ctl;
 	}
 
 	write_cache(codec, MC_ASOC_EXT_MASTERSLAVE,
@@ -8468,7 +8350,6 @@ static int mc_asoc_probe(
 	goto exit;
 
 error_set_mode:
-error_add_hwdep:
 error_add_ctl:
 	err2	= _McDrv_Ctrl(MCDRV_TERM, NULL, NULL, 0);
 	if (err2 < 0) {

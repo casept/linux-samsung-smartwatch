@@ -2,5 +2,4 @@ config SND_SOC_YAMAHA_YMU831
 	tristate "YAMAHA_YMU831 Codec - SPI"
 	depends on SND_SOC && SPI_MASTER
 	select REGMAP
-	select SND_HWDEP
 

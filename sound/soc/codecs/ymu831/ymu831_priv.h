@@ -271,7 +271,6 @@ struct mc_asoc_data {
 	struct mutex			mutex;
 	struct mc_asoc_setup		setup;
 	struct mc_asoc_port_params	port;
-	struct snd_hwdep		*hwdep;
 	struct MCDRV_CLOCKSW_INFO	clocksw_store;
 	struct MCDRV_PATH_INFO		path_store;
 	struct MCDRV_VOL_INFO		vol_store;
