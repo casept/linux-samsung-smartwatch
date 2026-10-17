@@ -11,8 +11,6 @@
  */
 
 #include <linux/bug.h>
-#include <linux/clk.h>
-#include <linux/clk-provider.h>
 #include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/i2c.h>
@@ -35,7 +33,6 @@
 #include "exynos5-mdev.h"
 #include "fimc-is.h"
 
-#define BAYER_CLK_NAME "sclk_bayer"
 
 /**
  * fimc_pipeline_prepare - update pipeline information with subdevice pointers
@@ -204,8 +201,8 @@ rollback:
 }
 
 /**
- * __fimc_pipeline_open - update the pipeline information, enable power
- *                        of all pipeline subdevs and the sensor clock
+ * __fimc_pipeline_open - update the pipeline information and enable power
+ *                        of all pipeline subdevs
  * @me: media entity to start graph walk with
  * @prepare: true to walk the current pipeline and acquire all subdevs
  *
@@ -216,7 +213,6 @@ static int __fimc_pipeline_open(struct exynos_media_pipeline *ep,
 {
 	struct fimc_pipeline *p = to_fimc_pipeline(ep);
 	struct v4l2_subdev *sd;
-	struct fimc_md *fmd;
 	int ret;
 
 	if (WARN_ON(p == NULL || me == NULL))
@@ -229,34 +225,22 @@ static int __fimc_pipeline_open(struct exynos_media_pipeline *ep,
 	if (sd == NULL)
 		return -EINVAL;
 
-	fmd = entity_to_fimc_mdev(&sd->entity);
-
-	if (!IS_ERR(fmd->clk_bayer)) {
-		ret = clk_prepare_enable(fmd->clk_bayer);
-		if (ret < 0)
-			return ret;
-	}
-
 	ret = fimc_pipeline_s_power(p, 1);
-	if (ret) {
-		if (!IS_ERR(fmd->clk_bayer))
-			clk_disable_unprepare(fmd->clk_bayer);
+	if (ret)
 		fimc_pipeline_cleanup(p);
-	}
 	return ret;
 }
 
 /**
- * __fimc_pipeline_close - disable the sensor clock and pipeline power
+ * __fimc_pipeline_close - disable the pipeline power
  * @fimc: fimc device terminating the pipeline
  *
- * Disable power of all subdevs and turn the external sensor clock off.
+ * Disable power of all subdevs.
  */
 static int __fimc_pipeline_close(struct exynos_media_pipeline *ep)
 {
 	struct fimc_pipeline *p = to_fimc_pipeline(ep);
 	struct v4l2_subdev *sd = p ? p->subdevs[IDX_SENSOR] : NULL;
-	struct fimc_md *fmd;
 	int ret = 0;
 
 	if (WARN_ON(sd == NULL))
@@ -267,11 +251,6 @@ static int __fimc_pipeline_close(struct exynos_media_pipeline *ep)
 		if (ret)
 			goto leave;
 	}
-
-	fmd = entity_to_fimc_mdev(&sd->entity);
-
-	if (!IS_ERR(fmd->clk_bayer))
-		clk_disable_unprepare(fmd->clk_bayer);
 
 	fimc_pipeline_cleanup(p);
 leave:
@@ -1236,33 +1215,27 @@ int exynos_camera_register(struct device *dev, struct fimc_md **md)
 
 	v4l2_async_nf_init(&fmd->subdev_notifier, v4l2_dev);
 
-	fmd->clk_bayer = clk_get(dev, BAYER_CLK_NAME);
-	if (IS_ERR(fmd->clk_bayer))
-		v4l2_info(v4l2_dev, "Couldn't get clk: " BAYER_CLK_NAME "\n");
-
 	ret = fimc_md_register_platform_entities(fmd);
 	if (ret)
-		goto err_clk;
+		goto err_unregister;
 
 	fmd->num_sensors = 0;
 	ret = fimc_md_of_sensors_register(fmd, dev->of_node);
 	if (ret)
-		goto err_clk;
+		goto err_unregister;
 
 	fmd->subdev_notifier.ops = &subdev_notifier_ops;
 	fmd->num_sensors = 0;
 
 	ret = v4l2_async_nf_register(&fmd->subdev_notifier);
 	if (ret)
-		goto err_clk;
+		goto err_unregister;
 
 	*md = fmd;
 	return 0;
 
-err_clk:
+err_unregister:
 	v4l2_async_nf_cleanup(&fmd->subdev_notifier);
-	if (!IS_ERR(fmd->clk_bayer))
-		clk_put(fmd->clk_bayer);
 	fimc_md_unregister_entities(fmd);
 	v4l2_device_unregister(&fmd->v4l2_dev);
 err_md:
@@ -1283,9 +1256,6 @@ int exynos_camera_unregister(struct fimc_md *fmd)
 	fimc_md_pipelines_free(fmd);
 	media_device_unregister(&fmd->media_dev);
 	media_device_cleanup(&fmd->media_dev);
-
-	if (!IS_ERR(fmd->clk_bayer))
-		clk_put(fmd->clk_bayer);
 
 	return 0;
 }

@@ -6,7 +6,6 @@
 #ifndef EXYNOS5_MDEVICE_H_
 #define EXYNOS5_MDEVICE_H_
 
-#include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <media/media-device.h>
@@ -79,7 +78,6 @@ struct fimc_sensor_info {
  * @csis: MIPI CSIS subdevs data
  * @sensor: array of registered sensor subdevs
  * @num_sensors: actual number of registered sensors
- * @clk_bayer: bus clk for external sensors
  * @fimc_lite: array of registered fimc-lite devices
  * @is: fimc-is data structure
  * @media_dev: top level media device
@@ -95,7 +93,6 @@ struct fimc_md {
 	struct fimc_csis_info csis[CSIS_MAX_ENTITIES];
 	struct fimc_sensor_info sensor[FIMC_MAX_SENSORS];
 	int num_sensors;
-	struct clk *clk_bayer;
 	struct fimc_lite *fimc_lite[FIMC_LITE_MAX_DEVS];
 	struct fimc_is *is;
 	struct media_device media_dev;
