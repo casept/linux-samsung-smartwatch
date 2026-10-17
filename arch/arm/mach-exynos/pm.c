@@ -18,10 +18,12 @@
 #include <linux/soc/samsung/exynos-regs-pmu.h>
 #include <linux/soc/samsung/exynos-pmu.h>
 
+#include <asm/cp15.h>
 #include <asm/firmware.h>
 #include <asm/smp_scu.h>
 #include <asm/suspend.h>
 #include <asm/cacheflush.h>
+#include <asm/tlbflush.h>
 
 #include "common.h"
 
@@ -283,9 +285,34 @@ fail:
 
 static int exynos_wfi_finisher(unsigned long flags)
 {
-	if (soc_is_exynos3250())
-		flush_cache_all();
+	if (!soc_is_exynos3250()) {
+		cpu_do_idle();
+		return -1;
+	}
+
+	/*
+	 * As on hotplug, leave coherency before the power down. Powering off
+	 * a Cortex-A7 that still takes part in it corrupts memory.
+	 */
+	v7_exit_coherency_flush(louis);
+
 	cpu_do_idle();
+
+	/*
+	 * The power down was aborted, so rejoin coherency and drop TLB
+	 * entries that missed broadcast maintenance while out of it.
+	 */
+	asm volatile(
+	"	mrc	p15, 0, r0, c1, c0, 1	@ get ACTLR\n"
+	"	orr	r0, r0, #(1 << 6)	@ enable local coherency\n"
+	"	mcr	p15, 0, r0, c1, c0, 1	@ set ACTLR\n"
+	"	isb\n"
+	"	mrc	p15, 0, r0, c1, c0, 0	@ get SCTLR\n"
+	"	orr	r0, r0, #" __stringify(CR_C) "\n"
+	"	mcr	p15, 0, r0, c1, c0, 0	@ set SCTLR\n"
+	"	isb"
+	: : : "r0", "memory");
+	local_flush_tlb_all();
 
 	return -1;
 }
