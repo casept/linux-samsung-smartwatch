@@ -384,6 +384,10 @@ static int s3c64xx_spi_prepare_transfer(struct spi_controller *spi)
 	if (is_polling(sdd))
 		return 0;
 
+	/* The channels are kept until the controller runtime suspends */
+	if (sdd->rx_dma.ch)
+		return 0;
+
 	/* Requests DMA channels */
 	sdd->rx_dma.ch = dma_request_chan(&sdd->pdev->dev, "rx");
 	if (IS_ERR(sdd->rx_dma.ch)) {
@@ -407,22 +411,17 @@ static int s3c64xx_spi_prepare_transfer(struct spi_controller *spi)
 	return 0;
 }
 
-static int s3c64xx_spi_unprepare_transfer(struct spi_controller *spi)
+static void s3c64xx_spi_release_dma(struct s3c64xx_spi_driver_data *sdd)
 {
-	struct s3c64xx_spi_driver_data *sdd = spi_controller_get_devdata(spi);
+	if (!sdd->rx_dma.ch)
+		return;
 
-	if (is_polling(sdd))
-		return 0;
-
-	/* Releases DMA channels if they are allocated */
-	if (sdd->rx_dma.ch && sdd->tx_dma.ch) {
-		dma_release_channel(sdd->rx_dma.ch);
-		dma_release_channel(sdd->tx_dma.ch);
-		sdd->rx_dma.ch = NULL;
-		sdd->tx_dma.ch = NULL;
-	}
-
-	return 0;
+	sdd->host->dma_rx = NULL;
+	sdd->host->dma_tx = NULL;
+	dma_release_channel(sdd->rx_dma.ch);
+	dma_release_channel(sdd->tx_dma.ch);
+	sdd->rx_dma.ch = NULL;
+	sdd->tx_dma.ch = NULL;
 }
 
 static bool s3c64xx_spi_can_dma(struct spi_controller *host,
@@ -1300,7 +1299,6 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	host->setup = s3c64xx_spi_setup;
 	host->cleanup = s3c64xx_spi_cleanup;
 	host->prepare_transfer_hardware = s3c64xx_spi_prepare_transfer;
-	host->unprepare_transfer_hardware = s3c64xx_spi_unprepare_transfer;
 	host->prepare_message = s3c64xx_spi_prepare_message;
 	host->transfer_one = s3c64xx_spi_transfer_one;
 	host->max_transfer_size = s3c64xx_spi_max_transfer_size;
@@ -1401,6 +1399,7 @@ static void s3c64xx_spi_remove(struct platform_device *pdev)
 	pm_runtime_get_sync(&pdev->dev);
 
 	spi_unregister_controller(host);
+	s3c64xx_spi_release_dma(sdd);
 
 	writel(0, sdd->regs + S3C64XX_SPI_INT_EN);
 
@@ -1452,6 +1451,8 @@ static int s3c64xx_spi_runtime_suspend(struct device *dev)
 {
 	struct spi_controller *host = dev_get_drvdata(dev);
 	struct s3c64xx_spi_driver_data *sdd = spi_controller_get_devdata(host);
+
+	s3c64xx_spi_release_dma(sdd);
 
 	clk_disable_unprepare(sdd->clk);
 	clk_disable_unprepare(sdd->src_clk);
