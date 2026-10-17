@@ -19,19 +19,16 @@
 
 static const struct fimc_is_fmt formats[] = {
 	{
-		.name           = "Bayer GR-BG 8bits",
 		.fourcc         = V4L2_PIX_FMT_SGRBG8,
 		.depth		= { 8 },
 		.num_planes     = 1,
 	},
 	{
-		.name           = "Bayer GR-BG 10bits",
 		.fourcc         = V4L2_PIX_FMT_SGRBG10,
 		.depth		= { 16 },
 		.num_planes     = 1,
 	},
 	{
-		.name           = "Bayer GR-BG 12bits",
 		.fourcc         = V4L2_PIX_FMT_SGRBG12,
 		.depth		= { 16 },
 		.num_planes     = 1,
@@ -172,21 +169,12 @@ static int isp_querycap_output(struct file *file, void *priv,
 }
 
 static int isp_enum_fmt_mplane(struct file *file, void *priv,
-				     struct v4l2_format *f)
+			       struct v4l2_fmtdesc *f)
 {
-	panic("%s: Unimplemented!\n", __func__);
-	/* TODO: We need to obtain v4l2_fmtdesc from v4l2_format */
-	/*
-	const struct fimc_is_fmt *fmt;
-
 	if (f->index >= NUM_FORMATS)
 		return -EINVAL;
 
-	fmt = &formats[f->index];
-	strscpy(f->description, fmt->name, sizeof(f->description));
-	f->pixelformat = fmt->fourcc;
-	*/
-
+	f->pixelformat = formats[f->index].fourcc;
 	return 0;
 }
 
@@ -298,7 +286,7 @@ static int isp_reqbufs(struct file *file, void *priv,
 
 static const struct v4l2_ioctl_ops isp_video_output_ioctl_ops = {
 	.vidioc_querycap		= isp_querycap_output,
-	.vidioc_g_fmt_vid_out_mplane	= isp_enum_fmt_mplane,
+	.vidioc_enum_fmt_vid_out	= isp_enum_fmt_mplane,
 	.vidioc_try_fmt_vid_out_mplane	= isp_try_fmt_mplane,
 	.vidioc_s_fmt_vid_out_mplane	= isp_s_fmt_mplane,
 	.vidioc_g_fmt_vid_out_mplane	= isp_g_fmt_mplane,

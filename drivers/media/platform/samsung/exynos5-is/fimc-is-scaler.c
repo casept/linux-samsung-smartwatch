@@ -19,19 +19,16 @@
 
 static const struct fimc_is_fmt formats[] = {
 	{
-		.name           = "YUV 4:2:0 3p MultiPlanar",
 		.fourcc         = V4L2_PIX_FMT_YUV420M,
 		.depth		= {8, 2, 2},
 		.num_planes     = 3,
 	},
 	{
-		.name           = "YUV 4:2:0 2p MultiPlanar",
 		.fourcc         = V4L2_PIX_FMT_NV12M,
 		.depth		= {8, 4},
 		.num_planes     = 2,
 	},
 	{
-		.name           = "YUV 4:2:2 1p MultiPlanar",
 		.fourcc         = V4L2_PIX_FMT_NV16,
 		.depth		= {16},
 		.num_planes     = 1,
@@ -204,19 +201,12 @@ static int scaler_querycap_capture(struct file *file, void *priv,
 }
 
 static int scaler_enum_fmt_mplane(struct file *file, void *priv,
-				     struct v4l2_format *f)
+				  struct v4l2_fmtdesc *f)
 {
-	panic("scaler_enum_fmt_mplane: not implemented\n");
-	/*
-	const struct fimc_is_fmt *fmt;
-
 	if (f->index >= NUM_FORMATS)
 		return -EINVAL;
 
-	fmt = &formats[f->index];
-	strscpy(f->description, fmt->name, sizeof(f->description));
-	f->pixelformat = fmt->fourcc;
-	*/
+	f->pixelformat = formats[f->index].fourcc;
 	return 0;
 }
 
@@ -332,7 +322,7 @@ static int scaler_reqbufs(struct file *file, void *priv,
 
 static const struct v4l2_ioctl_ops scaler_video_capture_ioctl_ops = {
 	.vidioc_querycap		= scaler_querycap_capture,
-	.vidioc_g_fmt_vid_cap_mplane	= scaler_enum_fmt_mplane,
+	.vidioc_enum_fmt_vid_cap	= scaler_enum_fmt_mplane,
 	.vidioc_try_fmt_vid_cap_mplane	= scaler_try_fmt_mplane,
 	.vidioc_s_fmt_vid_cap_mplane	= scaler_s_fmt_mplane,
 	.vidioc_g_fmt_vid_cap_mplane	= scaler_g_fmt_mplane,

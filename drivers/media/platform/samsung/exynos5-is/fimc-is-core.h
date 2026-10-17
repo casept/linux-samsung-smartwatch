@@ -107,13 +107,11 @@ struct fimc_is_drvdata {
 
 /**
  * struct fimc_is_fmt - the driver's internal color format data
- * @name: format description
  * @fourcc: the fourcc code for this format
  * @depth: number of bytes per pixel
  * @num_planes: number of planes for this color format
  */
 struct fimc_is_fmt {
-	char		*name;
 	unsigned int	fourcc;
 	unsigned int	depth[FIMC_IS_MAX_PLANES];
 	unsigned int	num_planes;
