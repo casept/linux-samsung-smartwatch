@@ -22,6 +22,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
@@ -3036,6 +3037,180 @@ static void term_irq(void)
 /*
  * Codec device
  */
+#ifdef CONFIG_DEBUG_FS
+/*
+ * debugfs "state": what the core currently works with, which is otherwise
+ * only visible as raw registers or as dynamic debug output while it changes.
+ */
+#define YMU831_PATH(f)	{ #f, offsetof(struct MCDRV_PATH_INFO, f) }
+static const struct {
+	const char *name;
+	size_t offset;
+} ymu831_dbg_paths[] = {
+	YMU831_PATH(asMusicOut[0]), YMU831_PATH(asMusicOut[1]),
+	YMU831_PATH(asExtOut[0]), YMU831_PATH(asExtOut[1]),
+	YMU831_PATH(asHifiOut[0]),
+	YMU831_PATH(asVboxMixIn[0]), YMU831_PATH(asVboxMixIn[1]),
+	YMU831_PATH(asVboxMixIn[2]), YMU831_PATH(asVboxMixIn[3]),
+	YMU831_PATH(asAe0[0]), YMU831_PATH(asAe0[1]),
+	YMU831_PATH(asAe1[0]), YMU831_PATH(asAe1[1]),
+	YMU831_PATH(asAe2[0]), YMU831_PATH(asAe2[1]),
+	YMU831_PATH(asAe3[0]), YMU831_PATH(asAe3[1]),
+	YMU831_PATH(asDac0[0]), YMU831_PATH(asDac0[1]),
+	YMU831_PATH(asDac1[0]), YMU831_PATH(asDac1[1]),
+	YMU831_PATH(asVoiceOut[0]), YMU831_PATH(asVboxIoIn[0]),
+	YMU831_PATH(asVboxHostIn[0]), YMU831_PATH(asHostOut[0]),
+	YMU831_PATH(asAdif0[0]), YMU831_PATH(asAdif0[1]),
+	YMU831_PATH(asAdif1[0]), YMU831_PATH(asAdif1[1]),
+	YMU831_PATH(asAdif2[0]), YMU831_PATH(asAdif2[1]),
+	YMU831_PATH(asAdc0[0]), YMU831_PATH(asAdc0[1]),
+	YMU831_PATH(asAdc1[0]),
+	YMU831_PATH(asSp[0]), YMU831_PATH(asSp[1]),
+	YMU831_PATH(asHp[0]), YMU831_PATH(asHp[1]),
+	YMU831_PATH(asRc[0]),
+	YMU831_PATH(asLout1[0]), YMU831_PATH(asLout1[1]),
+	YMU831_PATH(asLout2[0]), YMU831_PATH(asLout2[1]),
+	YMU831_PATH(asBias[0]), YMU831_PATH(asBias[1]),
+	YMU831_PATH(asBias[2]), YMU831_PATH(asBias[3]),
+};
+
+#define YMU831_VOL(f)	{ #f, offsetof(struct MCDRV_VOL_INFO, f), \
+			  ARRAY_SIZE(((struct MCDRV_VOL_INFO *)0)->f) }
+static const struct {
+	const char *name;
+	size_t offset;
+	unsigned int channels;
+} ymu831_dbg_vols[] = {
+	YMU831_VOL(aswD_MusicIn), YMU831_VOL(aswD_ExtIn),
+	YMU831_VOL(aswD_VoiceIn), YMU831_VOL(aswD_RefIn),
+	YMU831_VOL(aswD_Adif0In), YMU831_VOL(aswD_Adif1In),
+	YMU831_VOL(aswD_Adif2In), YMU831_VOL(aswD_MusicOut),
+	YMU831_VOL(aswD_ExtOut), YMU831_VOL(aswD_VoiceOut),
+	YMU831_VOL(aswD_RefOut), YMU831_VOL(aswD_Dac0Out),
+	YMU831_VOL(aswD_Dac1Out), YMU831_VOL(aswD_DpathDa),
+	YMU831_VOL(aswD_DpathAd), YMU831_VOL(aswA_Mic2),
+	YMU831_VOL(aswA_Hp), YMU831_VOL(aswA_Sp),
+	YMU831_VOL(aswA_LineOut1), YMU831_VOL(aswA_LineOut2),
+};
+
+static void ymu831_dbg_port(struct seq_file *m, const char *name,
+			    const struct MCDRV_DIO_PORT *port)
+{
+	const struct MCDRV_DIO_COMMON *com = &port->sDioCommon;
+
+	seq_printf(m, "  %-6s %s fs %u bckfs %u %s srcthru %u",
+		   name, com->bMasterSlave == MCDRV_DIO_MASTER ? "master" : "slave",
+		   com->bFs, com->bBckFs,
+		   com->bInterface == MCDRV_DIO_DA ? "da" : "pcm", com->bSrcThru);
+	if (com->bInterface == MCDRV_DIO_DA)
+		seq_printf(m, " dir bits %u mode %u, dit bits %u mode %u\n",
+			   port->sDir.sDaFormat.bBitSel, port->sDir.sDaFormat.bMode,
+			   port->sDit.sDaFormat.bBitSel, port->sDit.sDaFormat.bMode);
+	else
+		seq_printf(m, " frame %u dir bits %u order %u law %u mono %u, dit bits %u order %u law %u mono %u\n",
+			   com->bPcmFrame,
+			   port->sDir.sPcmFormat.bBitSel, port->sDir.sPcmFormat.bOrder,
+			   port->sDir.sPcmFormat.bLaw, port->sDir.sPcmFormat.bMono,
+			   port->sDit.sPcmFormat.bBitSel, port->sDit.sPcmFormat.bOrder,
+			   port->sDit.sPcmFormat.bLaw, port->sDit.sPcmFormat.bMono);
+}
+
+static int ymu831_state_show(struct seq_file *m, void *unused)
+{
+	static const char * const dai_names[] = { "music", "ext", "voice" };
+	static const char * const core_ports[] = { "music", "ext", "voice", "hifi" };
+	struct snd_soc_component *codec = m->private;
+	struct mc_asoc_data *mc_asoc = mc_asoc_get_mc_asoc(codec);
+	struct MCDRV_PATH_INFO path;
+	struct MCDRV_VOL_INFO vol;
+	struct MCDRV_DIO_INFO dio;
+	const struct mc_asoc_dsp_param *prm;
+	unsigned int i, j, n;
+	int err;
+
+	mc_asoc_lock("ymu831_state_show");
+
+	seq_puts(m, "ports (ASoC side):\n");
+	for (i = 0; i < ARRAY_SIZE(mc_asoc->port); i++) {
+		const struct mc_asoc_port_params *p = &mc_asoc->port[i];
+
+		seq_printf(m, "  %-6s streams %#x rate %u bckfs %u ratio %u %s if %u fmt %u bits %u/%u order %u/%u law %u/%u hold %#x/%#x\n",
+			   dai_names[i], p->stream, p->rate, p->bckfs,
+			   p->bclk_ratio,
+			   p->master == MCDRV_DIO_MASTER ? "master" : "slave",
+			   p->interface, p->format, p->bits[0], p->bits[1],
+			   p->pcm_order[0], p->pcm_order[1], p->pcm_law[0],
+			   p->pcm_law[1], p->hold[0], p->hold[1]);
+	}
+	seq_printf(m, "  pins (music ext voice hifi): %u %u %u %u, hold %#04x\n",
+		   mc_asoc->dio_ports[0], mc_asoc->dio_ports[1],
+		   mc_asoc->dio_ports[2], mc_asoc->dio_ports[3],
+		   mc_asoc->port_hold);
+
+	err = _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &dio, NULL, 0);
+	if (err == MCDRV_SUCCESS) {
+		seq_puts(m, "ports (core):\n");
+		for (i = 0; i < ARRAY_SIZE(dio.asPortInfo); i++)
+			ymu831_dbg_port(m, core_ports[i], &dio.asPortInfo[i]);
+	}
+
+	err = _McDrv_Ctrl(MCDRV_GET_PATH, &path, NULL, 0);
+	if (err == MCDRV_SUCCESS) {
+		seq_puts(m, "active paths (destination: source on/off bits):\n");
+		for (i = 0; i < ARRAY_SIZE(ymu831_dbg_paths); i++) {
+			u32 v = *(u32 *)((u8 *)&path + ymu831_dbg_paths[i].offset);
+
+			/* each source has an on bit and an off bit above it */
+			if (v & 0x555555)
+				seq_printf(m, "  %-16s %#08x\n",
+					   ymu831_dbg_paths[i].name, v);
+		}
+	}
+
+	err = _McDrv_Ctrl(MCDRV_GET_VOLUME, &vol, NULL, 0);
+	if (err == MCDRV_SUCCESS) {
+		seq_puts(m, "requested volumes (dB, before path muting):\n");
+		for (i = 0; i < ARRAY_SIZE(ymu831_dbg_vols); i++) {
+			const SINT16 *v = (void *)&vol + ymu831_dbg_vols[i].offset;
+
+			seq_printf(m, "  %-16s", ymu831_dbg_vols[i].name);
+			for (j = 0; j < ymu831_dbg_vols[i].channels; j++)
+				seq_printf(m, " %d.%02u", v[j] / 256,
+					   (abs(v[j]) % 256) * 100 / 256);
+			seq_putc(m, '\n');
+		}
+	}
+
+	seq_printf(m, "dsp parameters: %d of %u bytes used, blobs per group:",
+		   dsp_mem_pt, DSP_MEM_SIZE);
+	for (i = 0; i < ARRAY_SIZE(mc_asoc->param_store); i++)
+		for (j = 0; j < ARRAY_SIZE(mc_asoc->param_store[i]); j++) {
+			n = 0;
+			for (prm = &mc_asoc->param_store[i][j]; prm && prm->pabParam;
+			     prm = prm->next)
+				n++;
+			seq_printf(m, " %u", n);
+		}
+	seq_printf(m, "\npath cache %s, mic 4 bias select %d\n",
+		   mc_asoc->dapm.valid ? "valid" : "invalid", mc_asoc->mbsel4);
+
+	mc_asoc_unlock("ymu831_state_show");
+
+	return 0;
+}
+DEFINE_SHOW_ATTRIBUTE(ymu831_state);
+
+static void ymu831_debugfs_init(struct snd_soc_component *codec)
+{
+	debugfs_create_file("state", 0444, codec->debugfs_root, codec,
+			    &ymu831_state_fops);
+}
+#else
+static void ymu831_debugfs_init(struct snd_soc_component *codec)
+{
+}
+#endif
+
 static int mc_asoc_probe(
 	struct snd_soc_component *codec
 )
@@ -3242,6 +3417,7 @@ static int mc_asoc_probe(
 	}
 
 	set_bias_level(codec, SND_SOC_BIAS_OFF);
+	ymu831_debugfs_init(codec);
 	goto exit;
 
 error_set_mode:
