@@ -282,6 +282,7 @@ struct mc_asoc_data {
 	struct MCDRV_HSDET2_INFO	hsdet2_store;
 	struct mc_asoc_dsp_param	param_store[4][2];
 	struct mc_asoc_jack		jack;
+	struct regmap			*regmap;
 	struct clk			*mclk;
 	bool				mclk_enabled;
 	struct gpio_desc		*ldo_gpio;

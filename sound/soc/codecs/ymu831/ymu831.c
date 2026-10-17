@@ -31,6 +31,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include <linux/io.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
@@ -8795,64 +8796,152 @@ static const struct snd_soc_component_driver mc_asoc_codec_dev = {
 	.set_jack	= mc_asoc_set_jack,
 };
 
-static int spi_rw(u8 *tx, u8 *rx, int len)
+/*
+ * SPI framing: the command byte carries the register address in bits 6:1,
+ * bit 7 selects a read and bit 0 a burst, in which all following bytes go
+ * to the same register until chip select is released.
+ */
+#define YMU831_SPI_READ		0x80
+#define YMU831_SPI_BURST	0x01
+
+static int ymu831_spi_reg_write(void *context, unsigned int reg,
+				unsigned int val)
 {
-	struct spi_message	spi_msg;
-	struct spi_transfer	spi_xfer;
+	u8 buf[2] = { reg << 1, val };
 
-	/* Initialize SPI ,message */
-	spi_message_init(&spi_msg);
+	return spi_write_then_read(context, buf, sizeof(buf), NULL, 0);
+}
 
-	/* Initialize SPI transfer */
-	memset(&spi_xfer, 0, sizeof spi_xfer);
-	spi_xfer.len	= len;
-	spi_xfer.tx_buf	= tx;
-	spi_xfer.rx_buf	= rx;
+static int ymu831_spi_reg_read(void *context, unsigned int reg,
+			       unsigned int *val)
+{
+	u8 cmd = (reg << 1) | YMU831_SPI_READ;
+	u8 data;
+	int ret;
 
-	/* Add SPI transfer to SPI message */
-	spi_message_add_tail(&spi_xfer, &spi_msg);
+	ret = spi_write_then_read(context, &cmd, 1, &data, 1);
+	if (ret)
+		return ret;
 
-
-	/* Perform synchronous SPI transfer */
-	if (spi_sync(mc_asoc_spi, &spi_msg)) {
-		dev_err(&mc_asoc_spi->dev, "spi_sync failure\n");
-		return -EIO;
-	}
-
+	*val = data;
 	return 0;
 }
 
-static u8	buf[1024];
-void mc_asoc_read_data(
-	UINT8 bSlaveAdr,
-	UINT32 dAddress,
-	UINT8 *pbData,
-	UINT32 dSize)
+static int ymu831_spi_reg_noinc_write(void *context, unsigned int reg,
+				      const void *val, size_t val_count)
 {
-	u8	*rx	= NULL;
-	u8	*readBuf	= buf;
+	u8 *buf;
+	int ret;
 
-	if ((dSize+2) > sizeof(buf)) {
-		rx	= kmalloc(dSize+2, GFP_KERNEL);
-		if (!rx)
-			return;
-		readBuf	= rx;
-	}
-	readBuf[0]	= (u8)(dAddress<<1) | 0x80;
-	if (dSize > 1)
-		readBuf[0]	|= 0x01;	/*	burst	*/
-	spi_rw(readBuf, readBuf+2, dSize+1);
-	memcpy(pbData, readBuf+3, dSize);
-	if (rx != NULL)
-		kfree(rx);
+	buf = kmalloc(val_count + 1, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	buf[0] = (reg << 1) | YMU831_SPI_BURST;
+	memcpy(buf + 1, val, val_count);
+	ret = spi_write(context, buf, val_count + 1);
+	kfree(buf);
+
+	return ret;
 }
 
-void mc_asoc_write_data(
-	UINT8 bSlaveAdr,
-	const UINT8 *pbData,
-	UINT32 dSize)
+static int ymu831_spi_reg_noinc_read(void *context, unsigned int reg,
+				     void *val, size_t val_count)
 {
-	spi_rw((u8 *)pbData, NULL, dSize);
+	u8 cmd = (reg << 1) | YMU831_SPI_READ | YMU831_SPI_BURST;
+
+	return spi_write_then_read(context, &cmd, 1, val, val_count);
+}
+
+static const struct regmap_bus ymu831_spi_bus = {
+	.reg_write = ymu831_spi_reg_write,
+	.reg_read = ymu831_spi_reg_read,
+	.reg_noinc_write = ymu831_spi_reg_noinc_write,
+	.reg_noinc_read = ymu831_spi_reg_noinc_read,
+};
+
+/* Data ports of the register windows and FIFOs: reading them has effects */
+static bool ymu831_precious_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case MCI_A_REG_D:
+	case MCI_ANA_REG_D:
+	case MCI_CD_REG_D:
+	case MCI_MA_REG_D:
+	case MCI_MB_REG_D:
+	case MCI_B_REG_D:
+	case MCI_BMAD:
+	case MCI_E_REG_D:
+	case MCI_EDSP_FW_D:
+	case MCI_C_REG_D:
+	case MCI_DEC_FIFO:
+	case MCI_FSQ_FFIFO:
+	case MCI_F_REG_D:
+	case MCI_FMAD:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/*
+ * The core keeps its own shadow of every register bank and only uses the
+ * directly addressed interface registers, so no regmap cache.
+ */
+static const struct regmap_config ymu831_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.max_register = 63,
+	.precious_reg = ymu831_precious_reg,
+	.cache_type = REGCACHE_NONE,
+};
+
+static struct regmap *mc_asoc_get_regmap(void)
+{
+	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
+
+	return mc_asoc ? mc_asoc->regmap : NULL;
+}
+
+/* Execute a packet of command bytes as built by the core */
+void mc_asoc_write_data(UINT8 bSlaveAdr, const UINT8 *pbData, UINT32 dSize)
+{
+	struct regmap	*regmap	= mc_asoc_get_regmap();
+	UINT32	i;
+	int	err	= 0;
+
+	for (i = 0; i + 1 < dSize && !err; i += 2) {
+		unsigned int reg = pbData[i] >> 1;
+
+		if (pbData[i] & YMU831_SPI_BURST) {
+			/* a burst extends to the end of the packet */
+			err = regmap_noinc_write(regmap, reg, &pbData[i + 1],
+						 dSize - i - 1);
+			break;
+		}
+		err = regmap_write(regmap, reg, pbData[i + 1]);
+	}
+
+	if (err)
+		dev_err(mc_asoc_get_dev(), "register write failed: %d\n", err);
+}
+
+void mc_asoc_read_data(UINT8 bSlaveAdr, UINT32 dAddress, UINT8 *pbData,
+		       UINT32 dSize)
+{
+	struct regmap	*regmap	= mc_asoc_get_regmap();
+	unsigned int	val;
+	int	err;
+
+	if (dSize > 1) {
+		err = regmap_noinc_read(regmap, dAddress, pbData, dSize);
+	} else {
+		err = regmap_read(regmap, dAddress, &val);
+		pbData[0] = val;
+	}
+
+	if (err)
+		dev_err(mc_asoc_get_dev(), "register read failed: %d\n", err);
 }
 
 void mc_asoc_set_codec_ldod(int status)
@@ -8906,6 +8995,12 @@ static int mc_asoc_spi_probe(
 	if (IS_ERR(mc_asoc->mclk))
 		return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->mclk),
 				     "failed to get MCLK\n");
+
+	mc_asoc->regmap = devm_regmap_init(&spi->dev, &ymu831_spi_bus, spi,
+					   &ymu831_regmap_config);
+	if (IS_ERR(mc_asoc->regmap))
+		return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->regmap),
+				     "failed to initialise regmap\n");
 
 	err = devm_mutex_init(&spi->dev, &mc_asoc->mutex);
 	if (err)
