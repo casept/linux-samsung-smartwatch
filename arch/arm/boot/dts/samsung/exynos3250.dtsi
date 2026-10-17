@@ -456,6 +456,15 @@
 			clock-names = "fin_pll", "mct";
 		};
 
+		watchdog: watchdog@10060000 {
+			compatible = "samsung,exynos5250-wdt";
+			reg = <0x10060000 0x100>;
+			interrupts = <GIC_SPI 224 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cmu CLK_WDT>;
+			clock-names = "watchdog";
+			samsung,syscon-phandle = <&pmu_system_controller>;
+		};
+
 		pinctrl_1: pinctrl@11000000 {
 			compatible = "samsung,exynos3250-pinctrl";
 			reg = <0x11000000 0x1000>;
