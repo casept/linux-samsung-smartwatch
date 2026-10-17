@@ -55,7 +55,6 @@
 
 #define MC_ASOC_IMPCLASS_THRESHOLD	3
 
-#define MC_ASOC_RATE	(SNDRV_PCM_RATE_8000_192000)
 #define MC_ASOC_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | \
 			 SNDRV_PCM_FMTBIT_S20_3LE | \
 			 SNDRV_PCM_FMTBIT_S24_LE | \
@@ -64,11 +63,6 @@
 
 #define MC_ASOC_HWDEP_ID	"ymu831"
 
-#define get_port_id(id)	(id-1)
-#define	PORT_MUSIC	(0)
-#define	PORT_EXT	(1)
-#define	PORT_VOICE	(2)
-#define	PORT_HIFI	(3)
 
 #define	DIO_MUSIC	(0)
 #define	DIO_VOICE	(1)
@@ -462,249 +456,6 @@ static const struct soc_enum	switch_clock_param_enum =
 	SOC_ENUM_SINGLE(MC_ASOC_SWITCH_CLOCK, 0,
 		ARRAY_SIZE(switch_clock_param_text), switch_clock_param_text);
 
-/* Ext MasterSlave */
-static const char	* const ext_masterslave_param_text[] = {
-	"Slave", "Master"
-};
-static const struct soc_enum	ext_masterslave_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_MASTERSLAVE, 0,
-		ARRAY_SIZE(ext_masterslave_param_text),
-		ext_masterslave_param_text);
-
-/* Ext Rate */
-static const char	* const ext_rate_param_text[] = {
-	"48kHz", "44.1kHz", "32kHz", "", "24kHz", "22.05kHz", "16kHz", "",
-	"12kHz", "11.025kHz", "8kHz"
-};
-static const struct soc_enum	ext_rate_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_RATE, 0,
-		ARRAY_SIZE(ext_rate_param_text), ext_rate_param_text);
-
-/* Ext Bitclock Rate */
-static const char	* const ext_bck_rate_param_text[] = {
-	"64fs", "48fs", "32fs", "", "512fs", "256fs", "192fs", "128fs",
-	"96fs", "24fs", "16fs", "8fs", "", "", "", "Slave"
-};
-static const struct soc_enum	ext_bck_rate_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_BITCLOCK_RATE, 0,
-		ARRAY_SIZE(ext_bck_rate_param_text), ext_bck_rate_param_text);
-
-/* Ext Interface */
-static const char	* const ext_interface_param_text[] = {
-	"DA", "PCM"
-};
-static const struct soc_enum	ext_interface_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INTERFACE, 0,
-		ARRAY_SIZE(ext_interface_param_text), ext_interface_param_text);
-
-/* Ext Bitclock Invert */
-static const char	* const ext_bck_invert_param_text[] = {
-	"Normal", "Invert"
-};
-static const struct soc_enum	ext_bck_invert_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_BITCLOCK_INVERT, 0,
-		ARRAY_SIZE(ext_bck_invert_param_text),
-		ext_bck_invert_param_text);
-
-/* Ext DA Bit Width */
-static const char	* const ext_bit_width_param_text[] = {
-	"16bit", "20bit", "24bit"
-};
-static const struct soc_enum	ext_input_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INPUT_DA_BIT_WIDTH, 0,
-		ARRAY_SIZE(ext_bit_width_param_text), ext_bit_width_param_text);
-static const struct soc_enum	ext_output_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_OUTPUT_DA_BIT_WIDTH, 0,
-		ARRAY_SIZE(ext_bit_width_param_text), ext_bit_width_param_text);
-
-/* Ext DA Format */
-static const char	* const ext_da_format_param_text[] = {
-	"HeadAlign", "I2S", "TailAlign"
-};
-static const struct soc_enum	ext_input_da_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INPUT_DA_FORMAT, 0,
-		ARRAY_SIZE(ext_da_format_param_text), ext_da_format_param_text);
-static const struct soc_enum	ext_output_da_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_OUTPUT_DA_FORMAT, 0,
-		ARRAY_SIZE(ext_da_format_param_text), ext_da_format_param_text);
-
-/* Ext Pcm MonoStereo */
-static const char	* const ext_pcm_mono_param_text[] = {
-	"Stereo", "Mono"
-};
-static const struct soc_enum	ext_input_pcm_mono_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INPUT_PCM_MONOSTEREO, 0,
-		ARRAY_SIZE(ext_pcm_mono_param_text), ext_pcm_mono_param_text);
-static const struct soc_enum	ext_output_pcm_mono_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_OUTPUT_PCM_MONOSTEREO, 0,
-		ARRAY_SIZE(ext_pcm_mono_param_text), ext_pcm_mono_param_text);
-
-/* Ext Pcm Bit Order */
-static const char	* const ext_pcm_bit_order_param_text[] = {
-	"MSB", "LSB"
-};
-static const struct soc_enum	ext_input_pcm_bit_order_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INPUT_PCM_BIT_ORDER, 0,
-		ARRAY_SIZE(ext_pcm_bit_order_param_text),
-		ext_pcm_bit_order_param_text);
-static const struct soc_enum	ext_output_pcm_bit_order_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_OUTPUT_PCM_BIT_ORDER, 0,
-		ARRAY_SIZE(ext_pcm_bit_order_param_text),
-		ext_pcm_bit_order_param_text);
-
-/* Ext Pcm Format */
-static const char	* const ext_pcm_format_param_text[] = {
-	"Linear", "Alaw", "Mulaw"
-};
-static const struct soc_enum	ext_input_pcm_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INPUT_PCM_FORMAT, 0,
-		ARRAY_SIZE(ext_pcm_format_param_text),
-		ext_pcm_format_param_text);
-static const struct soc_enum	ext_output_pcm_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_OUTPUT_PCM_FORMAT, 0,
-		ARRAY_SIZE(ext_pcm_format_param_text),
-		ext_pcm_format_param_text);
-
-/* Ext PCM Bit Width */
-static const char	* const ext_pcm_bit_width_param_text[] = {
-	"8bit", "16bit", "24bit"
-};
-static const struct soc_enum	ext_input_pcm_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_INPUT_PCM_BIT_WIDTH, 0,
-		ARRAY_SIZE(ext_pcm_bit_width_param_text),
-		ext_pcm_bit_width_param_text);
-static const struct soc_enum	ext_output_pcm_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_OUTPUT_PCM_BIT_WIDTH, 0,
-		ARRAY_SIZE(ext_pcm_bit_width_param_text),
-		ext_pcm_bit_width_param_text);
-
-/* Voice MasterSlave */
-static const char	* const voice_masterslave_param_text[] = {
-	"Slave", "Master"
-};
-static const struct soc_enum	voice_masterslave_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_MASTERSLAVE, 0,
-		ARRAY_SIZE(voice_masterslave_param_text),
-		voice_masterslave_param_text);
-
-/* Voice Rate */
-static const char	* const voice_rate_param_text[] = {
-	"48kHz", "44.1kHz", "32kHz", "", "24kHz", "22.05kHz", "16kHz", "",
-	"12kHz", "11.025kHz", "8kHz", "", "192kHz", "96kHz"
-};
-static const struct soc_enum	voice_rate_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_RATE, 0,
-		ARRAY_SIZE(voice_rate_param_text), voice_rate_param_text);
-
-/* Voice Bitclock Rate */
-static const char	* const voice_bck_rate_param_text[]  = {
-	"64fs", "48fs", "32fs", "", "512fs", "256fs", "192fs", "128fs",
-	"96fs", "24fs", "16fs", "8fs", "", "", "", "Slave"
-};
-static const struct soc_enum	voice_bck_rate_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_BITCLOCK_RATE, 0,
-		ARRAY_SIZE(voice_bck_rate_param_text),
-			voice_bck_rate_param_text);
-
-/* Voice Interface */
-static const char	* const voice_interface_param_text[] = {
-	"DA", "PCM"
-};
-static const struct soc_enum	voice_interface_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INTERFACE, 0,
-		ARRAY_SIZE(voice_interface_param_text),
-			voice_interface_param_text);
-
-/* Voice Bitclock Invert */
-static const char	* const voice_bck_invert_param_text[] = {
-	"Normal", "Invert"
-};
-static const struct soc_enum	voice_bck_invert_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_BITCLOCK_INVERT, 0,
-		ARRAY_SIZE(voice_bck_invert_param_text),
-		voice_bck_invert_param_text);
-
-/* Voice DA Bit Width */
-static const char	* const voice_input_bit_width_param_text[] = {
-	"16bit", "20bit", "24bit"
-};
-static const struct soc_enum	voice_input_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INPUT_DA_BIT_WIDTH, 0,
-		ARRAY_SIZE(voice_input_bit_width_param_text),
-		voice_input_bit_width_param_text);
-static const char	* const voice_output_bit_width_param_text[] = {
-	"16bit", "20bit", "24bit", "32bit"
-};
-static const struct soc_enum	voice_output_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_OUTPUT_DA_BIT_WIDTH, 0,
-		ARRAY_SIZE(voice_output_bit_width_param_text),
-		voice_output_bit_width_param_text);
-
-/* Voice DA Format */
-static const char	* const voice_da_format_param_text[] = {
-	"HeadAlign", "I2S", "TailAlign"
-};
-static const struct soc_enum	voice_input_da_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INPUT_DA_FORMAT, 0,
-		ARRAY_SIZE(voice_da_format_param_text),
-		voice_da_format_param_text);
-static const struct soc_enum	voice_output_da_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_OUTPUT_DA_FORMAT, 0,
-		ARRAY_SIZE(voice_da_format_param_text),
-		voice_da_format_param_text);
-
-/* Voice Pcm MonoStereo */
-static const char	* const voice_pcm_mono_param_text[] = {
-	"Stereo", "Mono"
-};
-static const struct soc_enum	voice_input_pcm_mono_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INPUT_PCM_MONOSTEREO, 0,
-		ARRAY_SIZE(voice_pcm_mono_param_text),
-		voice_pcm_mono_param_text);
-static const struct soc_enum	voice_output_pcm_mono_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_OUTPUT_PCM_MONOSTEREO, 0,
-		ARRAY_SIZE(voice_pcm_mono_param_text),
-		voice_pcm_mono_param_text);
-
-/* Voice Pcm Bit Order */
-static const char	* const voice_pcm_bit_order_param_text[] = {
-	"MSB", "LSB"
-};
-static const struct soc_enum	voice_input_pcm_bit_order_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INPUT_PCM_BIT_ORDER, 0,
-		ARRAY_SIZE(voice_pcm_bit_order_param_text),
-		voice_pcm_bit_order_param_text);
-static const struct soc_enum	voice_output_pcm_bit_order_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_OUTPUT_PCM_BIT_ORDER, 0,
-		ARRAY_SIZE(voice_pcm_bit_order_param_text),
-		voice_pcm_bit_order_param_text);
-
-/* Voice Pcm Format */
-static const char	* const voice_pcm_format_param_text[] = {
-	"Linear", "Alaw", "Mulaw"
-};
-static const struct soc_enum	voice_input_pcm_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INPUT_PCM_FORMAT, 0,
-		ARRAY_SIZE(voice_pcm_format_param_text),
-		voice_pcm_format_param_text);
-static const struct soc_enum	voice_output_pcm_format_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_OUTPUT_PCM_FORMAT, 0,
-		ARRAY_SIZE(voice_pcm_format_param_text),
-		voice_pcm_format_param_text);
-
-/* Voice PCM Bit Width */
-static const char	* const voice_pcm_bit_width_param_text[] = {
-	"8bit", "16bit", "24bit"
-};
-static const struct soc_enum	voice_input_pcm_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_INPUT_PCM_BIT_WIDTH, 0,
-		ARRAY_SIZE(voice_pcm_bit_width_param_text),
-		voice_pcm_bit_width_param_text);
-static const struct soc_enum	voice_output_pcm_bit_width_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_OUTPUT_PCM_BIT_WIDTH, 0,
-		ARRAY_SIZE(voice_pcm_bit_width_param_text),
-		voice_pcm_bit_width_param_text);
-
 /* Music Physical Port */
 static const char	* const phy_port_param_text[] = {
 	"DIO0", "DIO1", "DIO2", "NONE", "SLIM0", "SLIM1", "SLIM2"
@@ -859,12 +610,10 @@ static const struct snd_kcontrol_new	mc_asoc_snd_controls[]	= {
 		MC_ASOC_DVOL_EXTOUT, 0, 8, 114, 0, mc_asoc_tlv_digital),
 	SOC_DOUBLE("Ext Output Switch",
 		MC_ASOC_DVOL_EXTOUT, 7, 15, 1, 0),
-
 	SOC_DOUBLE_TLV("Voice Output Volume",
 		MC_ASOC_DVOL_VOICEOUT, 0, 8, 114, 0, mc_asoc_tlv_digital),
 	SOC_DOUBLE("Voice Output Switch",
 		MC_ASOC_DVOL_VOICEOUT, 7, 15, 1, 0),
-
 	SOC_DOUBLE_TLV("Ref Output Volume",
 		MC_ASOC_DVOL_REFOUT, 0, 8, 114, 0, mc_asoc_tlv_digital),
 	SOC_DOUBLE("Ref Output Switch",
@@ -945,50 +694,6 @@ static const struct snd_kcontrol_new	mc_asoc_snd_controls[]	= {
 		MC_ASOC_AVOL_SP_GAIN, 0, 4, 0, mc_asoc_tlv_sp_gain),
 
 	SOC_ENUM("Switch Clock", switch_clock_param_enum),
-	SOC_ENUM("Ext MasterSlave", ext_masterslave_param_enum),
-	SOC_ENUM("Ext Rate", ext_rate_param_enum),
-	SOC_ENUM("Ext Bitclock Rate", ext_bck_rate_param_enum),
-	SOC_ENUM("Ext Interface", ext_interface_param_enum),
-	SOC_ENUM("Ext Bitclock Invert", ext_bck_invert_param_enum),
-	SOC_ENUM("Ext Input DA Bit Width", ext_input_bit_width_param_enum),
-	SOC_ENUM("Ext Output DA Bit Width",
-			ext_output_bit_width_param_enum),
-	SOC_ENUM("Ext Input DA Format", ext_input_da_format_param_enum),
-	SOC_ENUM("Ext Output DA Format", ext_output_da_format_param_enum),
-	SOC_ENUM("Ext Input Pcm MonoStereo", ext_input_pcm_mono_param_enum),
-	SOC_ENUM("Ext Output Pcm MonoStereo", ext_output_pcm_mono_param_enum),
-	SOC_ENUM("Ext Input Pcm Bit Order", ext_input_pcm_bit_order_param_enum),
-	SOC_ENUM("Ext Output Pcm Bit Order",
-			ext_output_pcm_bit_order_param_enum),
-	SOC_ENUM("Ext Input Pcm Format", ext_input_pcm_format_param_enum),
-	SOC_ENUM("Ext Output Pcm Format", ext_output_pcm_format_param_enum),
-	SOC_ENUM("Ext Input PCM Bit Width", ext_input_pcm_bit_width_param_enum),
-	SOC_ENUM("Ext Output PCM Bit Width",
-			ext_output_pcm_bit_width_param_enum),
-	SOC_ENUM("Voice MasterSlave", voice_masterslave_param_enum),
-	SOC_ENUM("Voice Rate", voice_rate_param_enum),
-	SOC_ENUM("Voice Bitclock Rate", voice_bck_rate_param_enum),
-	SOC_ENUM("Voice Interface", voice_interface_param_enum),
-	SOC_ENUM("Voice Bitclock Invert", voice_bck_invert_param_enum),
-	SOC_ENUM("Voice Input DA Bit Width",
-			voice_input_bit_width_param_enum),
-	SOC_ENUM("Voice Output DA Bit Width",
-			voice_output_bit_width_param_enum),
-	SOC_ENUM("Voice Input DA Format", voice_input_da_format_param_enum),
-	SOC_ENUM("Voice Output DA Format", voice_output_da_format_param_enum),
-	SOC_ENUM("Voice Input Pcm MonoStereo", voice_input_pcm_mono_param_enum),
-	SOC_ENUM("Voice Output Pcm MonoStereo",
-			voice_output_pcm_mono_param_enum),
-	SOC_ENUM("Voice Input Pcm Bit Order",
-			voice_input_pcm_bit_order_param_enum),
-	SOC_ENUM("Voice Output Pcm Bit Order",
-			voice_output_pcm_bit_order_param_enum),
-	SOC_ENUM("Voice Input Pcm Format", voice_input_pcm_format_param_enum),
-	SOC_ENUM("Voice Output Pcm Format", voice_output_pcm_format_param_enum),
-	SOC_ENUM("Voice Input PCM Bit Width",
-			voice_input_pcm_bit_width_param_enum),
-	SOC_ENUM("Voice Output PCM Bit Width",
-			voice_output_pcm_bit_width_param_enum),
 	SOC_ENUM("Music Physical Port", music_phy_port_param_enum),
 	SOC_ENUM("Ext Physical Port", ext_phy_port_param_enum),
 	SOC_ENUM("Voice Physical Port", voice_phy_port_param_enum),
@@ -1030,8 +735,6 @@ static UINT8	mc_asoc_irq_func;
 
 
 static UINT8	mc_asoc_MBSEL4		= 0x80;
-
-static UINT8	mc_asoc_port_rate	= MCDRV_FS_48000;
 
 static struct mutex	mc_asoc_mutex;
 static struct mutex	hsdet_mutex;
@@ -1290,6 +993,19 @@ static void set_BIAS(
 /*
  * DAI (PCM interface)
  */
+#define YMU831_COM_UPDATE_FLAGS	(MCDRV_MUSIC_COM_UPDATE_FLAG |	\
+				 MCDRV_EXT_COM_UPDATE_FLAG |	\
+				 MCDRV_VOICE_COM_UPDATE_FLAG |	\
+				 MCDRV_HIFI_COM_UPDATE_FLAG)
+#define YMU831_DIR_UPDATE_FLAGS	(MCDRV_MUSIC_DIR_UPDATE_FLAG |	\
+				 MCDRV_EXT_DIR_UPDATE_FLAG |	\
+				 MCDRV_VOICE_DIR_UPDATE_FLAG |	\
+				 MCDRV_HIFI_DIR_UPDATE_FLAG)
+#define YMU831_DIT_UPDATE_FLAGS	(MCDRV_MUSIC_DIT_UPDATE_FLAG |	\
+				 MCDRV_EXT_DIT_UPDATE_FLAG |	\
+				 MCDRV_VOICE_DIT_UPDATE_FLAG |	\
+				 MCDRV_HIFI_DIT_UPDATE_FLAG)
+
 static int is_dio_modified(
 	const struct MCDRV_DIO_PORT	*port,
 	int	id,
@@ -1304,9 +1020,7 @@ static int is_dio_modified(
 	if (err != MCDRV_SUCCESS)
 		return map_drv_error(err);
 
-	if (((update & MCDRV_MUSIC_COM_UPDATE_FLAG) != 0)
-	|| ((update & MCDRV_EXT_COM_UPDATE_FLAG) != 0)
-	|| ((update & MCDRV_HIFI_COM_UPDATE_FLAG) != 0)) {
+	if (update & YMU831_COM_UPDATE_FLAGS) {
 		if ((cur_dio.asPortInfo[id].sDioCommon.bMasterSlave
 			!= port->sDioCommon.bMasterSlave)
 		|| (cur_dio.asPortInfo[id].sDioCommon.bAutoFs
@@ -1333,8 +1047,7 @@ static int is_dio_modified(
 		}
 	}
 
-	if (((update & MCDRV_MUSIC_DIR_UPDATE_FLAG) != 0)
-	|| ((update & MCDRV_HIFI_DIR_UPDATE_FLAG) != 0)) {
+	if (update & YMU831_DIR_UPDATE_FLAGS) {
 		if (mode == MCDRV_DIO_DA) {
 			if ((cur_dio.asPortInfo[id].sDir.sDaFormat.bBitSel
 				!= port->sDir.sDaFormat.bBitSel)
@@ -1354,9 +1067,7 @@ static int is_dio_modified(
 		}
 	}
 
-	if (((update & MCDRV_MUSIC_DIT_UPDATE_FLAG) != 0)
-	|| ((update & MCDRV_EXT_DIT_UPDATE_FLAG) != 0)
-	|| ((update & MCDRV_HIFI_DIT_UPDATE_FLAG) != 0)) {
+	if (update & YMU831_DIT_UPDATE_FLAGS) {
 		if (mode == MCDRV_DIO_DA) {
 			if ((cur_dio.asPortInfo[id].sDit.sDaFormat.bBitSel
 				!= port->sDit.sDaFormat.bBitSel)
@@ -1378,20 +1089,144 @@ static int is_dio_modified(
 	return 0;
 }
 
-static int setup_dai(
-	struct snd_soc_component	*codec,
-	struct mc_asoc_data	*mc_asoc,
-	int	id,
-	int	mode,
-	int	dir
-)
+/* The core's digital ports, the HiFi port carries the music DAI at high rates */
+enum {
+	YMU831_PORT_MUSIC,
+	YMU831_PORT_EXT,
+	YMU831_PORT_VOICE,
+	YMU831_PORT_HIFI,
+};
+
+static const struct {
+	u32 com, dir, dit;
+} ymu831_port_update[] = {
+	[YMU831_PORT_MUSIC] = { MCDRV_MUSIC_COM_UPDATE_FLAG,
+				MCDRV_MUSIC_DIR_UPDATE_FLAG,
+				MCDRV_MUSIC_DIT_UPDATE_FLAG },
+	[YMU831_PORT_EXT] = { MCDRV_EXT_COM_UPDATE_FLAG,
+			      MCDRV_EXT_DIR_UPDATE_FLAG,
+			      MCDRV_EXT_DIT_UPDATE_FLAG },
+	[YMU831_PORT_VOICE] = { MCDRV_VOICE_COM_UPDATE_FLAG,
+				MCDRV_VOICE_DIR_UPDATE_FLAG,
+				MCDRV_VOICE_DIT_UPDATE_FLAG },
+	[YMU831_PORT_HIFI] = { MCDRV_HIFI_COM_UPDATE_FLAG,
+			       MCDRV_HIFI_DIR_UPDATE_FLAG,
+			       MCDRV_HIFI_DIT_UPDATE_FLAG },
+};
+
+#define YMU831_SRC_ALL_OFF	0x00aaaaaa
+
+/* the board's port configuration, indexed by DAI */
+static const struct MCDRV_DIO_PORT * const mc_asoc_port_defaults[] = {
+	[YMU831_PORT_MUSIC] = &stMusicPort_Default,
+	[YMU831_PORT_EXT] = &stExtPort_Default,
+	[YMU831_PORT_VOICE] = &stVoicePort_Default,
+};
+
+static void ymu831_init_ports(struct mc_asoc_data *mc_asoc)
+{
+	const struct MCDRV_DIO_PORT *def;
+	struct mc_asoc_port_params *port;
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(mc_asoc->port); i++) {
+		def = mc_asoc_port_defaults[i];
+		port = &mc_asoc->port[i];
+
+		port->master = def->sDioCommon.bMasterSlave;
+		port->rate = def->sDioCommon.bFs;
+		port->bckfs = def->sDioCommon.bBckFs;
+		port->interface = def->sDioCommon.bInterface;
+		port->inv = def->sDioCommon.bBckInvert;
+		port->srcthru = def->sDioCommon.bSrcThru;
+		if (port->interface == MCDRV_DIO_DA)
+			port->format = def->sDir.sDaFormat.bMode;
+		else
+			port->format = def->sDioCommon.bPcmFrame;
+	}
+}
+
+static void ymu831_mask_src(struct MCDRV_D1_CHANNEL *ch, int n, u32 on, u32 off)
+{
+	for (; n > 0; n--, ch++)
+		ch->dSrcOnOff = (ch->dSrcOnOff & ~on) | off;
+}
+
+/*
+ * Take the routes from and to a port down, the receive side when setting
+ * up playback and the transmit side when setting up capture.
+ */
+static void ymu831_take_down_port(struct MCDRV_PATH_INFO *path, int id,
+				  bool rx, bool tx)
+{
+	static const u32 d1_src[][2] = {
+		[YMU831_PORT_MUSIC] = { MCDRV_D1SRC_MUSICIN_ON,
+					MCDRV_D1SRC_MUSICIN_OFF },
+		[YMU831_PORT_EXT] = { MCDRV_D1SRC_EXTIN_ON,
+				      MCDRV_D1SRC_EXTIN_OFF },
+		[YMU831_PORT_HIFI] = { MCDRV_D1SRC_HIFIIN_ON,
+				       MCDRV_D1SRC_HIFIIN_OFF },
+	};
+	struct MCDRV_D1_CHANNEL *d1[] = {
+		path->asMusicOut, path->asExtOut, path->asHifiOut,
+		path->asVboxMixIn, path->asAe0, path->asAe1, path->asAe2,
+		path->asAe3, path->asDac0, path->asDac1,
+	};
+	static const int d1_n[] = {
+		MUSICOUT_PATH_CHANNELS, EXTOUT_PATH_CHANNELS,
+		HIFIOUT_PATH_CHANNELS, VBOXMIXIN_PATH_CHANNELS,
+		AE_PATH_CHANNELS, AE_PATH_CHANNELS, AE_PATH_CHANNELS,
+		AE_PATH_CHANNELS, DAC0_PATH_CHANNELS, DAC1_PATH_CHANNELS,
+	};
+	struct MCDRV_D2_CHANNEL *d2[] = {
+		path->asVoiceOut, path->asVboxIoIn, path->asVboxHostIn,
+		path->asHostOut,
+	};
+	unsigned int i;
+
+	if (rx) {
+		if (id == YMU831_PORT_VOICE) {
+			for (i = 0; i < ARRAY_SIZE(d2); i++)
+				ymu831_mask_src((struct MCDRV_D1_CHANNEL *)d2[i],
+						1, MCDRV_D2SRC_VOICEIN_ON,
+						MCDRV_D2SRC_VOICEIN_OFF);
+		} else {
+			for (i = 0; i < ARRAY_SIZE(d1); i++)
+				ymu831_mask_src(d1[i], d1_n[i], d1_src[id][0],
+						d1_src[id][1]);
+		}
+	}
+
+	if (tx) {
+		switch (id) {
+		case YMU831_PORT_MUSIC:
+			ymu831_mask_src(path->asMusicOut, MUSICOUT_PATH_CHANNELS,
+					~0, YMU831_SRC_ALL_OFF);
+			break;
+		case YMU831_PORT_EXT:
+			ymu831_mask_src(path->asExtOut, EXTOUT_PATH_CHANNELS,
+					~0, YMU831_SRC_ALL_OFF);
+			break;
+		case YMU831_PORT_VOICE:
+			path->asVoiceOut[0].dSrcOnOff = YMU831_SRC_ALL_OFF;
+			break;
+		case YMU831_PORT_HIFI:
+			ymu831_mask_src(path->asHifiOut, HIFIOUT_PATH_CHANNELS,
+					~0, YMU831_SRC_ALL_OFF);
+			break;
+		}
+	}
+}
+
+static int setup_dai(struct snd_soc_component *codec, int id,
+		     struct mc_asoc_port_params *port_prm, int dir)
 {
 	struct MCDRV_DIO_INFO	dio;
 	struct MCDRV_DIO_PORT	*port	= &dio.asPortInfo[id];
-	struct mc_asoc_port_params	*port_prm	= &mc_asoc->port;
-	UINT32	update	= 0;
-	int	bCh, err, modify;
 	struct MCDRV_PATH_INFO	path_info, tmp_path_info;
+	int	mode	= port_prm->interface;
+	UINT32	update	= 0;
+	int	err, modify;
 
 	err	= _McDrv_Ctrl(MCDRV_GET_PATH, &path_info, NULL, 0);
 	if (err != MCDRV_SUCCESS)
@@ -1408,153 +1243,48 @@ static int setup_dai(
 		port->sDioCommon.bBckInvert	= port_prm->inv;
 		port->sDioCommon.bSrcThru	= port_prm->srcthru;
 		if (mode == MCDRV_DIO_PCM)
-			port->sDioCommon.bPcmFrame
-				= port_prm->format;
-		if (id == 0)
-			update |= MCDRV_MUSIC_COM_UPDATE_FLAG;
-		else if (id == 1)
-			update |= MCDRV_EXT_COM_UPDATE_FLAG;
-		else if (id == 3)
-			update |= MCDRV_HIFI_COM_UPDATE_FLAG;
+			port->sDioCommon.bPcmFrame	= port_prm->format;
+		update |= ymu831_port_update[id].com;
 	}
 
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (mode == MCDRV_DIO_DA) {
 			port->sDir.sDaFormat.bBitSel	= port_prm->bits[dir];
 			port->sDir.sDaFormat.bMode	= port_prm->format;
-		}  else {
-			port->sDir.sPcmFormat.bMono
-				= port_prm->pcm_mono[dir];
-			port->sDir.sPcmFormat.bOrder
-				= port_prm->pcm_order[dir];
-			port->sDir.sPcmFormat.bLaw
-				= port_prm->pcm_law[dir];
-			port->sDir.sPcmFormat.bBitSel
-				= port_prm->bits[dir];
+		} else {
+			port->sDir.sPcmFormat.bMono	= port_prm->pcm_mono[dir];
+			port->sDir.sPcmFormat.bOrder	= port_prm->pcm_order[dir];
+			port->sDir.sPcmFormat.bLaw	= port_prm->pcm_law[dir];
+			port->sDir.sPcmFormat.bBitSel	= port_prm->bits[dir];
 		}
-		if (id == 0)
-			update |= MCDRV_MUSIC_DIR_UPDATE_FLAG;
-		else if (id == 3)
-			update |= MCDRV_HIFI_DIR_UPDATE_FLAG;
-	}
-
-	if (dir == SNDRV_PCM_STREAM_CAPTURE) {
+		update |= ymu831_port_update[id].dir;
+	} else {
 		if (mode == MCDRV_DIO_DA) {
 			port->sDit.sDaFormat.bBitSel	= port_prm->bits[dir];
 			port->sDit.sDaFormat.bMode	= port_prm->format;
-		}  else {
-			port->sDit.sPcmFormat.bMono
-				= port_prm->pcm_mono[dir];
-			port->sDit.sPcmFormat.bOrder
-				= port_prm->pcm_order[dir];
-			port->sDit.sPcmFormat.bLaw
-				= port_prm->pcm_law[dir];
-			port->sDit.sPcmFormat.bBitSel
-				= port_prm->bits[dir];
+		} else {
+			port->sDit.sPcmFormat.bMono	= port_prm->pcm_mono[dir];
+			port->sDit.sPcmFormat.bOrder	= port_prm->pcm_order[dir];
+			port->sDit.sPcmFormat.bLaw	= port_prm->pcm_law[dir];
+			port->sDit.sPcmFormat.bBitSel	= port_prm->bits[dir];
 		}
-		if (id == 0)
-			update |= MCDRV_MUSIC_DIT_UPDATE_FLAG;
-		else if (id == 1)
-			update |= MCDRV_EXT_DIT_UPDATE_FLAG;
-		else if (id == 3)
-			update |= MCDRV_HIFI_DIT_UPDATE_FLAG;
+		update |= ymu831_port_update[id].dit;
 	}
 
 	modify	= is_dio_modified(port, id, mode, update);
 	if (modify < 0)
 		return -EIO;
-	if (modify == 0) {
-		dbg_info("modify == 0\n");
+	if (modify == 0)
 		return 0;
-	}
 
-	memcpy(&tmp_path_info, &path_info, sizeof(struct MCDRV_PATH_INFO));
-	if ((dir == SNDRV_PCM_STREAM_PLAYBACK)
-	|| (port_prm->stream == 0)) {
-		if (id == 0) {
-			for (bCh = 0; bCh < MUSICOUT_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asMusicOut[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asMusicOut[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-			}
-			for (bCh = 0; bCh < EXTOUT_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asExtOut[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asExtOut[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-			}
-			for (bCh = 0; bCh < VBOXMIXIN_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asVboxMixIn[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asVboxMixIn[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-			}
-			for (bCh = 0; bCh < AE_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asAe0[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asAe0[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-				tmp_path_info.asAe1[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asAe1[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-				tmp_path_info.asAe2[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asAe2[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-				tmp_path_info.asAe3[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asAe3[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-			}
-			for (bCh = 0; bCh < DAC0_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asDac0[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asDac0[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-			}
-			for (bCh = 0; bCh < DAC1_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asDac1[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_MUSICIN_ON;
-				tmp_path_info.asDac1[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_MUSICIN_OFF;
-			}
-		} else if (id == 3) {
-			for (bCh = 0; bCh < DAC0_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asDac0[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_HIFIIN_ON;
-				tmp_path_info.asDac0[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_HIFIIN_OFF;
-			}
-			for (bCh = 0; bCh < DAC1_PATH_CHANNELS; bCh++) {
-				tmp_path_info.asDac1[bCh].dSrcOnOff
-					&= ~MCDRV_D1SRC_HIFIIN_ON;
-				tmp_path_info.asDac1[bCh].dSrcOnOff
-					|= MCDRV_D1SRC_HIFIIN_OFF;
-			}
-		}
-	}
-	if ((dir == SNDRV_PCM_STREAM_CAPTURE)
-	|| (port_prm->stream == 0)) {
-		if (id == 0)
-			for (bCh = 0; bCh < MUSICOUT_PATH_CHANNELS; bCh++)
-				tmp_path_info.asMusicOut[bCh].dSrcOnOff
-					= 0x00AAAAAA;
-		else if (id == 1)
-			for (bCh = 0; bCh < EXTOUT_PATH_CHANNELS; bCh++)
-				tmp_path_info.asExtOut[bCh].dSrcOnOff
-					= 0x00AAAAAA;
-		else if (id == 3)
-			for (bCh = 0; bCh < HIFIOUT_PATH_CHANNELS; bCh++)
-				tmp_path_info.asHifiOut[bCh].dSrcOnOff
-					= 0x00AAAAAA;
-	}
+	tmp_path_info = path_info;
+	ymu831_take_down_port(&tmp_path_info, id,
+			      dir == SNDRV_PCM_STREAM_PLAYBACK || !port_prm->stream,
+			      dir == SNDRV_PCM_STREAM_CAPTURE || !port_prm->stream);
 
-	if (memcmp(&tmp_path_info, &path_info, sizeof(struct MCDRV_PATH_INFO))
-		== 0)
+	if (!memcmp(&tmp_path_info, &path_info, sizeof(path_info))) {
 		modify	= 0;
-	else {
+	} else {
 		err	= _McDrv_Ctrl(MCDRV_SET_PATH, &tmp_path_info, NULL, 0);
 		if (err != MCDRV_SUCCESS)
 			return map_drv_error(err);
@@ -1573,405 +1303,336 @@ static int setup_dai(
 	return 0;
 }
 
-static int mc_asoc_set_clkdiv(
-	struct snd_soc_dai *dai,
-	int div_id,
-	int div)
+static struct mc_asoc_port_params *mc_asoc_dai_port(struct snd_soc_dai *dai)
 {
-	int	err	= 0;
-	struct snd_soc_component	*codec	= NULL;
-	struct mc_asoc_data	*mc_asoc	= NULL;
-	struct mc_asoc_port_params	*port	= NULL;
+	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(dai->component);
 
-	/*TRACE_FUNC();*/
-
-	if ((dai == NULL)
-	|| (dai->component == NULL)
-	|| (get_port_id(dai->id) != 0))
-		return -EINVAL;
-
-	codec	= dai->component;
-	mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	if (mc_asoc == NULL)
-		return -EINVAL;
-
-	mc_asoc_lock("mc_asoc_set_clkdiv");
-
-	port	= &mc_asoc->port;
-
-	switch (div_id) {
-	case MC_ASOC_BCLK_MULT:
-		switch (div) {
-		case MC_ASOC_LRCK_X64:
-			port->bckfs	= MCDRV_BCKFS_64;
-			break;
-		case MC_ASOC_LRCK_X48:
-			port->bckfs	= MCDRV_BCKFS_48;
-			break;
-		case MC_ASOC_LRCK_X32:
-			port->bckfs	= MCDRV_BCKFS_32;
-			break;
-		case MC_ASOC_LRCK_X512:
-			port->bckfs	= MCDRV_BCKFS_512;
-			break;
-		case MC_ASOC_LRCK_X256:
-			port->bckfs	= MCDRV_BCKFS_256;
-			break;
-		case MC_ASOC_LRCK_X192:
-			port->bckfs	= MCDRV_BCKFS_192;
-			break;
-		case MC_ASOC_LRCK_X128:
-			port->bckfs	= MCDRV_BCKFS_128;
-			break;
-		case MC_ASOC_LRCK_X96:
-			port->bckfs	= MCDRV_BCKFS_96;
-			break;
-		case MC_ASOC_LRCK_X24:
-			port->bckfs	= MCDRV_BCKFS_24;
-			break;
-		case MC_ASOC_LRCK_X16:
-			port->bckfs	= MCDRV_BCKFS_16;
-			break;
-		default:
-			err	= -EINVAL;
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	mc_asoc_unlock("mc_asoc_set_clkdiv");
-	return err;
+	return &mc_asoc->port[dai->id];
 }
 
-static int mc_asoc_set_fmt(
-	struct snd_soc_dai *dai,
-	unsigned int fmt)
+static int mc_asoc_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
-	int	err	= 0;
-	struct snd_soc_component	*codec	= NULL;
-	struct mc_asoc_data	*mc_asoc	= NULL;
-	struct mc_asoc_port_params	*port	= NULL;
+	struct mc_asoc_port_params *port = mc_asoc_dai_port(dai);
+	UINT8 interface, format, master, inv;
 
-	/*TRACE_FUNC();*/
-
-	if ((dai == NULL)
-	|| (dai->component == NULL)
-	|| (get_port_id(dai->id) != 0))
-		return -EINVAL;
-
-	codec	= dai->component;
-	mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	if (mc_asoc == NULL)
-		return -EINVAL;
-
-	mc_asoc_lock("mc_asoc_set_fmt");
-
-	port	= &mc_asoc->port;
-
-	/* format */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
-		port->format	= MCDRV_DAMODE_I2S;
+		interface = MCDRV_DIO_DA;
+		format = MCDRV_DAMODE_I2S;
 		break;
 	case SND_SOC_DAIFMT_RIGHT_J:
-		port->format	= MCDRV_DAMODE_TAILALIGN;
+		interface = MCDRV_DIO_DA;
+		format = MCDRV_DAMODE_TAILALIGN;
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
-		port->format	= MCDRV_DAMODE_HEADALIGN;
+		interface = MCDRV_DIO_DA;
+		format = MCDRV_DAMODE_HEADALIGN;
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
-		port->format	= MCDRV_PCM_SHORTFRAME;
+		interface = MCDRV_DIO_PCM;
+		format = MCDRV_PCM_SHORTFRAME;
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
-		port->format	= MCDRV_PCM_LONGFRAME;
+		interface = MCDRV_DIO_PCM;
+		format = MCDRV_PCM_LONGFRAME;
 		break;
 	default:
-		err	= -EINVAL;
-		goto exit;
-		break;
+		return -EINVAL;
 	}
 
-	/* master */
-	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+	switch (fmt & SND_SOC_DAIFMT_CLOCK_PROVIDER_MASK) {
 	case SND_SOC_DAIFMT_CBP_CFP:
-		port->master	= MCDRV_DIO_MASTER;
+		master = MCDRV_DIO_MASTER;
 		break;
 	case SND_SOC_DAIFMT_CBC_CFC:
-		port->master	= MCDRV_DIO_SLAVE;
+		master = MCDRV_DIO_SLAVE;
 		break;
 	default:
-		err	= -EINVAL;
-		goto exit;
-		break;
+		return -EINVAL;
 	}
 
-	/* inv */
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
-		port->inv	= MCDRV_BCLK_NORMAL;
+		inv = MCDRV_BCLK_NORMAL;
 		break;
 	case SND_SOC_DAIFMT_IB_NF:
-		port->inv	= MCDRV_BCLK_INVERT;
+		inv = MCDRV_BCLK_INVERT;
 		break;
 	default:
-		err	= -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
-exit:
+	mc_asoc_lock("mc_asoc_set_fmt");
+	port->interface = interface;
+	port->format = format;
+	port->master = master;
+	port->inv = inv;
 	mc_asoc_unlock("mc_asoc_set_fmt");
-	return err;
+
+	return 0;
+}
+
+static int ymu831_bckfs(unsigned int ratio)
+{
+	switch (ratio) {
+	case 16:
+		return MCDRV_BCKFS_16;
+	case 24:
+		return MCDRV_BCKFS_24;
+	case 32:
+		return MCDRV_BCKFS_32;
+	case 48:
+		return MCDRV_BCKFS_48;
+	case 64:
+		return MCDRV_BCKFS_64;
+	case 96:
+		return MCDRV_BCKFS_96;
+	case 128:
+		return MCDRV_BCKFS_128;
+	case 192:
+		return MCDRV_BCKFS_192;
+	case 256:
+		return MCDRV_BCKFS_256;
+	case 512:
+		return MCDRV_BCKFS_512;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int mc_asoc_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
+{
+	struct mc_asoc_port_params *port = mc_asoc_dai_port(dai);
+
+	if (ratio && ymu831_bckfs(ratio) < 0)
+		return -EINVAL;
+
+	mc_asoc_lock("mc_asoc_set_bclk_ratio");
+	port->bclk_ratio = ratio;
+	mc_asoc_unlock("mc_asoc_set_bclk_ratio");
+
+	return 0;
 }
 
 
-static int mc_asoc_hw_params(
-	struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params,
-	struct snd_soc_dai *dai)
+static int mc_asoc_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params,
+			     struct snd_soc_dai *dai)
 {
-	struct snd_soc_component	*codec	= NULL;
-	struct mc_asoc_data	*mc_asoc	= NULL;
-	struct mc_asoc_port_params	*port	= NULL;
-	int	dir;
-	int	rate;
-	int	err	= 0;
-	int	id;
-	struct MCDRV_DIOPATH_INFO	sDioPathInfo;
+	struct snd_soc_component *codec = dai->component;
+	struct mc_asoc_port_params *port = mc_asoc_dai_port(dai);
+	struct MCDRV_DIOPATH_INFO sDioPathInfo;
+	int dir = substream->stream;
+	unsigned int channels = params_channels(params);
+	unsigned int ratio;
+	int id = dai->id;
+	int rate, bckfs;
+	int err = 0;
 
-	/* TRACE_FUNC(); */
-
-	if ((substream == NULL)
-	|| (dai == NULL))
-		return -EINVAL;
-
-	id	= get_port_id(dai->id);
-	if (id != 0) {
-		dbg_info("dai->id=%d\n", id);
-		return -EINVAL;
-	}
-
-	dir	= substream->stream;
-
-	dbg_info("hw_params: [%d] name=%s, dir=%d, rate=%d, bits=%d, ch=%d\n",
-		id,
-		substream->name,
-		dir,
-		params_rate(params),
-		params_format(params),
-		params_channels(params));
-
-	codec	= dai->component;
-	mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	if ((codec == NULL)
-	|| (mc_asoc == NULL)) {
-		dbg_info("mc_asoc=NULL\n");
-		return -EINVAL;
-	}
-	port	= &mc_asoc->port;
-
-	/* channels */
-	switch (params_channels(params)) {
-	case 1:
-		port->pcm_mono[dir]	= MCDRV_PCM_MONO;
-		port->channels	= MCDRV_MUSIC_2CH;
+	switch (params_rate(params)) {
+	case 8000:
+		rate = MCDRV_FS_8000;
 		break;
-	case 2:
-		port->channels	= MCDRV_MUSIC_2CH;
-		port->pcm_mono[dir]	= MCDRV_PCM_STEREO;
+	case 11025:
+		rate = MCDRV_FS_11025;
 		break;
-	case 4:
-		port->channels	= MCDRV_MUSIC_4CH;
-		port->pcm_mono[dir]	= MCDRV_PCM_STEREO;
+	case 16000:
+		rate = MCDRV_FS_16000;
 		break;
-	case 6:
-		port->channels	= MCDRV_MUSIC_6CH;
-		port->pcm_mono[dir]	= MCDRV_PCM_STEREO;
+	case 22050:
+		rate = MCDRV_FS_22050;
+		break;
+	case 32000:
+		rate = MCDRV_FS_32000;
+		break;
+	case 44100:
+		rate = MCDRV_FS_44100;
+		break;
+	case 48000:
+		rate = MCDRV_FS_48000;
+		break;
+	case 96000:
+		rate = MCDRV_FS_96000;
+		break;
+	case 192000:
+		rate = MCDRV_FS_192000;
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	/* format (bits) */
+	/* high rates are only available through the HiFi port */
+	if (rate == MCDRV_FS_96000 || rate == MCDRV_FS_192000) {
+		if (id != YMU831_PORT_MUSIC)
+			return -EINVAL;
+		id = YMU831_PORT_HIFI;
+	}
+
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
-		port->bits[dir]	= MCDRV_BITSEL_16;
+		port->bits[dir] = MCDRV_BITSEL_16;
 		break;
 	case SNDRV_PCM_FORMAT_S20_3LE:
-		port->bits[dir]	= MCDRV_BITSEL_20;
+		port->bits[dir] = MCDRV_BITSEL_20;
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
 	case SNDRV_PCM_FORMAT_S24_3LE:
-		port->bits[dir]	= MCDRV_BITSEL_24;
+		port->bits[dir] = MCDRV_BITSEL_24;
 		break;
 	case SNDRV_PCM_FORMAT_S32_LE:
-		port->bits[dir]	= MCDRV_BITSEL_32;
+		port->bits[dir] = MCDRV_BITSEL_32;
 		break;
 	default:
 		return -EINVAL;
-	}
-	if (dir == SNDRV_PCM_STREAM_PLAYBACK) {
-		port->pcm_order[dir]
-			= stMusicPort_Default.sDir.sPcmFormat.bOrder;
-		port->pcm_law[dir]
-			= stMusicPort_Default.sDir.sPcmFormat.bLaw;
-	} else {
-		port->pcm_order[dir]
-			= stMusicPort_Default.sDit.sPcmFormat.bOrder;
-		port->pcm_law[dir]
-			= stMusicPort_Default.sDit.sPcmFormat.bLaw;
 	}
 
-	/* rate */
-	switch (params_rate(params)) {
-	case 8000:
-		rate	= MCDRV_FS_8000;
+	port->pcm_mono[dir] = channels == 1 ? MCDRV_PCM_MONO : MCDRV_PCM_STEREO;
+	switch (channels) {
+	case 1:
+	case 2:
+		port->channels = MCDRV_MUSIC_2CH;
 		break;
-	case 11025:
-		rate	= MCDRV_FS_11025;
+	case 4:
+		port->channels = MCDRV_MUSIC_4CH;
 		break;
-	case 16000:
-		rate	= MCDRV_FS_16000;
-		break;
-	case 22050:
-		rate	= MCDRV_FS_22050;
-		break;
-	case 32000:
-		rate	= MCDRV_FS_32000;
-		break;
-	case 44100:
-		rate	= MCDRV_FS_44100;
-		break;
-	case 48000:
-		rate	= MCDRV_FS_48000;
-		break;
-	case 96000:
-		rate	= MCDRV_FS_96000;
-		break;
-	case 192000:
-		rate	= MCDRV_FS_192000;
+	case 6:
+		port->channels = MCDRV_MUSIC_6CH;
 		break;
 	default:
 		return -EINVAL;
+	}
+
+	/* ALSA PCM samples are linear and sent MSB first */
+	port->pcm_order[dir] = MCDRV_PCM_MSB_FIRST;
+	port->pcm_law[dir] = MCDRV_PCM_LINEAR;
+
+	/* bit clock as clock provider: two slots for I2S like formats */
+	ratio = port->bclk_ratio;
+	if (!ratio)
+		ratio = params_physical_width(params) *
+			(port->interface == MCDRV_DIO_DA ? 2 : channels);
+	bckfs = ymu831_bckfs(ratio);
+	if (bckfs < 0) {
+		dev_err(codec->dev, "unsupported bit clock ratio %u\n", ratio);
+		return bckfs;
 	}
 
 	mc_asoc_lock("mc_asoc_hw_params");
 
-	if (CAPTURE_PORT == CAPTURE_PORT_MUSIC)
-		if ((port->stream & ~(1 << dir)) && (rate != port->rate)) {
-			err	= -EBUSY;
-			goto error;
-		}
+	if ((port->stream & ~(1 << dir)) &&
+	    (rate != port->rate || bckfs != port->bckfs)) {
+		err = -EBUSY;
+		goto out;
+	}
 
-	port->rate	= rate;
+	port->rate = rate;
+	port->bckfs = bckfs;
 
-	if ((rate == MCDRV_FS_96000)
-	|| (rate == MCDRV_FS_192000)) {
-		id	= 3;
-	} else {
-		sDioPathInfo.bMusicCh	= port->channels;
-		err	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO_PATH, &sDioPathInfo,
-						NULL, MCDRV_MUSICNUM_UPDATE_FLAG);
+	if (id == YMU831_PORT_MUSIC) {
+		sDioPathInfo.bMusicCh = port->channels;
+		err = _McDrv_Ctrl(MCDRV_SET_DIGITALIO_PATH, &sDioPathInfo,
+				  NULL, MCDRV_MUSICNUM_UPDATE_FLAG);
 		if (err != MCDRV_SUCCESS) {
-			dev_err(codec->dev,
-				"%d: Error in MCDRV_SET_DIGITALIO_PATH\n",
-				err);
-			goto error;
+			dev_err(codec->dev, "failed to set channels: %d\n", err);
+			err = map_drv_error(err);
+			goto out;
 		}
-
-		if ((dir == SNDRV_PCM_STREAM_CAPTURE)
-		&& (CAPTURE_PORT == CAPTURE_PORT_EXT))
-			id	= 1;
 	}
 
-	err	= setup_dai(codec, mc_asoc, id, MCDRV_DIO_DA, dir);
-	if (err != MCDRV_SUCCESS) {
-		dev_err(codec->dev, "%d: Error in setup_dai\n", err);
-		err	= -EIO;
-		goto error;
+	err = setup_dai(codec, id, port, dir);
+	if (err) {
+		dev_err(codec->dev, "failed to set up port %d: %d\n", id, err);
+		goto out;
 	}
 
-	mc_asoc_port_rate	= rate;
-	port->stream |= (1 << dir);
+	port->stream |= 1 << dir;
 
-error:
+out:
 	mc_asoc_unlock("mc_asoc_hw_params");
-
-
 	return err;
 }
 
-static int mc_asoc_hw_free(
-	struct snd_pcm_substream *substream,
-	struct snd_soc_dai *dai)
+static int mc_asoc_hw_free(struct snd_pcm_substream *substream,
+			   struct snd_soc_dai *dai)
 {
-	struct snd_soc_component	*codec	= NULL;
-	struct mc_asoc_data	*mc_asoc	= NULL;
-	struct mc_asoc_port_params	*port	= NULL;
-	int	dir;
-	int	err	= 0;
-
-	/* TRACE_FUNC(); */
-
-	if ((substream == NULL)
-	|| (dai == NULL))
-		return -EINVAL;
-
-	dir	= substream->stream;
-	codec	= dai->component;
-	mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	if ((codec == NULL)
-	|| (mc_asoc == NULL)
-	|| (get_port_id(dai->id) != 0))
-		return -EINVAL;
-
-	port	= &mc_asoc->port;
+	struct mc_asoc_port_params *port = mc_asoc_dai_port(dai);
 
 	mc_asoc_lock("mc_asoc_hw_free");
-
-	if (!(port->stream & (1 << dir))) {
-		err	= 0;
-		goto error;
-	}
-
-	port->stream &= ~(1 << dir);
-
-error:
+	port->stream &= ~(1 << substream->stream);
 	mc_asoc_unlock("mc_asoc_hw_free");
 
-
-	return err;
+	return 0;
 }
 
-static struct snd_soc_dai_ops	mc_asoc_dai_ops[]	= {
-	{
-		.set_clkdiv	= mc_asoc_set_clkdiv,
-		.set_fmt	= mc_asoc_set_fmt,
-		.hw_params	= mc_asoc_hw_params,
-		.hw_free	= mc_asoc_hw_free,
-	},
+static const struct snd_soc_dai_ops mc_asoc_dai_ops = {
+	.set_fmt	= mc_asoc_set_fmt,
+	.set_bclk_ratio	= mc_asoc_set_bclk_ratio,
+	.hw_params	= mc_asoc_hw_params,
+	.hw_free	= mc_asoc_hw_free,
 };
 
-struct snd_soc_dai_driver	mc_asoc_dai[]	= {
+#define YMU831_PORT_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | \
+			   SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 | \
+			   SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
+			   SNDRV_PCM_RATE_48000)
+#define YMU831_MUSIC_RATES (YMU831_PORT_RATES | SNDRV_PCM_RATE_96000 | \
+			    SNDRV_PCM_RATE_192000)
+
+static struct snd_soc_dai_driver mc_asoc_dai[] = {
 	{
-		.name	= MC_ASOC_NAME "-da0",
-		.id	= 1,
-		.playback	= {
-			.stream_name	= "Playback",
-			.channels_min	= 1,
-			.channels_max	= 6,
-			.rates		= MC_ASOC_RATE,
-			.formats	= MC_ASOC_FORMATS,
+		.name = "ymu831-music",
+		.id = YMU831_PORT_MUSIC,
+		.playback = {
+			.stream_name = "Music Playback",
+			.channels_min = 1,
+			.channels_max = 6,
+			.rates = YMU831_MUSIC_RATES,
+			.formats = MC_ASOC_FORMATS,
 		},
-		.capture	= {
-			.stream_name	= "Capture",
-			.channels_min	= 1,
-			.channels_max	= 2,
-			.rates		= MC_ASOC_RATE,
-			.formats	= MC_ASOC_FORMATS,
+		.capture = {
+			.stream_name = "Music Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = YMU831_MUSIC_RATES,
+			.formats = MC_ASOC_FORMATS,
 		},
-		.ops	= &mc_asoc_dai_ops[0]
+		.ops = &mc_asoc_dai_ops,
+	}, {
+		.name = "ymu831-ext",
+		.id = YMU831_PORT_EXT,
+		.playback = {
+			.stream_name = "Ext Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = YMU831_PORT_RATES,
+			.formats = MC_ASOC_FORMATS,
+		},
+		.capture = {
+			.stream_name = "Ext Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = YMU831_PORT_RATES,
+			.formats = MC_ASOC_FORMATS,
+		},
+		.ops = &mc_asoc_dai_ops,
+	}, {
+		.name = "ymu831-voice",
+		.id = YMU831_PORT_VOICE,
+		.playback = {
+			.stream_name = "Voice Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = YMU831_PORT_RATES,
+			.formats = MC_ASOC_FORMATS,
+		},
+		.capture = {
+			.stream_name = "Voice Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = YMU831_PORT_RATES,
+			.formats = MC_ASOC_FORMATS,
+		},
+		.ops = &mc_asoc_dai_ops,
 	},
 };
 
@@ -2174,383 +1835,6 @@ static int set_switch_clock(
 
 	sInfo.bClkSrc	= (UINT8)value;
 	ret	= _McDrv_Ctrl(MCDRV_SET_CLOCKSW, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_masterslave(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	sInfo.asPortInfo[bPort].sDioCommon.bMasterSlave	= (UINT8)value;
-	dFlag	= (bPort == 1) ? MCDRV_EXT_COM_UPDATE_FLAG
-				: MCDRV_VOICE_COM_UPDATE_FLAG;
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_rate(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	sInfo.asPortInfo[bPort].sDioCommon.bFs	= value;
-	dFlag	= (bPort == 1) ? MCDRV_EXT_COM_UPDATE_FLAG
-				: MCDRV_VOICE_COM_UPDATE_FLAG;
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_bitclock_rate(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	sInfo.asPortInfo[bPort].sDioCommon.bBckFs	= (UINT8)value;
-	dFlag	= (bPort == 1) ? MCDRV_EXT_COM_UPDATE_FLAG
-				: MCDRV_VOICE_COM_UPDATE_FLAG;
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_interface(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	sInfo.asPortInfo[bPort].sDioCommon.bInterface	= (UINT8)value;
-	dFlag	= (bPort == 1) ? MCDRV_EXT_COM_UPDATE_FLAG
-				: MCDRV_VOICE_COM_UPDATE_FLAG;
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_bitclock_invert(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	sInfo.asPortInfo[bPort].sDioCommon.bBckInvert	= (UINT8)value;
-	dFlag	= (bPort == 1) ? MCDRV_EXT_COM_UPDATE_FLAG
-				: MCDRV_VOICE_COM_UPDATE_FLAG;
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_da_bit_width(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort,
-	UINT8	bInOut
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	if (bInOut == 0)
-		sInfo.asPortInfo[bPort].sDir.sDaFormat.bBitSel	= (UINT8)value;
-	else
-		sInfo.asPortInfo[bPort].sDit.sDaFormat.bBitSel	= (UINT8)value;
-	dFlag	= (bPort == 1) ?
-		MCDRV_EXT_DIR_UPDATE_FLAG|MCDRV_EXT_DIT_UPDATE_FLAG
-		: MCDRV_VOICE_DIR_UPDATE_FLAG|MCDRV_VOICE_DIT_UPDATE_FLAG;
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_da_format(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort,
-	UINT8	bInOut
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	if (bInOut == 0)
-		sInfo.asPortInfo[bPort].sDir.sDaFormat.bMode	= (UINT8)value;
-	else
-		sInfo.asPortInfo[bPort].sDit.sDaFormat.bMode	= (UINT8)value;
-	dFlag	= (bPort == 1) ?
-		MCDRV_EXT_DIR_UPDATE_FLAG|MCDRV_EXT_DIT_UPDATE_FLAG
-		: MCDRV_VOICE_DIR_UPDATE_FLAG|MCDRV_VOICE_DIT_UPDATE_FLAG;
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_pcm_monostereo(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort,
-	UINT8	bInOut
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	if (bInOut == 0)
-		sInfo.asPortInfo[bPort].sDir.sPcmFormat.bMono	= (UINT8)value;
-	else
-		sInfo.asPortInfo[bPort].sDit.sPcmFormat.bMono	= (UINT8)value;
-	dFlag	= (bPort == 1) ?
-		MCDRV_EXT_DIR_UPDATE_FLAG|MCDRV_EXT_DIT_UPDATE_FLAG
-		: MCDRV_VOICE_DIR_UPDATE_FLAG|MCDRV_VOICE_DIT_UPDATE_FLAG;
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_pcm_bit_order(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort,
-	UINT8	bInOut
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	if (bInOut == 0)
-		sInfo.asPortInfo[bPort].sDir.sPcmFormat.bOrder	= (UINT8)value;
-	else
-		sInfo.asPortInfo[bPort].sDit.sPcmFormat.bOrder	= (UINT8)value;
-	dFlag	= (bPort == 1) ?
-		MCDRV_EXT_DIR_UPDATE_FLAG|MCDRV_EXT_DIT_UPDATE_FLAG
-		: MCDRV_VOICE_DIR_UPDATE_FLAG|MCDRV_VOICE_DIT_UPDATE_FLAG;
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_pcm_format(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort,
-	UINT8	bInOut
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	if (bInOut == 0)
-		sInfo.asPortInfo[bPort].sDir.sPcmFormat.bLaw	= (UINT8)value;
-	else
-		sInfo.asPortInfo[bPort].sDit.sPcmFormat.bLaw	= (UINT8)value;
-	dFlag	= (bPort == 1) ?
-		MCDRV_EXT_DIR_UPDATE_FLAG|MCDRV_EXT_DIT_UPDATE_FLAG
-		: MCDRV_VOICE_DIR_UPDATE_FLAG|MCDRV_VOICE_DIT_UPDATE_FLAG;
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
-static int set_pcm_bit_width(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort,
-	UINT8	bInOut
-)
-{
-	int	ret;
-	struct MCDRV_DIO_INFO	sInfo;
-	UINT32	dFlag;
-
-	TRACE_FUNC();
-
-	ret	= _McDrv_Ctrl(MCDRV_GET_DIGITALIO, &sInfo, NULL, 0);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	if (bInOut == 0)
-		sInfo.asPortInfo[bPort].sDir.sPcmFormat.bBitSel	= (UINT8)value;
-	else
-		sInfo.asPortInfo[bPort].sDit.sPcmFormat.bBitSel	= (UINT8)value;
-	dFlag	= (bPort == 1) ?
-		MCDRV_EXT_DIR_UPDATE_FLAG|MCDRV_EXT_DIT_UPDATE_FLAG
-		: MCDRV_VOICE_DIR_UPDATE_FLAG|MCDRV_VOICE_DIT_UPDATE_FLAG;
-
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO, &sInfo, NULL, dFlag);
 	if (ret != MCDRV_SUCCESS)
 		return map_drv_error(ret);
 
@@ -2770,168 +2054,17 @@ static int mc_asoc_write_reg(
 		case	MC_ASOC_SWITCH_CLOCK:
 			err	= set_switch_clock(codec, reg, value);
 			break;
-		case	MC_ASOC_EXT_MASTERSLAVE:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_masterslave(codec, reg, value,
-						PORT_EXT);
-			break;
-		case	MC_ASOC_EXT_RATE:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_rate(codec, reg, value,
-						PORT_EXT);
-			break;
-		case	MC_ASOC_EXT_BITCLOCK_RATE:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_bitclock_rate(codec, reg, value,
-						PORT_EXT);
-			break;
-		case	MC_ASOC_EXT_INTERFACE:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_interface(codec, reg, value,
-						PORT_EXT);
-			break;
-		case	MC_ASOC_EXT_BITCLOCK_INVERT:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_bitclock_invert(codec, reg,
-						value, PORT_EXT);
-			break;
-		case	MC_ASOC_EXT_INPUT_DA_BIT_WIDTH:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_da_bit_width(codec, reg, value,
-						PORT_EXT, 0);
-			break;
-		case	MC_ASOC_EXT_INPUT_DA_FORMAT:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_da_format(codec, reg, value,
-						PORT_EXT, 0);
-			break;
-		case	MC_ASOC_EXT_INPUT_PCM_MONOSTEREO:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_monostereo(codec, reg, value,
-						PORT_EXT, 0);
-			break;
-		case	MC_ASOC_EXT_INPUT_PCM_BIT_ORDER:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_bit_order(codec, reg, value,
-						PORT_EXT, 0);
-			break;
-		case	MC_ASOC_EXT_INPUT_PCM_FORMAT:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_format(codec, reg, value,
-						PORT_EXT, 0);
-			break;
-		case	MC_ASOC_EXT_INPUT_PCM_BIT_WIDTH:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_bit_width(codec, reg, value,
-						PORT_EXT, 0);
-			break;
-		case	MC_ASOC_EXT_OUTPUT_DA_BIT_WIDTH:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_da_bit_width(codec, reg, value,
-						PORT_EXT, 1);
-			break;
-		case	MC_ASOC_EXT_OUTPUT_DA_FORMAT:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_da_format(codec, reg, value,
-						PORT_EXT, 1);
-			break;
-		case	MC_ASOC_EXT_OUTPUT_PCM_MONOSTEREO:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_monostereo(codec, reg, value,
-						PORT_EXT, 1);
-			break;
-		case	MC_ASOC_EXT_OUTPUT_PCM_BIT_ORDER:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_bit_order(codec, reg, value,
-						PORT_EXT, 1);
-			break;
-		case	MC_ASOC_EXT_OUTPUT_PCM_FORMAT:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_format(codec, reg, value,
-						PORT_EXT, 1);
-			break;
-		case	MC_ASOC_EXT_OUTPUT_PCM_BIT_WIDTH:
-			if (CAPTURE_PORT != CAPTURE_PORT_EXT)
-				err	= set_pcm_bit_width(codec, reg, value,
-						PORT_EXT, 1);
-			break;
-		case	MC_ASOC_VOICE_MASTERSLAVE:
-			err	= set_masterslave(codec, reg, value,
-				PORT_VOICE);
-			break;
-		case	MC_ASOC_VOICE_RATE:
-			err	= set_rate(codec, reg, value, PORT_VOICE);
-			break;
-		case	MC_ASOC_VOICE_BITCLOCK_RATE:
-			err	= set_bitclock_rate(codec, reg, value,
-				PORT_VOICE);
-			break;
-		case	MC_ASOC_VOICE_INTERFACE:
-			err	= set_interface(codec, reg, value, PORT_VOICE);
-			break;
-		case	MC_ASOC_VOICE_BITCLOCK_INVERT:
-			err	= set_bitclock_invert(codec, reg, value,
-				PORT_VOICE);
-			break;
-		case	MC_ASOC_VOICE_INPUT_DA_BIT_WIDTH:
-			err	= set_da_bit_width(codec, reg, value,
-				PORT_VOICE, 0);
-			break;
-		case	MC_ASOC_VOICE_INPUT_DA_FORMAT:
-			err	= set_da_format(codec, reg, value,
-				PORT_VOICE, 0);
-			break;
-		case	MC_ASOC_VOICE_INPUT_PCM_MONOSTEREO:
-			err	= set_pcm_monostereo(codec, reg, value,
-				PORT_VOICE, 0);
-			break;
-		case	MC_ASOC_VOICE_INPUT_PCM_BIT_ORDER:
-			err	= set_pcm_bit_order(codec, reg, value,
-				PORT_VOICE, 0);
-			break;
-		case	MC_ASOC_VOICE_INPUT_PCM_FORMAT:
-			err	= set_pcm_format(codec, reg, value,
-				PORT_VOICE, 0);
-			break;
-		case	MC_ASOC_VOICE_INPUT_PCM_BIT_WIDTH:
-			err	= set_pcm_bit_width(codec, reg, value,
-				PORT_VOICE, 0);
-			break;
-		case	MC_ASOC_VOICE_OUTPUT_DA_BIT_WIDTH:
-			err	= set_da_bit_width(codec, reg, value,
-				PORT_VOICE, 1);
-			break;
-		case	MC_ASOC_VOICE_OUTPUT_DA_FORMAT:
-			err	= set_da_format(codec, reg, value,
-				PORT_VOICE, 1);
-			break;
-		case	MC_ASOC_VOICE_OUTPUT_PCM_MONOSTEREO:
-			err	= set_pcm_monostereo(codec, reg, value,
-				PORT_VOICE, 1);
-			break;
-		case	MC_ASOC_VOICE_OUTPUT_PCM_BIT_ORDER:
-			err	= set_pcm_bit_order(codec, reg, value,
-				PORT_VOICE, 1);
-			break;
-		case	MC_ASOC_VOICE_OUTPUT_PCM_FORMAT:
-			err	= set_pcm_format(codec, reg, value,
-				PORT_VOICE, 1);
-			break;
-		case	MC_ASOC_VOICE_OUTPUT_PCM_BIT_WIDTH:
-			err	= set_pcm_bit_width(codec, reg, value,
-				PORT_VOICE, 1);
-			break;
 		case	MC_ASOC_MUSIC_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, PORT_MUSIC);
+			err	= set_phys_port(codec, reg, value, YMU831_PORT_MUSIC);
 			break;
 		case	MC_ASOC_EXT_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, PORT_EXT);
+			err	= set_phys_port(codec, reg, value, YMU831_PORT_EXT);
 			break;
 		case	MC_ASOC_VOICE_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, PORT_VOICE);
+			err	= set_phys_port(codec, reg, value, YMU831_PORT_VOICE);
 			break;
 		case	MC_ASOC_HIFI_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, PORT_HIFI);
+			err	= set_phys_port(codec, reg, value, YMU831_PORT_HIFI);
 			break;
 		case	MC_ASOC_ADIF0_SWAP:
 			err	= set_swap(codec, reg, value,
@@ -3929,6 +3062,7 @@ static int mc_asoc_probe(
 
 	/* init hardware */
 	mc_asoc->setup	= mc_asoc_cfg_setup;
+	ymu831_init_ports(mc_asoc);
 	/* external supply for the digital core while its LDO is off */
 	mc_asoc->setup.init2.bOption[19]	= mc_asoc->dvdd ? 0 : 1;
 	err	= _McDrv_Ctrl(MCDRV_INIT, &mc_asoc->setup.init,
@@ -3998,77 +3132,6 @@ static int mc_asoc_probe(
 		dev_err(dev, "%d: Error adding DSP controls\n", err);
 		goto error_add_ctl;
 	}
-
-	write_cache(codec, MC_ASOC_EXT_MASTERSLAVE,
-		stExtPort_Default.sDioCommon.bMasterSlave);
-	write_cache(codec, MC_ASOC_EXT_RATE,
-		stExtPort_Default.sDioCommon.bFs);
-	write_cache(codec, MC_ASOC_EXT_BITCLOCK_RATE,
-		stExtPort_Default.sDioCommon.bBckFs);
-	write_cache(codec, MC_ASOC_EXT_INTERFACE,
-		stExtPort_Default.sDioCommon.bInterface);
-	write_cache(codec, MC_ASOC_EXT_BITCLOCK_INVERT,
-		stExtPort_Default.sDioCommon.bBckInvert);
-	write_cache(codec, MC_ASOC_EXT_INPUT_DA_BIT_WIDTH,
-		stExtPort_Default.sDir.sDaFormat.bBitSel);
-	write_cache(codec, MC_ASOC_EXT_OUTPUT_DA_BIT_WIDTH,
-		stExtPort_Default.sDit.sDaFormat.bBitSel);
-	write_cache(codec, MC_ASOC_EXT_INPUT_DA_FORMAT,
-		stExtPort_Default.sDir.sDaFormat.bMode);
-	write_cache(codec, MC_ASOC_EXT_OUTPUT_DA_FORMAT,
-		stExtPort_Default.sDit.sDaFormat.bMode);
-	write_cache(codec, MC_ASOC_EXT_INPUT_PCM_MONOSTEREO,
-		stExtPort_Default.sDir.sPcmFormat.bMono);
-	write_cache(codec, MC_ASOC_EXT_OUTPUT_PCM_MONOSTEREO,
-		stExtPort_Default.sDit.sPcmFormat.bMono);
-	write_cache(codec, MC_ASOC_EXT_INPUT_PCM_BIT_ORDER,
-		stExtPort_Default.sDir.sPcmFormat.bOrder);
-	write_cache(codec, MC_ASOC_EXT_OUTPUT_PCM_BIT_ORDER,
-		stExtPort_Default.sDit.sPcmFormat.bOrder);
-	write_cache(codec, MC_ASOC_EXT_INPUT_PCM_FORMAT,
-		stExtPort_Default.sDir.sPcmFormat.bLaw);
-	write_cache(codec, MC_ASOC_EXT_OUTPUT_PCM_FORMAT,
-		stExtPort_Default.sDit.sPcmFormat.bLaw);
-	write_cache(codec, MC_ASOC_EXT_INPUT_PCM_BIT_WIDTH,
-		stExtPort_Default.sDir.sPcmFormat.bBitSel);
-	write_cache(codec, MC_ASOC_EXT_OUTPUT_PCM_BIT_WIDTH,
-		stExtPort_Default.sDit.sPcmFormat.bBitSel);
-
-	write_cache(codec, MC_ASOC_VOICE_MASTERSLAVE,
-		stVoicePort_Default.sDioCommon.bMasterSlave);
-	write_cache(codec, MC_ASOC_VOICE_RATE,
-		stVoicePort_Default.sDioCommon.bFs);
-	write_cache(codec, MC_ASOC_VOICE_BITCLOCK_RATE,
-		stVoicePort_Default.sDioCommon.bBckFs);
-	write_cache(codec, MC_ASOC_VOICE_INTERFACE,
-		stVoicePort_Default.sDioCommon.bInterface);
-	write_cache(codec, MC_ASOC_VOICE_BITCLOCK_INVERT,
-		stVoicePort_Default.sDioCommon.bBckInvert);
-	write_cache(codec, MC_ASOC_VOICE_INPUT_DA_BIT_WIDTH,
-		stVoicePort_Default.sDir.sDaFormat.bBitSel);
-	write_cache(codec, MC_ASOC_VOICE_OUTPUT_DA_BIT_WIDTH,
-		stVoicePort_Default.sDit.sDaFormat.bBitSel);
-	write_cache(codec, MC_ASOC_VOICE_INPUT_DA_FORMAT,
-		stVoicePort_Default.sDir.sDaFormat.bMode);
-	write_cache(codec, MC_ASOC_VOICE_OUTPUT_DA_FORMAT,
-		stVoicePort_Default.sDit.sDaFormat.bMode);
-	write_cache(codec, MC_ASOC_VOICE_INPUT_PCM_MONOSTEREO,
-		stVoicePort_Default.sDir.sPcmFormat.bMono);
-	write_cache(codec, MC_ASOC_VOICE_OUTPUT_PCM_MONOSTEREO,
-		stVoicePort_Default.sDit.sPcmFormat.bMono);
-	write_cache(codec, MC_ASOC_VOICE_INPUT_PCM_BIT_ORDER,
-		stVoicePort_Default.sDir.sPcmFormat.bOrder);
-	write_cache(codec, MC_ASOC_VOICE_OUTPUT_PCM_BIT_ORDER,
-		stVoicePort_Default.sDit.sPcmFormat.bOrder);
-	write_cache(codec, MC_ASOC_VOICE_INPUT_PCM_FORMAT,
-		stVoicePort_Default.sDir.sPcmFormat.bLaw);
-	write_cache(codec, MC_ASOC_VOICE_OUTPUT_PCM_FORMAT,
-		stVoicePort_Default.sDit.sPcmFormat.bLaw);
-	write_cache(codec, MC_ASOC_VOICE_INPUT_PCM_BIT_WIDTH,
-		stVoicePort_Default.sDir.sPcmFormat.bBitSel);
-
-	write_cache(codec, MC_ASOC_VOICE_OUTPUT_PCM_BIT_WIDTH,
-		stVoicePort_Default.sDit.sPcmFormat.bBitSel);
 
 	write_cache(codec, MC_ASOC_MUSIC_PHYSICAL_PORT, MUSIC_PHYSICAL_PORT);
 	write_cache(codec, MC_ASOC_EXT_PHYSICAL_PORT, EXT_PHYSICAL_PORT);

@@ -283,7 +283,7 @@
 		};
 
 		codec_dai: simple-audio-card,codec {
-			sound-dai = <&audio_codec>;
+			sound-dai = <&audio_codec 0>;
 		};
 	};
 
@@ -1062,7 +1062,7 @@
 		clock-names = "mclk";
 		assigned-clocks = <&pmu_system_controller 0>;
 		assigned-clock-parents = <&xusbxti>;
-		#sound-dai-cells = <0>;
+		#sound-dai-cells = <1>;
 
 		controller-data {
 			samsung,spi-feedback-delay = <2>;
