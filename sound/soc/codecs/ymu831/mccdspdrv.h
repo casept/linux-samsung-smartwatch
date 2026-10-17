@@ -172,9 +172,6 @@ struct MC_CODER_VERSION {
 	UINT16				wOsVerL;
 };
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 SINT32 McCdsp_Init(struct MCDRV_CDSP_INIT *psPrm);
 SINT32 McCdsp_Term(void);
@@ -196,8 +193,5 @@ SINT32 McCdsp_SetParam(enum MC_PLAYER_ID ePlayerId,
 
 SINT32 McCdsp_ReadData(UINT8 *pbBuffer, UINT32 dSize);
 SINT32 McCdsp_WriteData(const UINT8 *pbBuffer, UINT32 dSize);
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _MCCDSPDRV_H_ */

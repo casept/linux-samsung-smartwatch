@@ -31,7 +31,6 @@
 /*
  * ALSA Version
  */
-#define	HSDET_WHILE_SUSPEND
 
 #define	MAX_YMS_CTRL_PARAM_SIZE	(524288UL)
 

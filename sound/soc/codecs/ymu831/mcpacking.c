@@ -1320,7 +1320,6 @@ static SINT32	Offsetcancel(
 	struct MCDRV_INIT2_INFO	sInit2Info;
 
 	bSlaveAddrA	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_ANA);
-#ifndef _FOR_FPGA
 	McResCtrl_GetInitInfo(&sInitInfo, &sInit2Info);
 	McResCtrl_GetAecInfo(&sAecInfo);
 
@@ -1621,7 +1620,6 @@ static SINT32	Offsetcancel(
 			goto exit;
 		}
 	}
-#endif
 exit:
 	return sdRet;
 }

@@ -4295,12 +4295,6 @@ static UINT8	IsValidDioPathParam
 					bRet	= 0;
 					goto exit;
 				}
-#if 0
-				if (bLP1_start != 0) {
-					bRet	= 0;
-					goto exit;
-				}
-#endif
 			}
 		}
 	}

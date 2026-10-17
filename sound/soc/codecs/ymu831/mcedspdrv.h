@@ -40,9 +40,6 @@
 
 /* Enum */
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 SINT32 McEdsp_Init(void);
 SINT32 McEdsp_Term(void);
 SINT32 McEdsp_IrqProc(void);
@@ -56,8 +53,5 @@ SINT32 McEdsp_E1Download(UINT8 *pbSysEq0, UINT8 *pbSysEq1, UINT8 bSysEqEnbReg);
 SINT32 McEdsp_E1WriteCommand(UINT8 bCmd);
 SINT32 McEdsp_E1OffsetMode(UINT8 bStart);
 SINT32 McEdsp_E1Impedance(UINT8 bStart);
-#if defined(__cplusplus)
-}
-#endif
 
 #endif

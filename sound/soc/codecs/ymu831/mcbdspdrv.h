@@ -52,9 +52,6 @@
 #define BDSP_AE_FW_DYRAM		(2)
 
 /* outside Struct */
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 SINT32 McBdsp_Init(void);
 SINT32 McBdsp_Term(void);
@@ -66,8 +63,5 @@ SINT32 McBdsp_SetDSP(struct MCDRV_AEC_INFO *pbPrm);
 SINT32 McBdsp_Start(void);
 SINT32 McBdsp_Stop(void);
 
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _MCBDSPDRV_H_ */

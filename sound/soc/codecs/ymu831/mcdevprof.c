@@ -1030,11 +1030,7 @@ enum MCDRV_REG_ACCSESS	McDevProf_GetRegAccess(
 
 	switch (psRegInfo->bRegType) {
 	case	MCDRV_REGTYPE_IF:
-#if 1	/*for FPGA*/
 		eAccess	= eMCDRV_READ_WRITE;
-#else
-		eAccess	= gawRegAccessAvailable_IF[psRegInfo->bAddress];
-#endif
 		break;
 	case	MCDRV_REGTYPE_A:
 		if (McDevProf_GetDevId() == eMCDRV_DEV_ID_80_90H) {

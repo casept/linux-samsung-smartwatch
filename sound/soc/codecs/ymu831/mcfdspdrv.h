@@ -90,9 +90,6 @@ struct MCDRV_FDSP_MUTE {
 	UINT8				abOutMute[FDSP_MUTE_NUM];
 };
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 SINT32 McFdsp_Init(struct MCDRV_FDSP_INIT *psPrm);
 SINT32 McFdsp_Term(void);
@@ -108,8 +105,5 @@ SINT32 McFdsp_Stop(void);
 SINT32 McFdsp_GetMute(struct MCDRV_FDSP_MUTE *psPrm);
 SINT32 McFdsp_SetMute(struct MCDRV_FDSP_MUTE *psPrm);
 
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _MCFDSPDRV_H_ */

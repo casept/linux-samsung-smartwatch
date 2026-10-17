@@ -6432,7 +6432,6 @@ void	McResCtrl_AddRegUpdate(
 		if (eMCDRV_UPDATE_DUMMY != eUpdateMode) {
 			pbCtrlData	= gsGlobalInfo.sCtrlPacket.abData;
 			pwCtrlDataNum	= &(gsGlobalInfo.sCtrlPacket.wDataNum);
-#if MCDRV_BURST_WRITE_ENABLE
 			if (gsGlobalInfo.wCurRegType == 0xFFFF) {
 				;
 				wNextAddr	= 0xFFFF;
@@ -6508,25 +6507,6 @@ void	McResCtrl_AddRegUpdate(
 				}
 				gsGlobalInfo.wDataContinueCount++;
 			}
-#else
-			wNextAddr	= 0xFFFF;
-			if (MCDRV_PACKET_REGTYPE_IF == wRegType) {
-				pbCtrlData[*pwCtrlDataNum]	=
-					(bAddrADR << 1);
-				gsGlobalInfo.wPrevAddrIndex	=
-					*pwCtrlDataNum;
-				(*pwCtrlDataNum)++;
-			} else {
-				pbCtrlData[(*pwCtrlDataNum)++]	=
-					(bAddrADR << 1);
-				pbCtrlData[(*pwCtrlDataNum)++]	=
-					(UINT8)wAddr|bAIncReg;
-				pbCtrlData[*pwCtrlDataNum]	=
-					(bAddrWINDOW << 1);
-				gsGlobalInfo.wPrevAddrIndex	=
-					(*pwCtrlDataNum)++;
-			}
-#endif
 
 			pbCtrlData[(*pwCtrlDataNum)++]	= bData;
 
