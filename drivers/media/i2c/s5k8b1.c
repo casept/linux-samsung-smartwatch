@@ -4,13 +4,8 @@
  *
  * Copyright (C) 2014 Samsung Electronics Co., Ltd.
  * Author: Sylwester Nawrocki <s.nawrocki@samsung.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 
-#include "linux/dev_printk.h"
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -349,8 +344,10 @@ static void s5k8b1_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id s5k8b1_ids[] = {
+	{ "s5k8b1" },
 	{ }
 };
+MODULE_DEVICE_TABLE(i2c, s5k8b1_ids);
 
 #ifdef CONFIG_OF
 static const struct of_device_id s5k8b1_of_match[] = {
@@ -364,7 +361,6 @@ static struct i2c_driver s5k8b1_driver = {
 	.driver = {
 		.of_match_table	= of_match_ptr(s5k8b1_of_match),
 		.name		= S5K8B1_DRV_NAME,
-		.owner		= THIS_MODULE,
 	},
 	.probe		= s5k8b1_probe,
 	.remove		= s5k8b1_remove,
@@ -375,4 +371,4 @@ module_i2c_driver(s5k8b1_driver);
 
 MODULE_DESCRIPTION("S5K8B1 image sensor subdev driver");
 MODULE_AUTHOR("Sylwester Nawrocki <s.nawrocki@samsung.com>");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
