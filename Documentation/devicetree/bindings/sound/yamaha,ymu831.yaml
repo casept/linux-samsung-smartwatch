@@ -48,6 +48,17 @@ properties:
       External bias supply for microphone 1, enabled while the microphone is
       in use.
 
+  yamaha,dio-ports:
+    $ref: /schemas/types.yaml#/definitions/uint32-array
+    description:
+      The digital audio interface pins (0 for DIO0 to 2 for DIO2) the music,
+      ext, voice and HiFi ports are wired to.
+    items:
+      enum: [0, 1, 2]
+    minItems: 4
+    maxItems: 4
+    default: [0, 2, 1, 0]
+
   "#sound-dai-cells":
     const: 1
     description: |
