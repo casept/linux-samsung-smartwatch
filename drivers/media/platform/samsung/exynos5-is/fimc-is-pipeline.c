@@ -651,7 +651,7 @@ static inline void fimc_is_pipeline_reset_isp(struct fimc_is_pipeline *pipeline)
 		pmu_is_write(0x0, is, EXYNOS5_PMUREG_CMU_RESET_ISP);
 }
 
-static inline int fimc_is_pipeline_setup_gic(void)
+static inline int fimc_is_pipeline_setup_gic(struct fimc_is_pipeline *pipeline)
 {
 	int i;
 	unsigned int reg_val;
@@ -670,7 +670,7 @@ static inline int fimc_is_pipeline_setup_gic(void)
 			       (PA_FIMC_IS_GIC_C + 0x4),
 				&reg_val);
 	if (ret || reg_val != 0xfc) {
-		pr_err("Failed to setup IS GIC\n");
+		dev_err(pipeline->dev, "Failed to setup IS GIC\n");
 		ret = -EINVAL;
 	}
 	return ret;
@@ -688,7 +688,7 @@ static int fimc_is_pipeline_power(struct fimc_is_pipeline *pipeline, int on)
 			fimc_is_pipeline_forcedown(pipeline, false);
 
 		if (is->drvdata->variant == FIMC_IS_EXYNOS3250)
-			ret = fimc_is_pipeline_setup_gic();
+			ret = fimc_is_pipeline_setup_gic(pipeline);
 		if (ret < 0)
 			return ret;
 

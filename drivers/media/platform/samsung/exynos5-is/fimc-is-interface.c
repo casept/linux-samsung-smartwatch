@@ -31,40 +31,18 @@
 static void itf_busy_wakeup(struct fimc_is_interface *itf);
 
 
-#ifdef FIMC_IS_DEBUG
-#define read_shared_reg(__r, __offset) ({			\
-	pr_info("[FIMC IS ITF] Reading shared reg: base: 0x%08X"\
-		" offset: 0x%08X\n",				\
-		(unsigned int)(__r), (unsigned int)(__offset)); \
-		readl((__r) + (__offset));			\
-})
-
-#define write_shared_reg(__r, __offset, __v) ({				\
-	pr_info("[FIMC IS ITF]  Writting shared reg: 0x%08x"		\
-		" offset:0x%08x (%d)\n",					\
-		(unsigned int)(__r), (unsigned int)(__offset), __v);	\
-		writel((__v), (__r) + (__offset));			\
-})
-
-#define dump_message(msg)							\
-do {										\
-	struct fimc_is_msg *__m = (struct fimc_is_msg *)msg;			\
-	pr_debug("[FIMC IS MSG] >> %s:\n", __func__);				\
-	pr_debug("[FIMC IS MSG] ID [%d] COMMAND [%d] INSTANCE [%d]\n",		\
-		 __m->id, __m->command, __m->instance);				\
-	pr_debug("[FIMC IS MSG] PARAMS: {%d, %d, %d, %d}\n",			\
-		 __m->param[0], __m->param[1], __m->param[2], __m->param[3]);	\
-} while (0)
-
-#else
 #define read_shared_reg(__r, __offset) \
 	readl((__r) + (__offset))
 #define write_shared_reg(__r, __offset, __v) \
 	writel(__v, (__r) + (__offset))
 
-#define dump_message(msg)
-
-#endif
+static void itf_dump_message(struct fimc_is_interface *itf,
+			     const struct fimc_is_msg *msg)
+{
+	dev_dbg(itf->dev, "message ID %d command %d instance %d params {%d, %d, %d, %d}\n",
+		msg->id, msg->command, msg->instance, msg->param[0],
+		msg->param[1], msg->param[2], msg->param[3]);
+}
 
 
 static inline void setup_cmd(struct fimc_is_msg *msg,
@@ -450,7 +428,7 @@ static void itf_handle_general(struct fimc_is_interface *itf,
 	switch (msg->command) {
 
 	case IHC_GET_SENSOR_NUMBER:
-		pr_debug("IS version : %d.%d\n",
+		dev_dbg(itf->dev, "IS version : %d.%d\n",
 			itf->drv_version, msg->param[0]);
 		if (fimc_is_fw_config(&itf->fw_data, msg->param[0]))
 			dev_err(itf->dev,
@@ -462,45 +440,45 @@ static void itf_handle_general(struct fimc_is_interface *itf,
 	case ISR_DONE:
 		switch (msg->param[0]) {
 		case HIC_OPEN_SENSOR:
-			pr_debug("open done\n");
+			dev_dbg(itf->dev, "open done\n");
 			break;
 		case HIC_CLOSE_SENSOR:
-			pr_debug("close done\n");
+			dev_dbg(itf->dev, "close done\n");
 			break;
 		case HIC_GET_SET_FILE_ADDR:
-			pr_debug("saddr(%p) done\n",
+			dev_dbg(itf->dev, "saddr(%p) done\n",
 				(void *)msg->param[1]);
 			break;
 		case HIC_LOAD_SET_FILE:
-			pr_debug("setfile done\n");
+			dev_dbg(itf->dev, "setfile done\n");
 			break;
 		case HIC_SET_A5_MEM_ACCESS:
-			pr_debug("cfgmem done\n");
+			dev_dbg(itf->dev, "cfgmem done\n");
 			break;
 		case HIC_PROCESS_START:
-			pr_debug("process_on done\n");
+			dev_dbg(itf->dev, "process_on done\n");
 			break;
 		case HIC_PROCESS_STOP:
-			pr_debug("process_off done\n");
+			dev_dbg(itf->dev, "process_off done\n");
 			break;
 		case HIC_STREAM_ON:
-			pr_debug("stream_on done\n");
+			dev_dbg(itf->dev, "stream_on done\n");
 			break;
 		case HIC_STREAM_OFF:
-			pr_debug("stream_off done\n");
+			dev_dbg(itf->dev, "stream_off done\n");
 			break;
 		case HIC_SET_PARAMETER:
-			pr_debug("s_param done\n");
+			dev_dbg(itf->dev, "s_param done\n");
 			break;
 		case HIC_GET_STATIC_METADATA:
-			pr_debug("g_capability done\n");
+			dev_dbg(itf->dev, "g_capability done\n");
 			break;
 		case HIC_PREVIEW_STILL:
-			pr_debug("a_param(%dx%d) done\n",
+			dev_dbg(itf->dev, "a_param(%dx%d) done\n",
 					msg->param[1], msg->param[2]);
 			break;
 		case HIC_POWER_DOWN:
-			pr_debug("powerdown done\n");
+			dev_dbg(itf->dev, "powerdown done\n");
 			break;
 		/* Non-blocking command */
 		case HIC_SHOT:
@@ -512,7 +490,7 @@ static void itf_handle_general(struct fimc_is_interface *itf,
 			dev_err(itf->dev, "camctrl is not acceptable\n");
 			break;
 		case HIC_SENSOR_MODE_CHANGE:
-			pr_debug("Sensor mode changed\n");
+			dev_dbg(itf->dev, "Sensor mode changed\n");
 			break;
 		case HIC_GET_IP_STATUS:
 			break;
@@ -530,7 +508,7 @@ static void itf_handle_general(struct fimc_is_interface *itf,
 			break;
 		case HIC_SET_CAM_CONTROL:
 			is_blocking = false;
-			pr_debug("camctrl NOT done\n");
+			dev_dbg(itf->dev, "camctrl NOT done\n");
 			break;
 		case HIC_SET_PARAMETER:
 			dev_err(itf->dev, "s_param NOT done\n");
@@ -622,7 +600,7 @@ static void itf_handle_scaler_done(struct fimc_is_interface *itf,
 		buf->vb.vb2_buf.timestamp = ktime_get_ns();
 		buf->vb.sequence = fcount;
 
-		pr_debug("SCP buffer done %d/%d\n",
+		dev_dbg(itf->dev, "SCP buffer done %d/%d\n",
 				msg->param[0], msg->param[2]);
 		if (msg->param[1])
 			vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
@@ -658,7 +636,7 @@ static void itf_handle_shot_done(struct fimc_is_interface *itf,
 			vb2_buffer_done(&bayer_buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 		else
 			vb2_buffer_done(&bayer_buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
-		pr_debug("Bayer buffer done.\n");
+		dev_dbg(itf->dev, "Bayer buffer done.\n");
 	}
 	fimc_is_pipeline_buf_unlock(pipeline);
 
@@ -957,7 +935,7 @@ int fimc_is_itf_shot_nblk(struct fimc_is_interface *itf,
 		.instance = instance  | FIMC_IS_GROUP_ID,
 		.param = { bayer, shot, fcount, rcount },
 	};
-	dump_message(&msg);
+	itf_dump_message(itf, &msg);
 	return fimc_is_itf_set_cmd_shot(itf, &msg);
 }
 

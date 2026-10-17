@@ -82,8 +82,8 @@ static void fimc_pipeline_prepare(struct fimc_pipeline *p,
 			p->subdevs[IDX_FLITE] = sd;
 			break;
 		default:
-			pr_warn("%s: Unknown subdev grp_id: %#x\n",
-				__func__, sd->grp_id);
+			dev_warn(entity_to_fimc_mdev(me)->dev,
+				 "Unknown subdev grp_id: %#x\n", sd->grp_id);
 		}
 		me = &sd->entity;
 		if (me->num_pads == 1)
