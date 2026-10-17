@@ -13,6 +13,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
 
 #include <sound/soc.h>
@@ -24,6 +25,9 @@
 #include "idma.h"
 #include "i2s.h"
 #include "i2s-regs.h"
+
+/* Entries in each of the TX and RX FIFOs */
+#define I2S_FIFO_DEPTH	64
 
 #define msecs_to_loops(t) (loops_per_jiffy / 1000 * HZ * t)
 
@@ -82,6 +86,9 @@ struct i2s_dai {
 	struct snd_dmaengine_dai_dma_data dma_capture;
 	struct snd_dmaengine_dai_dma_data idma_playback;
 	dma_filter_fn filter;
+
+	/* CPU wakeup latency the FIFOs can cover, per stream */
+	struct pm_qos_request pm_qos_req[2];
 
 	struct samsung_i2s_priv *priv;
 };
@@ -722,6 +729,37 @@ static int i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
+/*
+ * The DMA engine may need the CPU to start every period, so the CPU has to
+ * wake up before the FIFO drains or fills up. Keep it out of idle states
+ * that take longer than that while the stream is set up.
+ */
+static void i2s_set_latency_qos(struct i2s_dai *i2s,
+				struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params)
+{
+	struct pm_qos_request *req = &i2s->pm_qos_req[substream->stream];
+	struct snd_dmaengine_dai_dma_data *dma_data;
+	unsigned int entries;
+	s32 latency;
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		dma_data = &i2s->dma_playback;
+	else
+		dma_data = &i2s->dma_capture;
+
+	/* FIFO entries taken by one frame */
+	entries = params_channels(params) * params_physical_width(params) / 8 /
+		  dma_data->addr_width;
+	latency = I2S_FIFO_DEPTH * USEC_PER_SEC /
+		  (max(entries, 1U) * params_rate(params));
+
+	if (cpu_latency_qos_request_active(req))
+		cpu_latency_qos_update_request(req, latency);
+	else
+		cpu_latency_qos_add_request(req, latency);
+}
+
 static int i2s_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
@@ -814,6 +852,19 @@ static int i2s_hw_params(struct snd_pcm_substream *substream,
 	rclksrc = priv->clk_table[CLK_I2S_RCLK_SRC];
 	if (rclksrc && !IS_ERR(rclksrc))
 		priv->rclk_srcrate = clk_get_rate(rclksrc);
+
+	i2s_set_latency_qos(i2s, substream, params);
+
+	return 0;
+}
+
+static int i2s_hw_free(struct snd_pcm_substream *substream,
+		       struct snd_soc_dai *dai)
+{
+	struct pm_qos_request *req = &to_info(dai)->pm_qos_req[substream->stream];
+
+	if (cpu_latency_qos_request_active(req))
+		cpu_latency_qos_remove_request(req);
 
 	return 0;
 }
@@ -1122,6 +1173,7 @@ static const struct snd_soc_dai_ops samsung_i2s_dai_ops = {
 	.remove = samsung_i2s_dai_remove,
 	.trigger = i2s_trigger,
 	.hw_params = i2s_hw_params,
+	.hw_free = i2s_hw_free,
 	.set_fmt = i2s_set_fmt,
 	.set_clkdiv = i2s_set_clkdiv,
 	.set_sysclk = i2s_set_sysclk,
