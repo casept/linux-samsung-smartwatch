@@ -134,6 +134,7 @@ static const struct of_device_id fimc_is_i2c_of_match[] = {
 	{ .compatible = "samsung,exynos4212-i2c-isp" },
 	{ },
 };
+MODULE_DEVICE_TABLE(of, fimc_is_i2c_of_match);
 
 static struct platform_driver fimc_is_i2c_driver = {
 	.probe		= fimc_is_i2c_probe,
