@@ -44,6 +44,30 @@ void flite_hw_clear_pending_irq(struct fimc_lite *dev)
 	writel(cfg, dev->regs + FLITE_REG_CISTATUS);
 }
 
+/*
+ * The output FIFO overflow flags are sticky and keep the interrupt asserted
+ * until they are cleared through CIWDOFST. Returns true if any was set.
+ */
+bool flite_hw_clear_fifo_overflow(struct fimc_lite *dev)
+{
+	u32 status = readl(dev->regs + FLITE_REG_CISTATUS);
+	u32 clr = 0, cfg;
+
+	if (status & FLITE_REG_CISTATUS_OVFIY)
+		clr |= FLITE_REG_CIWDOFST_CLROVFIY;
+	if (status & FLITE_REG_CISTATUS_OVFICB)
+		clr |= FLITE_REG_CIWDOFST_CLROVFICB;
+	if (status & FLITE_REG_CISTATUS_OVFICR)
+		clr |= FLITE_REG_CIWDOFST_CLROVFICR;
+	if (!clr)
+		return false;
+
+	cfg = readl(dev->regs + FLITE_REG_CIWDOFST);
+	writel(cfg | clr, dev->regs + FLITE_REG_CIWDOFST);
+	writel(cfg & ~clr, dev->regs + FLITE_REG_CIWDOFST);
+	return true;
+}
+
 u32 flite_hw_get_interrupt_source(struct fimc_lite *dev)
 {
 	u32 intsrc = readl(dev->regs + FLITE_REG_CISTATUS);
@@ -77,6 +101,21 @@ void flite_hw_set_interrupt_mask(struct fimc_lite *dev)
 	cfg = readl(dev->regs + FLITE_REG_CIGCTRL);
 	cfg |= FLITE_REG_CIGCTRL_IRQ_DISABLE_MASK;
 	cfg &= ~intsrc;
+	writel(cfg, dev->regs + FLITE_REG_CIGCTRL);
+}
+
+/*
+ * While the output DMA can't keep up, the output FIFO overflows over and over
+ * within a frame, so the overflow interrupt is masked until the next one.
+ */
+void flite_hw_mask_overflow_irq(struct fimc_lite *dev, bool mask)
+{
+	u32 cfg = readl(dev->regs + FLITE_REG_CIGCTRL);
+
+	if (mask)
+		cfg |= FLITE_REG_CIGCTRL_IRQ_OVFEN;
+	else
+		cfg &= ~FLITE_REG_CIGCTRL_IRQ_OVFEN;
 	writel(cfg, dev->regs + FLITE_REG_CIGCTRL);
 }
 

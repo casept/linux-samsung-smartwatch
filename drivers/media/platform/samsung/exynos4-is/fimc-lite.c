@@ -253,6 +253,8 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 	spin_lock_irqsave(&fimc->slock, flags);
 
 	intsrc = flite_hw_get_interrupt_source(fimc);
+	if (flite_hw_clear_fifo_overflow(fimc))
+		intsrc |= FLITE_REG_CISTATUS_IRQ_SRC_OVERFLOW;
 	flite_hw_clear_pending_irq(fimc);
 
 	if (test_and_clear_bit(ST_FLITE_OFF, &fimc->state)) {
@@ -263,6 +265,8 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_OVERFLOW) {
 		clear_bit(ST_FLITE_RUN, &fimc->state);
 		fimc->events.data_overflow++;
+		flite_hw_mask_overflow_irq(fimc, true);
+		dev_warn_ratelimited(&fimc->pdev->dev, "output FIFO overflow\n");
 	}
 
 	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_LASTCAPEND) {
@@ -270,6 +274,10 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 		clear_bit(ST_FLITE_STREAM, &fimc->state);
 		wake_up(&fimc->irq_queue);
 	}
+
+	/* Catch overflows again from the start of a frame on */
+	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMSTART)
+		flite_hw_mask_overflow_irq(fimc, false);
 
 	if (atomic_read(&fimc->out_path) != FIMC_IO_DMA)
 		goto done;
