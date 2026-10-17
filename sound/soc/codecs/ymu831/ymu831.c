@@ -20,6 +20,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
+#include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
@@ -9521,6 +9522,18 @@ static void ymu831_set_ldod(int status)
 		gpio_set_value(gpio_codec_en, status);
 }
 
+static struct clk *mc_asoc_mclk;
+
+static void ymu831_set_mclk(bool enable, bool forced)
+{
+	if (enable) {
+		if (clk_prepare_enable(mc_asoc_mclk))
+			pr_err("ymu831: failed to enable MCLK\n");
+	} else {
+		clk_disable_unprepare(mc_asoc_mclk);
+	}
+}
+
 static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
 {
 	struct mc_asoc_platform_data *pdata;
@@ -9543,7 +9556,11 @@ static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
 	}
 	pr_info("gpio: %d, ret: %d\n", gpio_codec_en, ret);
 
-	pdata->set_codec_mclk = NULL;
+	mc_asoc_mclk = devm_clk_get_optional(dev, "mclk");
+	if (IS_ERR(mc_asoc_mclk))
+		return ERR_CAST(mc_asoc_mclk);
+
+	pdata->set_codec_mclk = ymu831_set_mclk;
 	pdata->set_codec_ldod = ymu831_set_ldod;
 	return pdata;
 }
