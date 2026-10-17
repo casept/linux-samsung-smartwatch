@@ -77,10 +77,10 @@ MODULE_PARM_DESC(debug, "Debug level (0-2)");
 
 /* Interrupt mask */
 /*
-* Careful when working with specific interrupt
-* masks as the reg layout varies between supported SoCs
-* Use S5PCSIS_INTMSK_EXYNOSX_EN_ALL when possible
-*/
+ * Careful when working with specific interrupt
+ * masks as the reg layout varies between supported SoCs
+ * Use S5PCSIS_INTMSK_EXYNOSX_EN_ALL when possible
+ */
 #define S5PCSIS_INTMSK			0x10
 #define S5PCSIS_INTMSK_EVEN_BEFORE	(1UL << 31)
 #define S5PCSIS_INTMSK_EVEN_AFTER	(1 << 30)
@@ -167,7 +167,7 @@ struct s5pcsis_event {
 #define S5PCSIS_INTSRC_MASK_BASE	0x01
 #define S5PCSIS_INTSRC_MASK_VC		0x0f
 #define S5PCSIS_INTSRC_VC(vc) \
-	(S5PCSIS_INTSRC_MASK_VC >>(S5PCSIS_MAX_VC - (vc)))
+	(S5PCSIS_INTSRC_MASK_VC >> (S5PCSIS_MAX_VC - (vc)))
 
 /*
  * s5pcsis_events - set of CSIS events listed with accordance to
@@ -459,7 +459,7 @@ static int s5pcsis_get_clocks(struct csis_state *state)
 	struct device *dev = &state->pdev->dev;
 	unsigned int num_clocks = NUM_CSIS_CLOCKS;
 	int i, ret;
-	
+
 	/* Exynos3250 requires only CSIS_CLK_GATE */
 	if (!state->drv_data->sclk_csis)
 		num_clocks = 1;
@@ -773,18 +773,16 @@ static void s5pcsis_track_events(struct csis_state *state, u32 intsrc)
 	v4l2_dbg(2, debug, &state->sd, "status: %08x\n", intsrc);
 	/* Update the event/error counters. */
 	for (i = 0; i < S5PCSIS_NUM_EVENTS; i++) {
-
 		u32 precise_intsrc_mask = state->events[i].mask;
 		u32 num_channels = state->drv_data->num_virt_channels;
 		unsigned int index;
 
 		/*
-		* This event might be generated for particular channel
-		* so adjust the mask with regard to number of available
-		* channels.
-		*/
-
-		if (S5PCSIS_INTSRC_MASK_VC == precise_intsrc_mask)
+		 * This event might be generated for particular channel
+		 * so adjust the mask with regard to number of available
+		 * channels.
+		 */
+		if (precise_intsrc_mask == S5PCSIS_INTSRC_MASK_VC)
 			precise_intsrc_mask = S5PCSIS_INTSRC_VC(num_channels);
 
 		if (intsrc & precise_intsrc_mask) {
@@ -793,12 +791,12 @@ static void s5pcsis_track_events(struct csis_state *state, u32 intsrc)
 				state->events[i].name,
 				state->events[i].counter);
 		}
-		intsrc_mask &=~precise_intsrc_mask;
+		intsrc_mask &= ~precise_intsrc_mask;
 		index = ffs(intsrc_mask);
 		/*
-		* If there are no bits set - there are no more
-		* supported events.
-		*/
+		 * If there are no bits set - there are no more
+		 * supported events.
+		 */
 		if (!index)
 			break;
 
