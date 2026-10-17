@@ -14,7 +14,7 @@
 #include <linux/mutex.h>
 #include <media/media-device.h>
 #include <media/media-entity.h>
-#include <media/s5p_fimc.h>
+#include <media/drv-intf/exynos-fimc.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 
@@ -64,7 +64,7 @@ struct fimc_csis_info {
 /**
  * struct fimc_sensor_info - image data source subdev information
  * @pdata: sensor's atrributes passed as media device's platform data
- * @asd: asynchronous subdev registration data structure
+ * @asd: asynchronous subdev connection of the sensor
  * @subdev: image sensor v4l2 subdev
  * @host: fimc device the sensor is currently linked to
  *
@@ -72,7 +72,7 @@ struct fimc_csis_info {
  */
 struct fimc_sensor_info {
 	struct fimc_source_info pdata;
-	struct v4l2_async_subdev asd;
+	struct v4l2_async_connection *asd;
 	struct v4l2_subdev *subdev;
 	struct fimc_dev *host;
 };
@@ -89,6 +89,8 @@ struct fimc_sensor_info {
  * @v4l2_dev: top level v4l2_device holding up the subdevs
  * @dev: struct device associated with this media device
  * @slock: spinlock protecting @sensor array
+ * @subdev_notifier: notifier for the sensor subdevs
+ * @link_setup_graph: graph iterator for the link_notify handler
  * @pipelines: list holding pipeline0 (sensor-mipi-flite) instances
  * @isp_pipelines: list holding pipeline1 (isp-scc-scp) instances
  */
@@ -103,7 +105,7 @@ struct fimc_md {
 	struct v4l2_device v4l2_dev;
 	struct device *dev;
 	struct v4l2_async_notifier subdev_notifier;
-	struct v4l2_async_subdev *async_subdevs[FIMC_MAX_SENSORS];
+	struct media_graph link_setup_graph;
 
 	spinlock_t slock;
 	struct list_head pipelines;
@@ -116,8 +118,8 @@ struct fimc_md {
 
 static inline struct fimc_md *entity_to_fimc_mdev(struct media_entity *me)
 {
-	return me->parent == NULL ? NULL :
-		container_of(me->parent, struct fimc_md, media_dev);
+	return me->graph_obj.mdev == NULL ? NULL :
+		container_of(me->graph_obj.mdev, struct fimc_md, media_dev);
 }
 
 static inline struct fimc_md *notifier_to_fimc_md(struct v4l2_async_notifier *n)
