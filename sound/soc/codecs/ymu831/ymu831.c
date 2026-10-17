@@ -9535,11 +9535,11 @@ static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
 
 	gpio_codec_en = of_get_named_gpio(node, "codec-en-gpios", 0);
 	if (!gpio_is_valid(gpio_codec_en))
-		return 0;
+		return ERR_PTR(gpio_codec_en);
 	ret = devm_gpio_request_one(dev, gpio_codec_en, GPIOF_OUT_INIT_HIGH, "codec-enable");
 	if (ret < 0) {
 		dev_err(dev, "failed to request gpio\n");
-		return ERR_PTR(-ENOMEM);
+		return ERR_PTR(ret);
 	}
 	pr_info("gpio: %d, ret: %d\n", gpio_codec_en, ret);
 
@@ -9568,11 +9568,13 @@ static int mc_asoc_spi_probe(
 
 	if (spi->dev.of_node) {
 		mc_asoc->pdata = mc_asoc_parse_dt(&spi->dev);
-		mc_asoc->pdata->irq = spi->irq;
 		if (IS_ERR(mc_asoc->pdata)) {
-			dev_err(&spi->dev, "failed to parse DT data\n");
-			return PTR_ERR(mc_asoc->pdata);
+			err = PTR_ERR(mc_asoc->pdata);
+			kfree(mc_asoc_priv);
+			return dev_err_probe(&spi->dev, err,
+					     "failed to parse DT data\n");
 		}
+		mc_asoc->pdata->irq = spi->irq;
 	}
 
 #ifndef FEATURE_MCLK_CONTROL_BY_YMU831
