@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Zlib
 /****************************************************************************
  *
  *	Copyright(c) 2012-2013 Yamaha Corporation. All rights reserved.

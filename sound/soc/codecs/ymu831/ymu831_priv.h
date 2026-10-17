@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Zlib */
 /*
  * YMU831 ASoC codec driver - private header
  *
