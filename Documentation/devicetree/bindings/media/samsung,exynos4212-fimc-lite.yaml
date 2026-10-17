@@ -17,6 +17,7 @@ description:
 properties:
   compatible:
     enum:
+      - samsung,exynos3250-fimc-lite
       - samsung,exynos4212-fimc-lite
       - samsung,exynos5250-fimc-lite
 
