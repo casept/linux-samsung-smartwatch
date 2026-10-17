@@ -119,6 +119,31 @@ void	machdep_ClockStop(
 }
 
 /***************************************************************************
+ *	machdep_WriteRegVal
+ *
+ *	Function:
+ *			Write one register of a register bank.
+ *	Arguments:
+ *			bRegType	register bank (MCDRV_REGTYPE_*)
+ *			wAddr		register address within the bank
+ *			bData		value
+ *	Return:
+ *			None
+ *
+ ****************************************************************************/
+void machdep_WriteRegVal(UINT8 bRegType, UINT16 wAddr, UINT8 bData)
+{
+	mc_asoc_reg_write(bRegType, wAddr, bData);
+}
+
+/* Write all of pbData to the same register in one burst */
+void machdep_WriteRegBurst(UINT8 bRegType, UINT16 wAddr, const UINT8 *pbData,
+			   UINT32 dCount)
+{
+	mc_asoc_reg_write_burst(bRegType, wAddr, pbData, dCount);
+}
+
+/***************************************************************************
  *	machdep_WriteReg
  *
  *	Function:

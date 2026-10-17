@@ -72,76 +72,6 @@ static struct MCDRV_GLOBAL_INFO	gsGlobalInfo;
 static struct MCDRV_PACKET	gasPacket[MCDRV_MAX_PACKETS+1];
 
 /* register next address */
-static const UINT16	gawNextAddr[256]	= {
-	0,	1,	2,	3,	4,	5,	6,	7,
-	8,	9,	10,	11,	12,	13,	14,	15,
-	16,	17,	18,	19,	20,	21,	22,	23,
-	24,	25,	26,	27,	28,	29,	30,	31,
-	32,	33,	34,	35,	36,	37,	38,	39,
-	40,	41,	42,	43,	44,	45,	46,	47,
-	48,	49,	50,	51,	52,	53,	54,	55,
-	56,	57,	58,	59,	60,	61,	62,	63,
-	64,	65,	66,	67,	68,	69,	70,	71,
-	72,	73,	74,	75,	76,	77,	78,	79,
-	80,	81,	82,	83,	84,	85,	86,	87,
-	88,	89,	90,	91,	92,	93,	94,	95,
-	96,	97,	98,	99,	100,	101,	102,	103,
-	104,	105,	106,	107,	108,	109,	110,	111,
-	112,	113,	114,	115,	116,	117,	118,	119,
-	120,	121,	122,	123,	124,	125,	126,	127,
-	128,	129,	130,	131,	132,	133,	134,	135,
-	136,	137,	138,	139,	140,	141,	142,	143,
-	144,	145,	146,	147,	148,	149,	150,	151,
-	152,	153,	154,	155,	156,	157,	158,	159,
-	160,	161,	162,	163,	164,	165,	166,	167,
-	168,	169,	170,	171,	172,	173,	174,	175,
-	176,	177,	178,	179,	180,	181,	182,	183,
-	184,	185,	186,	187,	188,	189,	190,	191,
-	192,	193,	194,	195,	196,	197,	198,	199,
-	200,	201,	202,	203,	204,	205,	206,	207,
-	208,	209,	210,	211,	212,	213,	214,	215,
-	216,	217,	218,	219,	220,	221,	222,	223,
-	224,	225,	226,	227,	228,	229,	230,	231,
-	232,	233,	234,	235,	236,	237,	238,	239,
-	240,	241,	242,	243,	244,	245,	246,	247,
-	248,	249,	250,	251,	252,	253,	254,	255
-};
-
-static const UINT16	gawNextAddrAInc[256]	= {
-	1,	2,	3,	4,	5,	6,	7,	8,
-	9,	10,	11,	12,	13,	14,	15,	16,
-	17,	18,	19,	20,	21,	22,	23,	24,
-	25,	26,	27,	28,	29,	30,	31,	32,
-	33,	34,	35,	36,	37,	38,	39,	40,
-	41,	42,	43,	44,	45,	46,	47,	48,
-	49,	50,	51,	52,	53,	54,	55,	56,
-	57,	58,	59,	60,	61,	62,	63,	64,
-	65,	66,	67,	68,	69,	70,	71,	72,
-	73,	74,	75,	76,	77,	78,	79,	80,
-	81,	82,	83,	84,	85,	86,	87,	88,
-	89,	90,	91,	92,	93,	94,	95,	96,
-	97,	98,	99,	100,	101,	102,	103,	104,
-	105,	106,	107,	108,	109,	110,	111,	112,
-	113,	114,	115,	116,	117,	118,	119,	120,
-	121,	122,	123,	124,	125,	126,	127,	128,
-	129,	130,	131,	132,	133,	134,	135,	136,
-	137,	138,	139,	140,	141,	142,	143,	144,
-	145,	146,	147,	148,	149,	150,	151,	152,
-	153,	154,	155,	156,	157,	158,	159,	160,
-	161,	162,	163,	164,	165,	166,	167,	168,
-	169,	170,	171,	172,	173,	174,	175,	176,
-	177,	178,	179,	180,	181,	182,	183,	184,
-	185,	186,	187,	188,	189,	190,	191,	192,
-	193,	194,	195,	196,	197,	198,	199,	200,
-	201,	202,	203,	204,	205,	206,	207,	208,
-	209,	210,	211,	212,	213,	214,	215,	216,
-	217,	218,	219,	220,	221,	222,	223,	224,
-	225,	226,	227,	228,	229,	230,	231,	232,
-	233,	234,	235,	236,	237,	238,	239,	240,
-	241,	242,	243,	244,	245,	246,	247,	248,
-	249,	250,	251,	252,	253,	254,	255,	0xFFFF
-};
-
 static void	InitClockSw(void);
 static void	InitPathInfo(void);
 static void	InitVolInfo(void);
@@ -300,7 +230,6 @@ void	McResCtrl_Init(
 	gsGlobalInfo.ePacketBufAlloc	= eMCDRV_PACKETBUF_FREE;
 	gsGlobalInfo.pcbfunc		= NULL;
 
-	McResCtrl_InitRegUpdate();
 
 	gsGlobalInfo.eAPMode	= eMCDRV_APM_ON;
 
@@ -6229,31 +6158,6 @@ void	McResCtrl_ReleasePacketBuf(
 }
 
 /****************************************************************************
- *	McResCtrl_InitRegUpdate
- *
- *	Description:
- *			Initialize the process of register update.
- *	Arguments:
- *			none
- *	Return:
- *			none
- *
- ****************************************************************************/
-void	McResCtrl_InitRegUpdate(
-	void
-)
-{
-
-	gsGlobalInfo.sCtrlPacket.wDataNum	= 0;
-	gsGlobalInfo.wCurSlaveAddr		= 0xFFFF;
-	gsGlobalInfo.wCurRegType		= 0xFFFF;
-	gsGlobalInfo.wCurRegAddr		= 0xFFFF;
-	gsGlobalInfo.wDataContinueCount		= 0;
-	gsGlobalInfo.wPrevAddrIndex		= 0;
-
-}
-
-/****************************************************************************
  *	McResCtrl_AddRegUpdate
  *
  *	Description:
@@ -6275,274 +6179,89 @@ void	McResCtrl_AddRegUpdate(
 )
 {
 	UINT8		*pbRegVal;
-	UINT8		bAddrADR;
-	UINT8		bAddrWINDOW;
-	UINT8		bAInc;
-	UINT8		bAIncReg;
-	UINT8		*pbCtrlData;
-	UINT16		*pwCtrlDataNum;
-	const UINT16	*pwNextAddr;
-	UINT16		wNextAddr;
-	UINT16		wSlaveAddr;
 	struct MCDRV_REG_INFO	sRegInfo;
-
 
 	switch (wRegType) {
 	case	MCDRV_PACKET_REGTYPE_IF:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValIF;
-		pwNextAddr	= gawNextAddr;
-		bAInc		= 0;
-		bAIncReg	= 0;
-		bAddrADR	= (UINT8)wAddr;
-		bAddrWINDOW	= bAddrADR;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_IF;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_A:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValA;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_A_REG_AINC;
-		bAddrADR	= MCI_A_REG_A;
-		bAddrWINDOW	= MCI_A_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_A;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_MA:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValMA;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_MA_REG_AINC;
-		bAddrADR	= MCI_MA_REG_A;
-		bAddrWINDOW	= MCI_MA_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_MA;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_MB:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValMB;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_MB_REG_AINC;
-		bAddrADR	= MCI_MB_REG_A;
-		bAddrWINDOW	= MCI_MB_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_MB;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_B:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValB;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_B_REG_AINC;
-		bAddrADR	= MCI_B_REG_A;
-		bAddrWINDOW	= MCI_B_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_B;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_E:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValE;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_E_REG_AINC;
-		bAddrADR	= MCI_E_REG_A;
-		bAddrWINDOW	= MCI_E_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_E;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_C:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValC;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= 0;
-		bAddrADR	= MCI_C_REG_A;
-		bAddrWINDOW	= MCI_C_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_C;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_F:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_DIG);
 		pbRegVal	= gsGlobalInfo.abRegValF;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_F_REG_AINC;
-		bAddrADR	= MCI_F_REG_A;
-		bAddrWINDOW	= MCI_F_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_F;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_ANA:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_ANA);
 		pbRegVal	= gsGlobalInfo.abRegValANA;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_ANA_REG_AINC;
-		bAddrADR	= MCI_ANA_REG_A;
-		bAddrWINDOW	= MCI_ANA_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_ANA;
 		break;
-
 	case	MCDRV_PACKET_REGTYPE_CD:
-		wSlaveAddr	= McDevProf_GetSlaveAddr(eMCDRV_SLAVE_ADDR_ANA);
 		pbRegVal	= gsGlobalInfo.abRegValCD;
-		pwNextAddr	= gawNextAddrAInc;
-		bAInc		= 1;
-		bAIncReg	= MCB_CD_REG_AINC;
-		bAddrADR	= MCI_CD_REG_A;
-		bAddrWINDOW	= MCI_CD_REG_D;
 		sRegInfo.bRegType	= MCDRV_REGTYPE_CD;
 		break;
-
 	default:
 		return;
 	}
 
 	sRegInfo.bAddress	= (UINT8)wAddr;
-	if ((McResCtrl_GetRegAccess(&sRegInfo) & eMCDRV_CAN_WRITE) == 0) {
+	if ((McResCtrl_GetRegAccess(&sRegInfo) & eMCDRV_CAN_WRITE) == 0)
 		return;
-	}
 
-	if (machdep_GetBusSelect() == 0) {
-		/*	I2C	*/
-		if ((gsGlobalInfo.wCurSlaveAddr != 0xFFFF)
-		&& (gsGlobalInfo.wCurSlaveAddr != wSlaveAddr)) {
-			McResCtrl_ExecuteRegUpdate();
-			McResCtrl_InitRegUpdate();
-		}
-	}
+	if (eUpdateMode != eMCDRV_UPDATE_FORCE && bData == pbRegVal[wAddr])
+		return;
 
-	if ((gsGlobalInfo.wCurRegType != 0xFFFF)
-	&& (gsGlobalInfo.wCurRegType != wRegType)) {
-		gsGlobalInfo.wCurRegType		= 0xFFFF;
-		gsGlobalInfo.wCurRegAddr		= 0xFFFF;
-	}
+	if (eMCDRV_UPDATE_DUMMY != eUpdateMode)
+		machdep_WriteRegVal(sRegInfo.bRegType, wAddr, bData);
 
-	if ((eMCDRV_UPDATE_FORCE == eUpdateMode)
-	|| (bData != pbRegVal[wAddr])) {
-		if (gsGlobalInfo.wCurRegAddr == 0xFFFF) {
-			;
-			gsGlobalInfo.wCurRegAddr	= wAddr;
-		}
-
-		if (eMCDRV_UPDATE_DUMMY != eUpdateMode) {
-			pbCtrlData	= gsGlobalInfo.sCtrlPacket.abData;
-			pwCtrlDataNum	= &(gsGlobalInfo.sCtrlPacket.wDataNum);
-			if (gsGlobalInfo.wCurRegType == 0xFFFF) {
-				;
-				wNextAddr	= 0xFFFF;
-			} else {
-				wNextAddr	= pwNextAddr[
-						gsGlobalInfo.wCurRegAddr];
-			}
-			if ((wSlaveAddr == gsGlobalInfo.wCurSlaveAddr)
-			&& (wRegType == gsGlobalInfo.wCurRegType)
-			&& (0xFFFF != wNextAddr)
-			&& (wAddr != wNextAddr)
-			&& (bAInc != 0)) {
-				if (pwNextAddr[wNextAddr] == wAddr) {
-					if (0 ==
-					gsGlobalInfo.wDataContinueCount) {
-						pbCtrlData[
-						gsGlobalInfo.wPrevAddrIndex]
-						|= MCDRV_BURST_WRITE_ENABLE;
-					}
-					pbCtrlData[*pwCtrlDataNum]	=
-						pbRegVal[wNextAddr];
-					(*pwCtrlDataNum)++;
-					gsGlobalInfo.wDataContinueCount++;
-					wNextAddr	=
-						pwNextAddr[wNextAddr];
-				} else if ((0xFFFF != pwNextAddr[wNextAddr])
-					&& (pwNextAddr[pwNextAddr[wNextAddr]]
-						== wAddr)) {
-					if (0 ==
-					gsGlobalInfo.wDataContinueCount) {
-						pbCtrlData[
-						gsGlobalInfo.wPrevAddrIndex]
-						|= MCDRV_BURST_WRITE_ENABLE;
-					}
-					pbCtrlData[*pwCtrlDataNum]	=
-						pbRegVal[wNextAddr];
-					(*pwCtrlDataNum)++;
-					pbCtrlData[*pwCtrlDataNum]	=
-					pbRegVal[pwNextAddr[wNextAddr]];
-					(*pwCtrlDataNum)++;
-					gsGlobalInfo.wDataContinueCount += 2;
-					wNextAddr	=
-					pwNextAddr[pwNextAddr[wNextAddr]];
-				}
-			}
-
-			if ((0 == *pwCtrlDataNum) || (wAddr != wNextAddr)) {
-				if (0 != gsGlobalInfo.wDataContinueCount) {
-					McResCtrl_ExecuteRegUpdate();
-					McResCtrl_InitRegUpdate();
-				}
-
-				if (MCDRV_PACKET_REGTYPE_IF == wRegType) {
-					pbCtrlData[*pwCtrlDataNum]	=
-						(bAddrADR << 1);
-					gsGlobalInfo.wPrevAddrIndex	=
-						*pwCtrlDataNum;
-					(*pwCtrlDataNum)++;
-				} else {
-					pbCtrlData[(*pwCtrlDataNum)++]	=
-						(bAddrADR << 1);
-					pbCtrlData[(*pwCtrlDataNum)++]	=
-						(UINT8)wAddr|bAIncReg;
-					pbCtrlData[*pwCtrlDataNum]	=
-						(bAddrWINDOW << 1);
-					gsGlobalInfo.wPrevAddrIndex	=
-						(*pwCtrlDataNum)++;
-				}
-			} else {
-				if (0 == gsGlobalInfo.wDataContinueCount) {
-					pbCtrlData[gsGlobalInfo.wPrevAddrIndex]
-						|= MCDRV_BURST_WRITE_ENABLE;
-				}
-				gsGlobalInfo.wDataContinueCount++;
-			}
-
-			pbCtrlData[(*pwCtrlDataNum)++]	= bData;
-
-			gsGlobalInfo.wCurSlaveAddr	= wSlaveAddr;
-			gsGlobalInfo.wCurRegType	= wRegType;
-			gsGlobalInfo.wCurRegAddr	= wAddr;
-		}
-
-		/* save register value */
-		pbRegVal[wAddr] = bData;
-	}
-
+	/* save register value */
+	pbRegVal[wAddr] = bData;
 }
 
-/****************************************************************************
- *	McResCtrl_ExecuteRegUpdate
- *
- *	Description:
- *			Add register update packet and save register value.
- *	Arguments:
- *			none
- *	Return:
- *			none
- *
- ****************************************************************************/
-void	McResCtrl_ExecuteRegUpdate(
-	void
-)
+/*
+ * Write the data of a run of forced write packets to the same interface
+ * register in one burst.
+ */
+void McResCtrl_AddRegUpdateBurst(UINT16 wAddr,
+				 const struct MCDRV_PACKET *psPacket,
+				 UINT32 dCount)
 {
+	static UINT8	abData[MCDRV_MAX_PACKETS];
+	struct MCDRV_REG_INFO	sRegInfo;
+	UINT32	i;
 
-	if (0 != gsGlobalInfo.sCtrlPacket.wDataNum) {
-		McSrv_WriteReg((UINT8)gsGlobalInfo.wCurSlaveAddr,
-			gsGlobalInfo.sCtrlPacket.abData,
-			gsGlobalInfo.sCtrlPacket.wDataNum);
-	}
+	sRegInfo.bRegType	= MCDRV_REGTYPE_IF;
+	sRegInfo.bAddress	= (UINT8)wAddr;
+	if ((McResCtrl_GetRegAccess(&sRegInfo) & eMCDRV_CAN_WRITE) == 0)
+		return;
 
+	for (i = 0; i < dCount; i++)
+		abData[i]	= psPacket[i].bData;
+
+	machdep_WriteRegBurst(MCDRV_REGTYPE_IF, wAddr, abData, dCount);
+	gsGlobalInfo.abRegValIF[wAddr]	= abData[dCount - 1];
 }
 
 /****************************************************************************

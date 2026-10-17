@@ -177,6 +177,33 @@ void	McDevIf_AddPacketRepeat(
 
 }
 
+/*
+ * Forced writes to the same interface register in a row, as the DSP drivers
+ * queue to feed a FIFO or a register window, go out as one burst: the device
+ * writes every byte of a burst to the same register. Returns the number of
+ * packets written, or 1 if the packet does not start such a run.
+ */
+static UINT32	WriteRun(SINT16 swPacketIndex)
+{
+	const struct MCDRV_PACKET	*psPacket	= &gpsPacket[swPacketIndex];
+	UINT32	dRun	= 1;
+
+	if ((psPacket->dDesc & MCDRV_PACKET_TYPE_MASK) !=
+	    MCDRV_PACKET_TYPE_FORCE_WRITE ||
+	    (psPacket->dDesc & MCDRV_PACKET_REGTYPE_MASK) !=
+	    MCDRV_PACKET_REGTYPE_IF)
+		return 1;
+
+	while (psPacket[dRun].dDesc == psPacket->dDesc)
+		dRun++;
+
+	if (dRun > 1)
+		McResCtrl_AddRegUpdateBurst(psPacket->dDesc & MCDRV_PACKET_ADR_MASK,
+					    psPacket, dRun);
+
+	return dRun;
+}
+
 /****************************************************************************
  *	McDevIf_ExecutePacket
  *
@@ -200,6 +227,7 @@ SINT32	McDevIf_ExecutePacket(
 	UINT32	dParam2;
 	UINT16	wAddress;
 	UINT16	wRegType;
+	UINT32	dRun;
 	enum MCDRV_UPDATE_MODE	eUpdateMode;
 
 
@@ -208,7 +236,6 @@ SINT32	McDevIf_ExecutePacket(
 	} else {
 		sdRet	= MCDRV_SUCCESS;
 
-		McResCtrl_InitRegUpdate();
 		swPacketIndex = 0;
 		while ((MCDRV_PACKET_TYPE_TERMINATE
 				!= (gpsPacket[swPacketIndex].dDesc
@@ -225,6 +252,11 @@ SINT32	McDevIf_ExecutePacket(
 				wAddress	=
 					(UINT16)(gpsPacket[swPacketIndex].dDesc
 						& MCDRV_PACKET_ADR_MASK);
+				dRun	= WriteRun(swPacketIndex);
+				if (dRun > 1) {
+					swPacketIndex	+= (SINT16)(dRun - 1);
+					break;
+				}
 				if (MCDRV_PACKET_TYPE_WRITE == dPacketType) {
 					;
 					eUpdateMode = eMCDRV_UPDATE_NORMAL;
@@ -241,16 +273,12 @@ SINT32	McDevIf_ExecutePacket(
 				break;
 
 			case MCDRV_PACKET_TYPE_TIMWAIT:
-				McResCtrl_ExecuteRegUpdate();
-				McResCtrl_InitRegUpdate();
 				dParam1 = gpsPacket[swPacketIndex].dDesc
 					& MCDRV_PACKET_TIME_MASK;
 				McSrv_Sleep(dParam1);
 				break;
 
 			case MCDRV_PACKET_TYPE_EVTWAIT:
-				McResCtrl_ExecuteRegUpdate();
-				McResCtrl_InitRegUpdate();
 				dParam1 = gpsPacket[swPacketIndex].dDesc
 						& MCDRV_PACKET_EVT_MASK;
 				dParam2 = gpsPacket[swPacketIndex].dDesc
@@ -264,10 +292,6 @@ SINT32	McDevIf_ExecutePacket(
 			}
 
 			swPacketIndex++;
-		}
-		if (sdRet == MCDRV_SUCCESS) {
-			;
-			McResCtrl_ExecuteRegUpdate();
 		}
 		McDevIf_ClearPacket();
 	}

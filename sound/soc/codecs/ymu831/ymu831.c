@@ -8759,6 +8759,15 @@ static const struct regmap_bus ymu831_spi_bus = {
 /* Data ports of the register windows and FIFOs: reading them has effects */
 static bool ymu831_precious_reg(struct device *dev, unsigned int reg)
 {
+	/* the DSP banks */
+	switch (reg >> 8) {
+	case MCDRV_REGTYPE_B:
+	case MCDRV_REGTYPE_C:
+	case MCDRV_REGTYPE_E:
+	case MCDRV_REGTYPE_F:
+		return true;
+	}
+
 	switch (reg) {
 	case MCI_A_REG_D:
 	case MCI_ANA_REG_D:
@@ -8781,14 +8790,79 @@ static bool ymu831_precious_reg(struct device *dev, unsigned int reg)
 }
 
 /*
- * The core keeps its own shadow of every register bank and only uses the
- * directly addressed interface registers, so no regmap cache.
+ * The register banks are reached through an address and a data register
+ * on the interface. They are mapped at YMU831_REG(bank, address), with
+ * the bank numbers of the core's MCDRV_REGTYPE_*.
+ */
+#define YMU831_REG(bank, addr)	(((bank) << 8) | (addr))
+
+#define YMU831_BANK(_bank, _size, _sel, _mask, _data)			\
+	{								\
+		.name = #_bank,						\
+		.range_min = YMU831_REG(MCDRV_REGTYPE_##_bank, 0),	\
+		.range_max = YMU831_REG(MCDRV_REGTYPE_##_bank, (_size) - 1), \
+		.selector_reg = (_sel),					\
+		.selector_mask = (_mask),				\
+		.window_start = (_data),				\
+		.window_len = 1,					\
+	}
+
+static const struct regmap_range_cfg ymu831_banks[] = {
+	YMU831_BANK(A, MCDRV_REG_NUM_A, MCI_A_REG_A, 0x7f, MCI_A_REG_D),
+	YMU831_BANK(MA, MCDRV_REG_NUM_MA, MCI_MA_REG_A, 0x7f, MCI_MA_REG_D),
+	YMU831_BANK(MB, MCDRV_REG_NUM_MB, MCI_MB_REG_A, 0x7f, MCI_MB_REG_D),
+	YMU831_BANK(B, MCDRV_REG_NUM_B, MCI_B_REG_A, 0x7f, MCI_B_REG_D),
+	YMU831_BANK(E, MCDRV_REG_NUM_E, MCI_E_REG_A, 0x7f, MCI_E_REG_D),
+	YMU831_BANK(C, MCDRV_REG_NUM_C, MCI_C_REG_A, 0xff, MCI_C_REG_D),
+	YMU831_BANK(F, MCDRV_REG_NUM_F, MCI_F_REG_A, 0x7f, MCI_F_REG_D),
+	YMU831_BANK(ANA, MCDRV_REG_NUM_ANA, MCI_ANA_REG_A, 0x7f,
+		    MCI_ANA_REG_D),
+	YMU831_BANK(CD, MCDRV_REG_NUM_CD, MCI_CD_REG_A, 0x7f, MCI_CD_REG_D),
+};
+
+static bool ymu831_readable_reg(struct device *dev, unsigned int reg)
+{
+	unsigned int addr = reg & 0xff;
+
+	switch (reg >> 8) {
+	case MCDRV_REGTYPE_IF:
+		return addr < MCDRV_REG_NUM_IF;
+	case MCDRV_REGTYPE_A:
+		return addr < MCDRV_REG_NUM_A;
+	case MCDRV_REGTYPE_MA:
+		return addr < MCDRV_REG_NUM_MA;
+	case MCDRV_REGTYPE_MB:
+		return addr < MCDRV_REG_NUM_MB;
+	case MCDRV_REGTYPE_B:
+		return addr < MCDRV_REG_NUM_B;
+	case MCDRV_REGTYPE_E:
+		return addr < MCDRV_REG_NUM_E;
+	case MCDRV_REGTYPE_C:
+		return addr < MCDRV_REG_NUM_C;
+	case MCDRV_REGTYPE_F:
+		return addr < MCDRV_REG_NUM_F;
+	case MCDRV_REGTYPE_ANA:
+		return addr < MCDRV_REG_NUM_ANA;
+	case MCDRV_REGTYPE_CD:
+		return addr < MCDRV_REG_NUM_CD;
+	default:
+		return false;
+	}
+}
+
+/*
+ * The core keeps its own shadow of the registers, and it moves the bank
+ * address registers behind regmap's back for burst transfers, so no cache.
  */
 static const struct regmap_config ymu831_regmap_config = {
-	.reg_bits = 8,
+	.reg_bits = 16,
 	.val_bits = 8,
-	.max_register = 63,
+	.max_register = YMU831_REG(MCDRV_REGTYPE_CD, MCDRV_REG_NUM_CD - 1),
+	.readable_reg = ymu831_readable_reg,
+	.writeable_reg = ymu831_readable_reg,
 	.precious_reg = ymu831_precious_reg,
+	.ranges = ymu831_banks,
+	.num_ranges = ARRAY_SIZE(ymu831_banks),
 	.cache_type = REGCACHE_NONE,
 };
 
@@ -8797,6 +8871,29 @@ static struct regmap *mc_asoc_get_regmap(void)
 	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
 
 	return mc_asoc ? mc_asoc->regmap : NULL;
+}
+
+void mc_asoc_reg_write(UINT8 bRegType, UINT16 wAddr, UINT8 bData)
+{
+	int	err;
+
+	err = regmap_write(mc_asoc_get_regmap(), YMU831_REG(bRegType, wAddr),
+			   bData);
+	if (err)
+		dev_err(mc_asoc_get_dev(), "failed to write %u:%u: %d\n",
+			bRegType, wAddr, err);
+}
+
+void mc_asoc_reg_write_burst(UINT8 bRegType, UINT16 wAddr, const UINT8 *pbData,
+			     UINT32 dCount)
+{
+	int	err;
+
+	err = regmap_noinc_write(mc_asoc_get_regmap(),
+				 YMU831_REG(bRegType, wAddr), pbData, dCount);
+	if (err)
+		dev_err(mc_asoc_get_dev(), "failed to write %u:%u: %d\n",
+			bRegType, wAddr, err);
 }
 
 /* Execute a packet of command bytes as built by the core */

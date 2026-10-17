@@ -295,6 +295,9 @@ struct mc_asoc_priv {
 	struct mc_asoc_data	data;
 };
 
+void	mc_asoc_reg_write(UINT8 bRegType, UINT16 wAddr, UINT8 bData);
+void	mc_asoc_reg_write_burst(UINT8 bRegType, UINT16 wAddr,
+				const UINT8 *pbData, UINT32 dCount);
 extern void	mc_asoc_write_data(UINT8 bSlaveAdr,
 				const UINT8 *pbData,
 				UINT32 dSize);

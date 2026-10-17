@@ -34,7 +34,6 @@
 #include "linux/string.h"
 #include "linux/kernel.h"
 
-#define	MCDRV_BURST_WRITE_ENABLE	(1)
 
 #define	MCDRV_AP_LDOD			(0x00)
 
@@ -43,6 +42,9 @@ void	machdep_SystemInit(void);
 void	machdep_SystemTerm(void);
 void	machdep_ClockStart(void);
 void	machdep_ClockStop(void);
+void	machdep_WriteRegVal(UINT8 bRegType, UINT16 wAddr, UINT8 bData);
+void	machdep_WriteRegBurst(UINT8 bRegType, UINT16 wAddr,
+			      const UINT8 *pbData, UINT32 dCount);
 void	machdep_WriteReg(UINT8 bSlaveAdr,
 				 const UINT8 *pbData,
 				 UINT32 dSize);

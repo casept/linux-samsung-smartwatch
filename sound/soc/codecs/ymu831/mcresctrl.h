@@ -145,11 +145,6 @@ enum MCDRV_PMODE {
 
 /* control packet for serial host interface */
 #define	MCDRV_MAX_CTRL_DATA_NUM	(MCDRV_MAX_PACKETS*4)
-struct MCDRV_SERIAL_CTRL_PACKET {
-	UINT8	abData[MCDRV_MAX_CTRL_DATA_NUM];
-	UINT16	wDataNum;
-};
-
 /*	for AEC	*/
 struct MCDRV_AEC_B_DSP {
 	UINT8	*pbChunkData;
@@ -372,12 +367,6 @@ struct MCDRV_GLOBAL_INFO {
 	UINT8				bFClkSel;
 	UINT8				bPlugDetDB;
 
-	struct MCDRV_SERIAL_CTRL_PACKET	sCtrlPacket;
-	UINT16				wCurSlaveAddr;
-	UINT16				wCurRegType;
-	UINT16				wCurRegAddr;
-	UINT16				wDataContinueCount;
-	UINT16				wPrevAddrIndex;
 
 	enum MCDRV_PMODE		eAPMode;
 };
@@ -483,12 +472,13 @@ enum MCDRV_PMODE	McResCtrl_GetAPMode(void);
 struct MCDRV_PACKET	*McResCtrl_AllocPacketBuf(void);
 void		McResCtrl_ReleasePacketBuf(void);
 
-void		McResCtrl_InitRegUpdate(void);
+void McResCtrl_AddRegUpdateBurst(UINT16 wAddr,
+				 const struct MCDRV_PACKET *psPacket,
+				 UINT32 dCount);
 void		McResCtrl_AddRegUpdate(UINT16 wRegType,
 					UINT16 wAddress,
 					UINT8 bData,
 					enum MCDRV_UPDATE_MODE eUpdateMode);
-void		McResCtrl_ExecuteRegUpdate(void);
 SINT32		McResCtrl_WaitEvent(UINT32 dEvent, UINT32 dParam);
 
 UINT8		McResCtrl_IsEnableIRQ(void);
