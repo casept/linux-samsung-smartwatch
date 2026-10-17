@@ -988,6 +988,8 @@
 		clocks = <&s2mps14_osc S2MPS11_CLK_BT>;
 		clock-names = "s2mps14_bt";
 		txco = "s2mps14_bt";
+		/* SCO over PCM, as the clock slave of the CODEC's ext port */
+		brcm,bt-pcm-int-params = [00 00 00 00 00];
 
 		/* TODO: Figure out which regulators are used and add them here to silence dummy regulator warning */
 	};
