@@ -359,7 +359,6 @@ static const struct fd_param init_fd_param = {
 
 static int fimc_is_pipeline_create_subdevs(struct fimc_is_pipeline *pipeline)
 {
-	struct fimc_is *is = pipeline->is;
 	int ret;
 
 	/* ISP */
