@@ -3736,6 +3736,11 @@ void mc_asoc_set_codec_ldod(int status)
 	mc_asoc->dvdd_enabled	= !!status;
 }
 
+static void ymu831_release_instance(void *data)
+{
+	mc_asoc_spi	= NULL;
+}
+
 static int ymu831_parse_dio_ports(struct device *dev,
 				  struct mc_asoc_data *mc_asoc)
 {
@@ -3768,7 +3773,17 @@ static int mc_asoc_spi_probe(
 	struct mc_asoc_data	*mc_asoc;
 	int	err;
 
+	/* the core keeps its state in globals */
+	if (mc_asoc_spi)
+		return dev_err_probe(&spi->dev, -EBUSY,
+				     "only one instance is supported\n");
+
 	mc_asoc_spi	= spi;
+	err = devm_add_action_or_reset(&spi->dev, ymu831_release_instance,
+				       NULL);
+	if (err)
+		return err;
+
 	TRACE_FUNC();
 
 	mc_asoc_priv	= devm_kzalloc(&spi->dev, sizeof(struct mc_asoc_priv),
