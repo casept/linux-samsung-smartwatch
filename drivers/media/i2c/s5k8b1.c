@@ -157,6 +157,8 @@ static int s5k8b1_get_fmt(struct v4l2_subdev *sd,
 	struct v4l2_mbus_framefmt *mf;
 
 	mf = __s5k8b1_get_format(sensor, sd_state, fmt->pad, fmt->which);
+	if (!mf)
+		return -EINVAL;
 
 	mutex_lock(&sensor->lock);
 	fmt->format = *mf;
