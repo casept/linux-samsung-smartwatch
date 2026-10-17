@@ -57,7 +57,7 @@ MODULE_PARM_DESC(debug, "Debug level (0-2)");
 
 #define S5PCSIS_CONFIG			0x08
 /* ch = 1...3 */
-#define EXYNOS3_CSIS_CONFIG_CH(ch)	(0x40 + ((ch) - 1) * 0x10
+#define EXYNOS3_CSIS_CONFIG_CH(ch)	(0x40 + ((ch) - 1) * 0x10)
 #define S5PCSIS_CFG_FMT_YCBCR422_8BIT	(0x1e << 2)
 #define EXYNOS3_CSIS_CFG_FMT_YCBCR422_10BIT (0x1f << 2)
 #define EXYNOS3_CSIS_CFG_FMT_RGB565	(0x22 << 2)
