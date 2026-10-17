@@ -62,11 +62,6 @@ enum {
 
 	MC_ASOC_SWITCH_CLOCK,
 
-	MC_ASOC_MUSIC_PHYSICAL_PORT,
-	MC_ASOC_EXT_PHYSICAL_PORT,
-	MC_ASOC_VOICE_PHYSICAL_PORT,
-	MC_ASOC_HIFI_PHYSICAL_PORT,
-
 	MC_ASOC_ADIF0_SWAP,
 	MC_ASOC_ADIF1_SWAP,
 	MC_ASOC_ADIF2_SWAP,
@@ -139,6 +134,7 @@ struct mc_asoc_data {
 	struct mutex			mutex;
 	struct mc_asoc_setup		setup;
 	struct mc_asoc_port_params	port[3];
+	UINT8				dio_ports[4];
 	struct MCDRV_CLOCKSW_INFO	clocksw_store;
 	struct MCDRV_PATH_INFO		path_store;
 	struct MCDRV_VOL_INFO		vol_store;

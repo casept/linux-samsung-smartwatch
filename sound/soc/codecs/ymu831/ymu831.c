@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/io.h>
@@ -456,29 +457,6 @@ static const struct soc_enum	switch_clock_param_enum =
 	SOC_ENUM_SINGLE(MC_ASOC_SWITCH_CLOCK, 0,
 		ARRAY_SIZE(switch_clock_param_text), switch_clock_param_text);
 
-/* Music Physical Port */
-static const char	* const phy_port_param_text[] = {
-	"DIO0", "DIO1", "DIO2", "NONE", "SLIM0", "SLIM1", "SLIM2"
-};
-static const struct soc_enum	music_phy_port_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_MUSIC_PHYSICAL_PORT, 0,
-		ARRAY_SIZE(phy_port_param_text), phy_port_param_text);
-
-/* Ext Physical Port */
-static const struct soc_enum	ext_phy_port_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_EXT_PHYSICAL_PORT, 0,
-		ARRAY_SIZE(phy_port_param_text), phy_port_param_text);
-
-/* Voice Physical Port */
-static const struct soc_enum	voice_phy_port_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_VOICE_PHYSICAL_PORT, 0,
-		ARRAY_SIZE(phy_port_param_text), phy_port_param_text);
-
-/* Hifi Physical Port */
-static const struct soc_enum	hifi_phy_port_param_enum =
-	SOC_ENUM_SINGLE(MC_ASOC_HIFI_PHYSICAL_PORT, 0,
-		ARRAY_SIZE(phy_port_param_text), phy_port_param_text);
-
 /* Adif0 Swap */
 static const char	* const swap_param_text[] = {
 	"Normal", "Swap", "Mute", "Center", "Mix", "MonoMix", "BothL", "BothR"
@@ -694,10 +672,6 @@ static const struct snd_kcontrol_new	mc_asoc_snd_controls[]	= {
 		MC_ASOC_AVOL_SP_GAIN, 0, 4, 0, mc_asoc_tlv_sp_gain),
 
 	SOC_ENUM("Switch Clock", switch_clock_param_enum),
-	SOC_ENUM("Music Physical Port", music_phy_port_param_enum),
-	SOC_ENUM("Ext Physical Port", ext_phy_port_param_enum),
-	SOC_ENUM("Voice Physical Port", voice_phy_port_param_enum),
-	SOC_ENUM("Hifi Physical Port", hifi_phy_port_param_enum),
 	SOC_ENUM("Adif0 Swap", adif0_swap_param_enum),
 	SOC_ENUM("Adif1 Swap", adif1_swap_param_enum),
 	SOC_ENUM("Adif2 Swap", adif2_swap_param_enum),
@@ -1845,31 +1819,6 @@ static int set_switch_clock(
 	return ret;
 }
 
-static int set_phys_port(
-	struct snd_soc_component *codec,
-	unsigned int reg,
-	unsigned int value,
-	UINT8	bPort
-)
-{
-	int	ret;
-	struct MCDRV_DIOPATH_INFO	sInfo;
-
-	TRACE_FUNC();
-
-	sInfo.abPhysPort[bPort]	= (UINT8)value;
-	ret	= _McDrv_Ctrl(MCDRV_SET_DIGITALIO_PATH, &sInfo, NULL,
-		1<<bPort);
-	if (ret != MCDRV_SUCCESS)
-		return map_drv_error(ret);
-
-	ret	= write_cache(codec, reg, value);
-	if (ret < 0)
-		return ret;
-
-	return ret;
-}
-
 static int set_swap(
 	struct snd_soc_component *codec,
 	unsigned int reg,
@@ -2053,18 +2002,6 @@ static int mc_asoc_write_reg(
 		switch (reg) {
 		case	MC_ASOC_SWITCH_CLOCK:
 			err	= set_switch_clock(codec, reg, value);
-			break;
-		case	MC_ASOC_MUSIC_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, YMU831_PORT_MUSIC);
-			break;
-		case	MC_ASOC_EXT_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, YMU831_PORT_EXT);
-			break;
-		case	MC_ASOC_VOICE_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, YMU831_PORT_VOICE);
-			break;
-		case	MC_ASOC_HIFI_PHYSICAL_PORT:
-			err	= set_phys_port(codec, reg, value, YMU831_PORT_HIFI);
 			break;
 		case	MC_ASOC_ADIF0_SWAP:
 			err	= set_swap(codec, reg, value,
@@ -3133,10 +3070,6 @@ static int mc_asoc_probe(
 		goto error_add_ctl;
 	}
 
-	write_cache(codec, MC_ASOC_MUSIC_PHYSICAL_PORT, MUSIC_PHYSICAL_PORT);
-	write_cache(codec, MC_ASOC_EXT_PHYSICAL_PORT, EXT_PHYSICAL_PORT);
-	write_cache(codec, MC_ASOC_VOICE_PHYSICAL_PORT, VOICE_PHYSICAL_PORT);
-	write_cache(codec, MC_ASOC_HIFI_PHYSICAL_PORT, HIFI_PHYSICAL_PORT);
 
 
 	sDioInfo.asPortInfo[0]	= stMusicPort_Default;
@@ -3172,10 +3105,8 @@ static int mc_asoc_probe(
 		| MCDRV_DIT0SLOT_UPDATE_FLAG
 		| MCDRV_DIT1SLOT_UPDATE_FLAG
 		| MCDRV_DIT2SLOT_UPDATE_FLAG;
-	sDioPathInfo.abPhysPort[0]	= MUSIC_PHYSICAL_PORT;
-	sDioPathInfo.abPhysPort[1]	= EXT_PHYSICAL_PORT;
-	sDioPathInfo.abPhysPort[2]	= VOICE_PHYSICAL_PORT;
-	sDioPathInfo.abPhysPort[3]	= HIFI_PHYSICAL_PORT;
+	memcpy(sDioPathInfo.abPhysPort, mc_asoc->dio_ports,
+	       sizeof(sDioPathInfo.abPhysPort));
 	sDioPathInfo.abMusicRSlot[0]	= mc_asoc_cfg_setup.rslot[0];
 	sDioPathInfo.abMusicRSlot[1]	= mc_asoc_cfg_setup.rslot[1];
 	sDioPathInfo.abMusicRSlot[2]	= mc_asoc_cfg_setup.rslot[2];
@@ -3804,6 +3735,31 @@ void mc_asoc_set_codec_ldod(int status)
 	mc_asoc->dvdd_enabled	= !!status;
 }
 
+static int ymu831_parse_dio_ports(struct device *dev,
+				  struct mc_asoc_data *mc_asoc)
+{
+	static const UINT8 phys_port[] = {
+		MCDRV_PHYSPORT_DIO0, MCDRV_PHYSPORT_DIO1, MCDRV_PHYSPORT_DIO2,
+	};
+	u32 dio[ARRAY_SIZE(mc_asoc->dio_ports)] = { 0, 2, 1, 0 };
+	unsigned int i;
+	int err;
+
+	err = device_property_read_u32_array(dev, "yamaha,dio-ports", dio,
+					     ARRAY_SIZE(dio));
+	if (err && err != -EINVAL)
+		return dev_err_probe(dev, err, "invalid yamaha,dio-ports\n");
+
+	for (i = 0; i < ARRAY_SIZE(dio); i++) {
+		if (dio[i] >= ARRAY_SIZE(phys_port))
+			return dev_err_probe(dev, -EINVAL,
+					     "invalid DIO port %u\n", dio[i]);
+		mc_asoc->dio_ports[i] = phys_port[dio[i]];
+	}
+
+	return 0;
+}
+
 static int mc_asoc_spi_probe(
 	struct spi_device *spi)
 {
@@ -3830,6 +3786,10 @@ static int mc_asoc_spi_probe(
 					     "failed to get DVDD supply\n");
 		mc_asoc->dvdd = NULL;
 	}
+
+	err = ymu831_parse_dio_ports(&spi->dev, mc_asoc);
+	if (err)
+		return err;
 
 	mc_asoc->mic1_bias = devm_regulator_get_optional(&spi->dev, "mic1-bias");
 	if (IS_ERR(mc_asoc->mic1_bias)) {
