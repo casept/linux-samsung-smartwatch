@@ -17,7 +17,7 @@
  * Those to are basic (mandatory) registers and their offsets
  * should ramin the same between differen firmware revisions
  */
-static const struct mcuctl_sreg_desc mcuctl_sregs_default[] = {
+static const struct mcuctl_sreg_desc mcuctl_sregs_default[MCUCTL_END_REG] = {
 	[MCUCTL_HIC_REG] =
 		MCUCTL_SHARED_REG(0x00,  6, 4, MCUCTL_SHARED_REG_RW),
 	[MCUCTL_IHC_REG] =
@@ -28,7 +28,7 @@ static const struct mcuctl_sreg_desc mcuctl_sregs_default[] = {
  * @breif Set of supported MCUCTL Shared registers
  *	  for  FW FIMC_IS_FW_V120-driven FIMC IS
  */
-static const struct mcuctl_sreg_desc fw_120_mcuctl_sregs[] = {
+static const struct mcuctl_sreg_desc fw_120_mcuctl_sregs[MCUCTL_END_REG] = {
 	[MCUCTL_HIC_REG] =
 		MCUCTL_SHARED_REG(0x000, 6, 4, MCUCTL_SHARED_REG_RW),
 	[MCUCTL_IHC_REG] =
@@ -55,7 +55,7 @@ static const struct mcuctl_sreg_desc fw_120_mcuctl_sregs[] = {
  * @brief Set of supported MCUCTL Shared registers
  *	  for  FW FIMC_IS_FW_V130-driven FIMC IS
  */
-static const struct mcuctl_sreg_desc fw_130_mcuctl_sregs[] = {
+static const struct mcuctl_sreg_desc fw_130_mcuctl_sregs[MCUCTL_END_REG] = {
 	[MCUCTL_HIC_REG] =
 		MCUCTL_SHARED_REG(0x00,  6, 4, MCUCTL_SHARED_REG_RW),
 	[MCUCTL_IHC_REG] =
@@ -111,22 +111,16 @@ int mcuctl_sreg_get_desc(struct fimc_is_fw_data *fw_data,
 	return -EINVAL;
 }
 
-static int mcuctl_sreg_get_info(struct fimc_is_fw_data *fw_data,
-				unsigned int mcuctl_sreg_id,
-				unsigned int info_offset,
-				unsigned long *info)
+static const struct mcuctl_sreg_desc *
+mcuctl_sreg_find(struct fimc_is_fw_data *fw_data, unsigned int mcuctl_sreg_id)
 {
 	const struct mcuctl_sreg_desc *regs_desc = fw_data->mcuctl_sreg_map;
 
-	if (!info || !regs_desc)
-		return -EINVAL;
+	if (!regs_desc || !MCUCTL_SHARED_REG_VALIDATE(regs_desc, mcuctl_sreg_id,
+						      MCUCTL_SHARED_REG_RW))
+		return NULL;
 
-	if (MCUCTL_SHARED_REG_VALIDATE(regs_desc,
-			mcuctl_sreg_id, MCUCTL_SHARED_REG_RW)){
-		*info = *(((char*)&regs_desc[mcuctl_sreg_id]) + info_offset);
-		return 0;
-	}
-	return -EINVAL;
+	return &regs_desc[mcuctl_sreg_id];
 }
 
 /**
@@ -143,8 +137,14 @@ int mcuctl_sreg_get_offset(struct fimc_is_fw_data *fw_data,
 			   unsigned int mcuctl_sreg_id,
 			   unsigned long *offset)
 {
-	return mcuctl_sreg_get_info(fw_data, mcuctl_sreg_id,
-		offsetof(struct mcuctl_sreg_desc, base_offset), offset);
+	const struct mcuctl_sreg_desc *desc;
+
+	desc = mcuctl_sreg_find(fw_data, mcuctl_sreg_id);
+	if (!offset || !desc)
+		return -EINVAL;
+
+	*offset = desc->base_offset;
+	return 0;
 }
 
 /**
@@ -161,11 +161,14 @@ int mcuctl_sreg_get_range(struct fimc_is_fw_data *fw_data,
 			  unsigned int mcuctl_sreg_id,
 			  unsigned long *range)
 {
+	const struct mcuctl_sreg_desc *desc;
 
-	 return mcuctl_sreg_get_info(fw_data, mcuctl_sreg_id,
-		offsetof(struct mcuctl_sreg_desc, range),
-		range);
+	desc = mcuctl_sreg_find(fw_data, mcuctl_sreg_id);
+	if (!range || !desc)
+		return -EINVAL;
 
+	*range = desc->range;
+	return 0;
 }
 
 /**
@@ -184,9 +187,14 @@ int mcuctl_sreg_get_data_range(struct fimc_is_fw_data *fw_data,
 			       unsigned int mcuctl_sreg_id,
 			       unsigned int *data_range)
 {
-	return mcuctl_sreg_get_info(fw_data, mcuctl_sreg_id,
-		offsetof(struct mcuctl_sreg_desc, data_range),
-		(unsigned long *)data_range);
+	const struct mcuctl_sreg_desc *desc;
+
+	desc = mcuctl_sreg_find(fw_data, mcuctl_sreg_id);
+	if (!data_range || !desc)
+		return -EINVAL;
+
+	*data_range = desc->data_range;
+	return 0;
 }
 
 /**
