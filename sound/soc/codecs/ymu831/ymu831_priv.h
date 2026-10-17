@@ -271,9 +271,6 @@ struct mc_asoc_dsp_param {
 
 struct mc_asoc_jack {
 	struct snd_soc_jack *hs_jack;
-#ifdef CONFIG_SWITCH
-	struct switch_dev *h2w_sdev;
-#endif
 };
 
 struct mc_asoc_platform_data {

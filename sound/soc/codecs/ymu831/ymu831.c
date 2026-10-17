@@ -33,9 +33,6 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
-#ifdef CONFIG_SWITCH
-#include <linux/switch.h>
-#endif
 #include <linux/types.h>
 #include <linux/workqueue.h>
 #include <sound/hwdep.h>
@@ -7877,25 +7874,7 @@ static int mc_asoc_add_hwdep(struct snd_soc_component *codec)
 	return 0;
 }
 
-#ifdef CONFIG_SWITCH
-#define	SW_DRV
-#endif
 static struct input_dev		*inp_dev;
-#ifdef SW_DRV
-static struct switch_dev	*h2w_sdev;
-static ssize_t headset_print_name(struct switch_dev *sdev, char *buf)
-{
-	switch (switch_get_state(sdev)) {
-	case 0:
-		return sprintf(buf, "No Device\n");
-	case 1:
-		return sprintf(buf, "Headset\n");
-	case 2:
-		return sprintf(buf, "Headphone\n");
-	}
-	return -EINVAL;
-}
-#endif	/*	SW_DRV	*/
 
 /*
  * Headset detection is only armed while a jack is attached via set_jack(),
@@ -7986,10 +7965,6 @@ static void work_mkdeten(struct work_struct *work)
 		|| (mc_asoc_hpimpclass == 6))) {
 		dbg_info("MICDET\n");
 		mc_asoc_jack_status	= SND_JACK_HEADSET;
-#ifdef SW_DRV
-		switch_set_state(h2w_sdev, 0);
-		switch_set_state(h2w_sdev, 1);
-#endif
 		dbg_info("queue_delayed_work_mb4\n");
 		queue_delayed_work(workq_mb4, &delayed_work_mb4,
 						msecs_to_jiffies(MSDETMB4OFF));
@@ -8124,9 +8099,6 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		if (bCurEnPlugDetDb & MCDRV_PLUGDETDB_UNDET_ENABLE) {
 			dbg_info("PLUGUNDETDB\n");
 			mc_asoc_jack_status	= 0;
-#ifdef SW_DRV
-			switch_set_state(h2w_sdev, 0);
-#endif
 			cancel_delayed_work(&delayed_work_mb4);
 			dbg_info("cancel_delayed_work_mb4\n");
 			cancel_delayed_work(&delayed_work_mkdeten);
@@ -8331,9 +8303,6 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 			&& (mc_asoc_hpimpclass != 5)
 			&& (mc_asoc_hpimpclass != 6)) {
 				mc_asoc_jack_status	= SND_JACK_HEADPHONE;
-#ifdef SW_DRV
-				switch_set_state(h2w_sdev, 2);
-#endif
 				bEnMicDet	= MCDRV_MICDET_DISABLE;
 				stHSDetInfo.bEnMicDet	= bEnMicDet;
 				bEnDlyKeyOff	= MCDRV_KEYEN_D_D_D;
@@ -8343,9 +8312,6 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 			} else {
 				dbg_info("MICDET\n");
 				mc_asoc_jack_status	= SND_JACK_HEADSET;
-#ifdef SW_DRV
-				switch_set_state(h2w_sdev, 1);
-#endif
 				dbg_info("queue_delayed_work_mb4\n");
 				queue_delayed_work(workq_mb4, &delayed_work_mb4,
 						msecs_to_jiffies(MSDETMB4OFF));
@@ -8362,9 +8328,6 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 			mc_asoc_MICDET	= reg_info.bData & 0x47;
 #endif
 			mc_asoc_jack_status	= SND_JACK_HEADPHONE;
-#ifdef SW_DRV
-			switch_set_state(h2w_sdev, 2);
-#endif
 			dbg_info("queue_delayed_work_mkdeten\n");
 			queue_delayed_work(workq_mkdeten,
 						&delayed_work_mkdeten,
@@ -8412,10 +8375,6 @@ static void hsdet_cb(UINT32 dFlags, struct MCDRV_HSDET_RES *psRes)
 		} else {
 			dbg_info("MICDET\n");
 			mc_asoc_jack_status	= SND_JACK_HEADSET;
-	#ifdef SW_DRV
-			switch_set_state(h2w_sdev, 0);
-			switch_set_state(h2w_sdev, 1);
-	#endif
 			cancel_delayed_work(&delayed_work_mkdeten);
 			dbg_info("cancel_delayed_work_mkdeten\n");
 			dbg_info("queue_delayed_work_mb4\n");
@@ -8792,18 +8751,6 @@ static int mc_asoc_probe(
 	write_cache(codec, MC_ASOC_MIC4_BIAS, mc_asoc_mic4_bias);
 #endif
 
-#ifdef SW_DRV
-	h2w_sdev	= kzalloc(sizeof(struct switch_dev), GFP_KERNEL);
-	h2w_sdev->name	= "h2w";
-	h2w_sdev->print_name	= headset_print_name;
-	err	= switch_dev_register(h2w_sdev);
-	if (err < 0) {
-		dev_err(dev, "%d: Error in switch_dev_register\n", err);
-		goto error_set_mode;
-	}
-
-	mc_asoc->jack.h2w_sdev = h2w_sdev;
-#endif
 
 	sDioInfo.asPortInfo[0]	= stMusicPort_Default;
 	sDioInfo.asPortInfo[1]	= stExtPort_Default;
@@ -8931,13 +8878,6 @@ static void mc_asoc_remove(struct snd_soc_component *codec)
 		input_unregister_device(inp_dev);
 		inp_dev = NULL;
 	}
-#ifdef SW_DRV
-	if (h2w_sdev != NULL) {
-		switch_dev_unregister(h2w_sdev);
-		kfree(h2w_sdev);
-		h2w_sdev	= NULL;
-	}
-#endif
 
 	del_dsp_prm(mc_asoc);
 
