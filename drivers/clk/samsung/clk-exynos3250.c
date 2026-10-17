@@ -9,6 +9,7 @@
 #include <linux/io.h>
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <dt-bindings/clock/exynos3250.h>
 
 #include "clk.h"
@@ -1073,31 +1074,105 @@ static const struct samsung_cmu_info isp_cmu_info __initconst = {
 	.nr_clk_ids	= CLKS_NR_ISP,
 };
 
+static const unsigned long isp_clk_regs[] __initconst = {
+	DIV_ISP0,
+	DIV_ISP1,
+	GATE_IP_ISP0,
+	GATE_IP_ISP1,
+	GATE_SCLK_ISP,
+};
+
+struct exynos3250_cmu_isp {
+	struct samsung_clk_provider *ctx;
+	struct samsung_clk_reg_dump *clk_save;
+};
+
+/*
+ * The CMU ISP sits in the ISP power domain, so its registers are only
+ * accessible, and only keep their contents, while the domain is on. Let the
+ * clock core power it up through runtime PM whenever it touches the clocks.
+ */
 static int __init exynos3250_cmu_isp_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
+	struct device *dev = &pdev->dev;
+	struct exynos3250_cmu_isp *data;
+	void __iomem *reg_base;
 
-	samsung_cmu_register_one(np, &isp_cmu_info);
+	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+
+	reg_base = devm_platform_ioremap_resource(pdev, 0);
+	if (IS_ERR(reg_base))
+		return PTR_ERR(reg_base);
+
+	data->clk_save = samsung_clk_alloc_reg_dump(isp_clk_regs,
+						    ARRAY_SIZE(isp_clk_regs));
+	if (!data->clk_save)
+		return -ENOMEM;
+
+	data->ctx = samsung_clk_init(dev, reg_base, CLKS_NR_ISP);
+	platform_set_drvdata(pdev, data);
+
+	/*
+	 * The power domain is on while probing. Keep it that way until all
+	 * clocks are registered, as that reads their registers.
+	 */
+	pm_runtime_get_noresume(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
+
+	samsung_cmu_register_clocks(data->ctx, &isp_cmu_info);
+	samsung_clk_of_add_provider(dev->of_node, data->ctx);
+
+	pm_runtime_put_sync(dev);
+
 	return 0;
 }
 
-static const struct of_device_id exynos3250_cmu_isp_of_match[] __initconst = {
+static int exynos3250_cmu_isp_suspend(struct device *dev)
+{
+	struct exynos3250_cmu_isp *data = dev_get_drvdata(dev);
+
+	samsung_clk_save(data->ctx->reg_base, data->clk_save,
+			 ARRAY_SIZE(isp_clk_regs));
+	return 0;
+}
+
+static int exynos3250_cmu_isp_resume(struct device *dev)
+{
+	struct exynos3250_cmu_isp *data = dev_get_drvdata(dev);
+
+	samsung_clk_restore(data->ctx->reg_base, data->clk_save,
+			    ARRAY_SIZE(isp_clk_regs));
+	return 0;
+}
+
+static const struct dev_pm_ops exynos3250_cmu_isp_pm_ops = {
+	RUNTIME_PM_OPS(exynos3250_cmu_isp_suspend, exynos3250_cmu_isp_resume,
+		       NULL)
+	NOIRQ_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
+				  pm_runtime_force_resume)
+};
+
+static const struct of_device_id exynos3250_cmu_isp_of_match[] = {
 	{ .compatible = "samsung,exynos3250-cmu-isp", },
 	{ /* sentinel */ }
 };
 
-static struct platform_driver exynos3250_cmu_isp_driver __initdata = {
+static struct platform_driver exynos3250_cmu_isp_driver __refdata = {
 	.driver = {
 		.name = "exynos3250-cmu-isp",
 		.suppress_bind_attrs = true,
 		.of_match_table = exynos3250_cmu_isp_of_match,
+		.pm = pm_ptr(&exynos3250_cmu_isp_pm_ops),
 	},
+	.probe = exynos3250_cmu_isp_probe,
 };
 
 static int __init exynos3250_cmu_platform_init(void)
 {
-	return platform_driver_probe(&exynos3250_cmu_isp_driver,
-					exynos3250_cmu_isp_probe);
+	return platform_driver_register(&exynos3250_cmu_isp_driver);
 }
-subsys_initcall(exynos3250_cmu_platform_init);
+core_initcall(exynos3250_cmu_platform_init);
 
