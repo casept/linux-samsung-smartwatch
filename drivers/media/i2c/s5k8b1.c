@@ -37,6 +37,7 @@ enum {
 	S5K8B1_SUPP_VDDA,
 	S5K8B1_SUPP_VDDIO,
 	S5K8B1_SUPP_VDDD,
+	S5K8B1_SUPP_AFVDD,
 	S5K8B1_NUM_SUPPLIES,
 };
 
@@ -70,6 +71,7 @@ static const char * const s5k8b1_supply_names[] = {
 	[S5K8B1_SUPP_VDDA]	= "vdda",
 	[S5K8B1_SUPP_VDDIO]	= "vddio",
 	[S5K8B1_SUPP_VDDD]	= "vddd",
+	[S5K8B1_SUPP_AFVDD]	= "afvdd",
 };
 
 static inline struct s5k8b1 *sd_to_s5k8b1(struct v4l2_subdev *sd)
