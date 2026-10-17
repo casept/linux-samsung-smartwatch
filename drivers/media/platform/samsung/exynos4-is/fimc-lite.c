@@ -861,8 +861,11 @@ static int fimc_lite_streamoff(struct file *file, void *priv,
 	if (ret < 0)
 		return ret;
 
-	video_device_pipeline_stop(&fimc->ve.vdev);
-	fimc->streaming = false;
+	/* STREAMOFF is allowed on a stopped queue */
+	if (fimc->streaming) {
+		video_device_pipeline_stop(&fimc->ve.vdev);
+		fimc->streaming = false;
+	}
 	return 0;
 }
 
