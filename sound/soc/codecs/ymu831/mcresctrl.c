@@ -176,8 +176,6 @@ SINT32	McResCtrl_SetHwId(
 		if ((bHwId_dig&MCDRV_VERID_MASK) != 0) {
 			if ((bHwId_dig&0x08) != 0) {
 				McDevProf_SetDevId(eMCDRV_DEV_ID_89_92H);
-				gsGlobalInfo.sHSDetInfo.bSgnlNum	=
-							MCDRV_SGNLNUM_NONE;
 			} else if ((bHwId_ana&MCDRV_VERID_MASK) == 2) {
 				McDevProf_SetDevId(eMCDRV_DEV_ID_81_92H);
 			} else {
@@ -186,6 +184,14 @@ SINT32	McResCtrl_SetHwId(
 		} else {
 			McDevProf_SetDevId(eMCDRV_DEV_ID_80_90H);
 		}
+		/*
+		 * McResCtrl_Init() set up these defaults before the device
+		 * was known, so they were the ES1 ones on every device.
+		 */
+		InitHSDet();
+		InitAecInfo();
+		if (McDevProf_GetDevId() == eMCDRV_DEV_ID_89_92H)
+			gsGlobalInfo.sHSDetInfo.bSgnlNum	= MCDRV_SGNLNUM_NONE;
 		gsGlobalInfo.bHwId	= bHwId_dig;
 		gsGlobalInfo.abRegValA[MCI_A_DEV_ID]	= gsGlobalInfo.bHwId;
 	} else {
