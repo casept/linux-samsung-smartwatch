@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Samsung EXYNOS5 FIMC-IS (Imaging Subsystem) driver
-*
+ *
  * Copyright (C) 2013 Samsung Electronics Co., Ltd.
  * Arun Kumar K <arun.kk@samsung.com>
  * Kil-yeon Lim <kilyeon.im@samsung.com>
@@ -485,6 +485,7 @@ static int fimc_is_pipeline_initmem(struct fimc_is_pipeline *pipeline)
 static void fimc_is_pipeline_freemem(struct fimc_is_pipeline *pipeline)
 {
 	struct fimc_is_meminfo *minfo = pipeline->minfo;
+
 	if (minfo->fw.vaddr)
 		dma_free_coherent(pipeline->dev, minfo->fw.size,
 				minfo->fw.vaddr,
@@ -523,6 +524,7 @@ static void fimc_is_pipeline_forcedown(struct fimc_is_pipeline *pipeline,
 		bool on)
 {
 	struct fimc_is *is = pipeline->is;
+
 	if (on) {
 		pmu_is_write(0x0, is, PMUREG_ISP_ARM_OPTION);
 		pmu_is_write(0x1cf82000, is, PMUREG_ISP_LOW_POWER_OFF);
@@ -1287,6 +1289,7 @@ void fimc_is_pipeline_config_shot(struct fimc_is_pipeline *pipeline)
 int fimc_is_pipeline_shot_safe(struct fimc_is_pipeline *pipeline)
 {
 	int ret;
+
 	mutex_lock(&pipeline->pipe_lock);
 	ret = fimc_is_pipeline_shot(pipeline);
 	mutex_unlock(&pipeline->pipe_lock);

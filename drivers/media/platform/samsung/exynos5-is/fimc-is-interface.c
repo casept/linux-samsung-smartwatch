@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Samsung EXYNOS5 FIMC-IS (Imaging Subsystem) driver
-*
+ *
  * Copyright (C) 2013 Samsung Electronics Co., Ltd.
  * Kil-yeon Lim <kilyeon.im@samsung.com>
  */
@@ -80,6 +80,7 @@ static void itf_set_state(struct fimc_is_interface *itf,
 		unsigned long state)
 {
 	unsigned long flags;
+
 	spin_lock_irqsave(&itf->slock_state, flags);
 	__set_bit(state, &itf->state);
 	spin_unlock_irqrestore(&itf->slock_state, flags);
@@ -89,6 +90,7 @@ static void itf_clr_state(struct fimc_is_interface *itf,
 		unsigned long state)
 {
 	unsigned long flags;
+
 	spin_lock_irqsave(&itf->slock_state, flags);
 	__clear_bit(state, &itf->state);
 	spin_unlock_irqrestore(&itf->slock_state, flags);
@@ -121,8 +123,10 @@ static void itf_busy_wakeup(struct fimc_is_interface *itf)
 static int itf_wait_hw_ready(struct fimc_is_interface *itf)
 {
 	int t;
+
 	for (t = TRY_RECV_AWARE_COUNT; t >= 0; t--) {
 		unsigned int cfg = readl(itf->regs + INTMSR0);
+
 		if (INTMSR0_GET_INTMSD(0, cfg) == 0)
 			return 0;
 	}
@@ -754,7 +758,7 @@ static int fimc_is_debugfs_create(struct fimc_is_interface *itf)
 
 	itf->debugfs_entry = debugfs_create_dir("fimc_is", NULL);
 
-	dentry = debugfs_create_file("fw_log", S_IRUGO, itf->debugfs_entry,
+	dentry = debugfs_create_file("fw_log", 0444, itf->debugfs_entry,
 					itf, &fimc_is_debugfs_fops);
 	if (!dentry)
 		fimc_is_debugfs_remove(itf);

@@ -80,6 +80,7 @@ static inline struct fimc_is_buf *fimc_is_isp_wait_queue_get(
 		struct fimc_is_isp *isp)
 {
 	struct fimc_is_buf *buf;
+
 	buf = list_entry(isp->wait_queue.next,
 			struct fimc_is_buf, list);
 	list_del(&buf->list);
@@ -98,6 +99,7 @@ static inline struct fimc_is_buf *fimc_is_isp_run_queue_get(
 		struct fimc_is_isp *isp)
 {
 	struct fimc_is_buf *buf;
+
 	buf = list_entry(isp->run_queue.next,
 			struct fimc_is_buf, list);
 	list_del(&buf->list);
@@ -117,6 +119,7 @@ static inline struct fimc_is_buf *fimc_is_scaler_wait_queue_get(
 		struct fimc_is_scaler *scp)
 {
 	struct fimc_is_buf *buf;
+
 	buf = list_entry(scp->wait_queue.next,
 			struct fimc_is_buf, list);
 	list_del(&buf->list);
@@ -135,6 +138,7 @@ static inline struct fimc_is_buf *fimc_is_scaler_run_queue_get(
 		struct fimc_is_scaler *scp)
 {
 	struct fimc_is_buf *buf;
+
 	buf = list_entry(scp->run_queue.next,
 			struct fimc_is_buf, list);
 	list_del(&buf->list);

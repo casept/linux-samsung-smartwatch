@@ -208,6 +208,7 @@ static int scaler_g_fmt_mplane(struct file *file, void *priv,
 
 	for (i = 0; i < fmt->num_planes; i++) {
 		struct v4l2_plane_pix_format *plane_fmt = &pixm->plane_fmt[i];
+
 		plane_fmt->bytesperline = (ctx->width * fmt->depth[i]) / 8;
 		plane_fmt->sizeimage = plane_fmt->bytesperline * ctx->height;
 		memset(plane_fmt->reserved, 0, sizeof(plane_fmt->reserved));
@@ -394,7 +395,7 @@ static const struct v4l2_subdev_internal_ops scaler_subdev_internal_ops = {
 	.unregistered = scaler_subdev_unregistered,
 };
 
-static struct v4l2_subdev_ops scaler_subdev_ops;
+static const struct v4l2_subdev_ops scaler_subdev_ops;
 
 int fimc_is_scaler_subdev_create(struct fimc_is_scaler *ctx,
 		enum fimc_is_scaler_id scaler_id,

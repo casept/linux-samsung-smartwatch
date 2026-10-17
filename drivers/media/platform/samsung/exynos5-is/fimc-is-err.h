@@ -230,11 +230,15 @@ enum error {
 	ERROR_FD_CONFIG_ORIENTATION_STATE		= 411,
 	ERROR_FD_CONFIG_ORIENTATION_INVALID		= 412,
 	ERROR_FD_CONFIG_ORIENTATION_VALUE_INVALID	= 413,
-	/* PARAM_FdResultStr can be only applied
-	 * in ready-state or stream off */
+	/*
+	 * PARAM_FdResultStr can be only applied
+	 * in ready-state or stream off
+	 */
 	ERROR_FD_RESULT				= 414,
-	/* PARAM_FdModeStr can be only applied
-	 * in ready-state or stream off */
+	/*
+	 * PARAM_FdModeStr can be only applied
+	 * in ready-state or stream off
+	 */
 	ERROR_FD_MODE					= 415,
 
 	/*SCALER ERR(500~599)*/

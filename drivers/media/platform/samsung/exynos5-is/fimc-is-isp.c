@@ -399,7 +399,7 @@ static int isp_s_power(struct v4l2_subdev *sd, int on)
 	return ret;
 }
 
-static struct v4l2_subdev_core_ops isp_core_ops = {
+static const struct v4l2_subdev_core_ops isp_core_ops = {
 	.s_power = isp_s_power,
 };
 
@@ -454,7 +454,7 @@ static const struct v4l2_subdev_video_ops isp_video_ops = {
 	.s_stream       = isp_s_stream,
 };
 
-static struct v4l2_subdev_ops isp_subdev_ops = {
+static const struct v4l2_subdev_ops isp_subdev_ops = {
 	.core = &isp_core_ops,
 	.video = &isp_video_ops,
 };
