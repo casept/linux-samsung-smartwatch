@@ -23,7 +23,7 @@ Required properties:
 - clock-names       : must contain "isp", "mcu_isp", "isp_div0", "isp_div1",
                       "isp_divmpwm", "mcu_isp_div0", "mcu_isp_div1" entries,
                       matching entries in the clocks property
-- samsung,pmu       : phandle to the Power Management Unit (PMU) node
+- samsung,pmu-syscon : phandle to the Power Management Unit (PMU) node
 
 i2c-isp (ISP I2C bus controller) nodes
 --------------------------------------
@@ -62,7 +62,7 @@ Example:
 		clock-names = "isp", "mcu_isp", "isp_div0", "isp_div1",
 				"isp_divmpwm", "mcu_isp_div0",
 				"mcu_isp_div1";
-		samsung,pmu = <&pmu>;
+		samsung,pmu-syscon = <&pmu_system_controller>;
 
 		i2c0_isp: i2c-isp@13130000 {
 			compatible = "samsung,exynos4212-i2c-isp";
