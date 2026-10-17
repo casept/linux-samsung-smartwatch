@@ -26,6 +26,8 @@
 	#size-cells = <1>;
 
 	aliases {
+		fimc-lite0 = &fimc_lite_0;
+		fimc-lite1 = &fimc_lite_1;
 		pinctrl0 = &pinctrl_0;
 		pinctrl1 = &pinctrl_1;
 		spi0 = &spi_0;
@@ -403,6 +405,13 @@
 						 <&cmu CLK_FIN_PLL>;
 		};
 
+		cmu_isp: clock-controller@10048000 {
+			compatible = "samsung,exynos3250-cmu-isp";
+			reg = <0x10048000 0x1000>;
+			#clock-cells = <1>;
+			power-domains = <&pd_isp>;
+		};
+
 		cmu_dmc: clock-controller@105c0000 {
 			compatible = "samsung,exynos3250-cmu-dmc";
 			reg = <0x105c0000 0x2000>;
@@ -544,6 +553,91 @@
 			clocks = <&cmu CLK_SMMUFIMD0>, <&cmu CLK_FIMD0>;
 			power-domains = <&pd_lcd0>;
 			#iommu-cells = <0>;
+		};
+
+		fimc_is: fimc-is@12180000 {
+			compatible = "samsung,exynos3250-fimc-is";
+			reg = <0x12180000 0x10000>;
+			interrupts = <GIC_SPI 196 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 197 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&cmu_isp CLK_ISP>,
+				 <&cmu_isp CLK_MCUISP>,
+				 <&cmu_isp CLK_DIV_MPWM>,
+				 <&cmu_isp CLK_DIV_ISP0>,
+				 <&cmu_isp CLK_DIV_ISP1>,
+				 <&cmu_isp CLK_DIV_MCUISP0>,
+				 <&cmu_isp CLK_DIV_MCUISP1>,
+				 <&cmu CLK_CAM1>,
+				 <&cmu CLK_MOUT_ACLK_400_MCUISP_SUB>,
+				 <&cmu CLK_DIV_ACLK_400_MCUISP>,
+				 <&cmu CLK_MOUT_ACLK_400_MCUISP>,
+				 <&cmu CLK_MOUT_ACLK_266_0>,
+				 <&cmu CLK_MOUT_ACLK_266>,
+				 <&cmu CLK_DIV_ACLK_266>,
+				 <&cmu CLK_MOUT_ACLK_266_SUB>,
+				 <&cmu CLK_DIV_MPLL_PRE>,
+				 <&cmu CLK_FIN_PLL>;
+			clock-names = "isp", "mcu_isp", "isp_divmpwm",
+				      "isp_div0", "isp_div1",
+				      "mcu_isp_div0", "mcu_isp_div1", "cam1",
+				      "mout_aclk400_mcuisp_sub",
+				      "div_aclk400_mcuisp",
+				      "mout_aclk400_mcuisp",
+				      "mout_aclk266_0", "mout_aclk266",
+				      "div_aclk266", "mout_aclk266_sub",
+				      "div_mpll_pre", "fin_pll";
+			power-domains = <&pd_isp>;
+			samsung,pmu-syscon = <&pmu_system_controller>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			status = "disabled";
+
+			fimc_lite_0: fimc-lite@120a0000 {
+				compatible = "samsung,exynos3250-fimc-lite";
+				reg = <0x120a0000 0x1000>;
+				interrupts = <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&cmu_isp CLK_LITE0>;
+				clock-names = "flite";
+				power-domains = <&pd_isp>;
+				status = "disabled";
+			};
+
+			fimc_lite_1: fimc-lite@120b0000 {
+				compatible = "samsung,exynos3250-fimc-lite";
+				reg = <0x120b0000 0x1000>;
+				interrupts = <GIC_SPI 199 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&cmu_isp CLK_LITE1>;
+				clock-names = "flite";
+				power-domains = <&pd_isp>;
+				status = "disabled";
+			};
+
+			csis_0: csis@120c0000 {
+				compatible = "samsung,exynos3250-csis";
+				reg = <0x120c0000 0x4000>;
+				interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&cmu_isp CLK_CSIS0>;
+				clock-names = "csis";
+				bus-width = <2>;
+				power-domains = <&pd_cam>;
+				phys = <&mipi_phy 0>;
+				phy-names = "csis";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				status = "disabled";
+			};
+
+			i2c0_isp: i2c-isp@12130000 {
+				compatible = "samsung,exynos4212-i2c-isp";
+				reg = <0x12130000 0x100>;
+				clocks = <&cmu_isp CLK_I2C0_ISP>;
+				clock-names = "i2c_isp";
+				pinctrl-names = "default";
+				pinctrl-0 = <&fimc_is_i2c0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
 		};
 
 		hsotg: usb@12480000 {
