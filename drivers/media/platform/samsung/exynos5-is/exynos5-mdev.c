@@ -293,13 +293,27 @@ static int __fimc_pipeline_s_stream(struct exynos_media_pipeline *ep, bool on)
 
 	for (i = 0; i < IDX_MAX; i++) {
 		unsigned int idx = on ? i : (IDX_MAX - 1) - i;
+		struct v4l2_subdev *sd = p->subdevs[idx];
 
-		ret = v4l2_subdev_call(p->subdevs[idx], video, s_stream, on);
+		/* Only stop what has been started, and the other way around */
+		if (!sd || sd->s_stream_enabled == on)
+			continue;
 
+		ret = v4l2_subdev_call(sd, video, s_stream, on);
 		if (ret < 0 && ret != -ENOIOCTLCMD && ret != -ENODEV)
-			return ret;
+			goto error;
 	}
 	return 0;
+
+error:
+	/* Stop the subdevs started so far again */
+	while (--i >= 0) {
+		struct v4l2_subdev *sd = p->subdevs[i];
+
+		if (sd && sd->s_stream_enabled)
+			v4l2_subdev_call(sd, video, s_stream, 0);
+	}
+	return ret;
 }
 
 /* Media pipeline operations for the FIMC/FIMC-LITE video device driver */
