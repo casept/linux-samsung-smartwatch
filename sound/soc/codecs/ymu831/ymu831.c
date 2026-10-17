@@ -25,8 +25,7 @@
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/irq.h>
-#include <linux/gpio.h>
-#include <linux/of_gpio.h>
+#include <linux/gpio/consumer.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -8939,12 +8938,11 @@ void mc_asoc_set_codec_ldod(int status)
 	}
 }
 
-static int gpio_codec_en;
+static struct gpio_desc *codec_en_gpio;
 
 static void ymu831_set_ldod(int status)
 {
-	if (gpio_codec_en)
-		gpio_set_value(gpio_codec_en, status);
+	gpiod_set_value_cansleep(codec_en_gpio, status);
 }
 
 static struct clk *mc_asoc_mclk;
@@ -8962,8 +8960,6 @@ static void ymu831_set_mclk(bool enable, bool forced)
 static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
 {
 	struct mc_asoc_platform_data *pdata;
-	struct device_node *node = dev->of_node;
-	int ret;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -8971,19 +8967,15 @@ static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	gpio_codec_en = of_get_named_gpio(node, "codec-en-gpios", 0);
-	if (!gpio_is_valid(gpio_codec_en))
-		return ERR_PTR(gpio_codec_en);
-	ret = devm_gpio_request_one(dev, gpio_codec_en, GPIOF_OUT_INIT_HIGH, "codec-enable");
-	if (ret < 0) {
-		dev_err(dev, "failed to request gpio\n");
-		return ERR_PTR(ret);
-	}
-	dev_dbg(dev, "codec enable GPIO %d\n", gpio_codec_en);
+	codec_en_gpio = devm_gpiod_get(dev, "codec-en", GPIOD_OUT_HIGH);
+	if (IS_ERR(codec_en_gpio))
+		return dev_err_cast_probe(dev, codec_en_gpio,
+					  "failed to get codec-en GPIO\n");
 
 	mc_asoc_mclk = devm_clk_get_optional(dev, "mclk");
 	if (IS_ERR(mc_asoc_mclk))
-		return ERR_CAST(mc_asoc_mclk);
+		return dev_err_cast_probe(dev, mc_asoc_mclk,
+					  "failed to get MCLK\n");
 
 	pdata->set_codec_mclk = ymu831_set_mclk;
 	pdata->set_codec_ldod = ymu831_set_ldod;
@@ -9012,11 +9004,8 @@ static int mc_asoc_spi_probe(
 
 	if (spi->dev.of_node) {
 		mc_asoc->pdata = mc_asoc_parse_dt(&spi->dev);
-		if (IS_ERR(mc_asoc->pdata)) {
-			err = PTR_ERR(mc_asoc->pdata);
-			return dev_err_probe(&spi->dev, err,
-					     "failed to parse DT data\n");
-		}
+		if (IS_ERR(mc_asoc->pdata))
+			return PTR_ERR(mc_asoc->pdata);
 		mc_asoc->pdata->irq = spi->irq;
 	}
 
