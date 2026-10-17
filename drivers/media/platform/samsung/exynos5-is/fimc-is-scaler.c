@@ -646,6 +646,7 @@ int fimc_is_scaler_subdev_create(struct fimc_is_scaler *ctx,
 	/* Initialize scaler subdev */
 	v4l2_subdev_init(sd, &scaler_subdev_ops);
 	sd->owner = THIS_MODULE;
+	sd->dev = &ctx->pipeline->is->pdev->dev;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	sd->entity.function = MEDIA_ENT_F_PROC_VIDEO_SCALER;
 	if (scaler_id == SCALER_SCC)

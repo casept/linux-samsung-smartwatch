@@ -786,6 +786,7 @@ int fimc_is_isp_subdev_create(struct fimc_is_isp *isp,
 
 	v4l2_subdev_init(sd, &isp_subdev_ops);
 	sd->owner = THIS_MODULE;
+	sd->dev = &isp->pipeline->is->pdev->dev;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	sd->entity.function = MEDIA_ENT_F_PROC_VIDEO_ISP;
 	snprintf(sd->name, sizeof(sd->name), ISP_DRV_NAME);
