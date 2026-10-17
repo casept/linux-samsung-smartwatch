@@ -1456,6 +1456,7 @@ int fimc_is_pipeline_scaler_start(struct fimc_is_pipeline *pipeline,
         case V4L2_PIX_FMT_NV16:
 		dma_output->format = DMA_OUTPUT_FORMAT_YUV422;
                 dma_output->order  = DMA_OUTPUT_ORDER_CRYCBY;
+                break;
         default:
                 v4l2_info(&scaler->subdev,
                          "Unsupported format.\n");
