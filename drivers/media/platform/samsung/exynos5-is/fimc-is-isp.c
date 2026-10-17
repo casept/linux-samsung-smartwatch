@@ -75,7 +75,7 @@ static void isp_video_output_stop_streaming(struct vb2_queue *vq)
 
 static int isp_video_output_queue_setup(struct vb2_queue *vq,
 			unsigned int *num_buffers, unsigned int *num_planes,
-			unsigned int sizes[], struct device *allocators[])
+			unsigned int sizes[], struct device *alloc_devs[])
 {
 	struct fimc_is_isp *isp = vb2_get_drv_priv(vq);
 	const struct fimc_is_fmt *fmt = isp->fmt;
@@ -87,10 +87,8 @@ static int isp_video_output_queue_setup(struct vb2_queue *vq,
 	*num_planes = fmt->num_planes;
 	wh = isp->width * isp->height;
 
-	for (i = 0; i < *num_planes; i++) {
-		// TODO: allocators[i] = isp->alloc_ctx;
+	for (i = 0; i < *num_planes; i++)
 		sizes[i] = (wh * fmt->depth[i]) / 8;
-	}
 	return 0;
 }
 
@@ -138,8 +136,6 @@ static const struct vb2_ops isp_video_output_qops = {
 	.buf_init	 = isp_video_output_buffer_init,
 	.buf_prepare	 = isp_video_output_buffer_prepare,
 	.buf_queue	 = isp_video_output_buffer_queue,
-	.wait_prepare	 = vb2_ops_wait_prepare,
-	.wait_finish	 = vb2_ops_wait_finish,
 	.start_streaming = isp_video_output_start_streaming,
 	.stop_streaming	 = isp_video_output_stop_streaming,
 };
@@ -327,6 +323,8 @@ static int isp_subdev_registered(struct v4l2_subdev *sd)
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct fimc_is_buf);
 	q->drv_priv = isp;
+	q->lock = &isp->video_lock;
+	q->dev = &isp->pipeline->is->pdev->dev;
 
 	ret = vb2_queue_init(q);
 	if (ret < 0)

@@ -55,7 +55,7 @@ static int scaler_video_capture_start_streaming(struct vb2_queue *vq,
 
 	ret = fimc_is_pipeline_scaler_start(ctx->pipeline,
 			ctx->scaler_id,
-			vq->max_num_buffers,
+			vb2_get_num_buffers(vq),
 			ctx->fmt->num_planes);
 	if (ret) {
 		v4l2_err(&ctx->subdev, "Scaler start failed.\n");
@@ -91,7 +91,7 @@ static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 
 static int scaler_video_capture_queue_setup(struct vb2_queue *vq,
 			unsigned int *num_buffers, unsigned int *num_planes,
-			unsigned int sizes[], struct device *allocators[])
+			unsigned int sizes[], struct device *alloc_devs[])
 {
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
 	const struct fimc_is_fmt *fmt = ctx->fmt;
@@ -104,11 +104,8 @@ static int scaler_video_capture_queue_setup(struct vb2_queue *vq,
 	*num_planes = fmt->num_planes;
 	wh = ctx->width * ctx->height;
 
-	for (i = 0; i < *num_planes; i++) {
-		// TODO: allocators[i] = ctx->alloc_ctx;
-		allocators[i] = NULL;
+	for (i = 0; i < *num_planes; i++)
 		sizes[i] = (wh * fmt->depth[i]) / 8;
-	}
 	return 0;
 }
 
@@ -166,8 +163,6 @@ static const struct vb2_ops scaler_video_capture_qops = {
 	.buf_init		= scaler_video_capture_buffer_init,
 	.buf_prepare		= scaler_video_capture_buffer_prepare,
 	.buf_queue		= scaler_video_capture_buffer_queue,
-	.wait_prepare		= vb2_ops_wait_prepare,
-	.wait_finish		= vb2_ops_wait_finish,
 	.start_streaming	= scaler_video_capture_start_streaming,
 	.stop_streaming		= scaler_video_capture_stop_streaming,
 };
@@ -368,6 +363,8 @@ static int scaler_subdev_registered(struct v4l2_subdev *sd)
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct fimc_is_buf);
 	q->drv_priv = ctx;
+	q->lock = &ctx->video_lock;
+	q->dev = &ctx->pipeline->is->pdev->dev;
 
 	ret = vb2_queue_init(q);
 	if (ret < 0)
