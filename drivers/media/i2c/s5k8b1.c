@@ -313,6 +313,7 @@ static int s5k8b1_probe(struct i2c_client *client)
 
 	sd = &sensor->subdev;
 	v4l2_i2c_subdev_init(sd, client, &s5k8b1_subdev_ops);
+	sd->internal_ops = &s5k8b1_sd_internal_ops;
 	sensor->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	sensor->format.code = s5k8b1_formats[0].code;
