@@ -183,12 +183,8 @@ static int scaler_querycap_capture(struct file *file, void *priv,
 	char *name = (ctx->scaler_id == SCALER_SCC) ?
 				"fimc-is-scc" : "fimc-is-scp";
 
-	strncpy(cap->driver, name, sizeof(cap->driver) - 1);
-	strncpy(cap->card, name, sizeof(cap->card) - 1);
-	snprintf(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
-			name);
-	cap->device_caps = V4L2_CAP_STREAMING;
-	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
+	strscpy(cap->driver, name, sizeof(cap->driver));
+	strscpy(cap->card, name, sizeof(cap->card));
 	return 0;
 }
 
@@ -350,7 +346,7 @@ static int scaler_subdev_registered(struct v4l2_subdev *sd)
 	vfd->lock = &ctx->video_lock;
 	vfd->queue = q;
 	vfd->vfl_dir = VFL_DIR_RX;
-	// set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
+	vfd->device_caps = V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_STREAMING;
 
 	memset(q, 0, sizeof(*q));
 	q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;

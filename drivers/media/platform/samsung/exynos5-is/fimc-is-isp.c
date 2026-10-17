@@ -152,12 +152,8 @@ static const struct v4l2_file_operations isp_video_output_fops = {
 static int isp_querycap_output(struct file *file, void *priv,
 					struct v4l2_capability *cap)
 {
-	strncpy(cap->driver, ISP_DRV_NAME, sizeof(cap->driver) - 1);
-	strncpy(cap->card, ISP_DRV_NAME, sizeof(cap->card) - 1);
-	snprintf(cap->bus_info, sizeof(cap->bus_info), "platform:%s",
-			ISP_DRV_NAME);
-	cap->device_caps = V4L2_CAP_STREAMING;
-	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
+	strscpy(cap->driver, ISP_DRV_NAME, sizeof(cap->driver));
+	strscpy(cap->card, ISP_DRV_NAME, sizeof(cap->card));
 	return 0;
 }
 
@@ -310,7 +306,7 @@ static int isp_subdev_registered(struct v4l2_subdev *sd)
 	vfd->lock = &isp->video_lock;
 	vfd->queue = q;
 	vfd->vfl_dir = VFL_DIR_TX;
-	// set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
+	vfd->device_caps = V4L2_CAP_VIDEO_OUTPUT_MPLANE | V4L2_CAP_STREAMING;
 
 	memset(q, 0, sizeof(*q));
 	q->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
