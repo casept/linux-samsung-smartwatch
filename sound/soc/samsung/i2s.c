@@ -11,6 +11,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/pm_qos.h>
@@ -480,6 +481,26 @@ static void i2s_rxctrl(struct i2s_dai *i2s, int on)
 
 	writel(mod, addr + I2SMOD);
 	writel(con, addr + I2SCON);
+}
+
+/*
+ * A channel paused while the other direction keeps the bus running keeps
+ * its position within the frame, and resumes from there regardless of the
+ * bus. With two FIFO entries per frame, a pause and resume at arbitrary
+ * times swaps the left and right channels about half of the time.
+ * Pausing as LRINDEX clears and resuming as it sets keeps them in place.
+ */
+static void i2s_wait_for_lrindex(struct i2s_dai *i2s, bool set)
+{
+	void __iomem *con = i2s->priv->addr + I2SCON;
+	u32 val;
+
+	/* One frame at 8 kHz takes 125 us */
+	if (readl_poll_timeout_atomic(con, val, !(val & CON_LRINDEX) == set,
+				      0, 250) ||
+	    readl_poll_timeout_atomic(con, val, !(val & CON_LRINDEX) != set,
+				      0, 250))
+		dev_warn_ratelimited(&i2s->pdev->dev, "no frame clock\n");
 }
 
 /* Flush FIFO of an interface */
@@ -1011,10 +1032,15 @@ static int i2s_trigger(struct snd_pcm_substream *substream,
 		if (priv->fixup_late)
 			priv->fixup_late(substream, dai);
 
-		if (capture)
+		if (capture) {
+			if (any_tx_active(i2s))
+				i2s_wait_for_lrindex(i2s, true);
 			i2s_rxctrl(i2s, 1);
-		else
+		} else {
+			if (any_rx_active(i2s))
+				i2s_wait_for_lrindex(i2s, true);
 			i2s_txctrl(i2s, 1);
+		}
 
 		spin_unlock_irqrestore(&priv->lock, flags);
 		break;
@@ -1024,9 +1050,13 @@ static int i2s_trigger(struct snd_pcm_substream *substream,
 		spin_lock_irqsave(&priv->lock, flags);
 
 		if (capture) {
+			if (any_tx_active(i2s))
+				i2s_wait_for_lrindex(i2s, false);
 			i2s_rxctrl(i2s, 0);
 			i2s_fifo(i2s, FIC_RXFLUSH);
 		} else {
+			if (any_rx_active(i2s))
+				i2s_wait_for_lrindex(i2s, false);
 			i2s_txctrl(i2s, 0);
 			i2s_fifo(i2s, FIC_TXFLUSH);
 		}
