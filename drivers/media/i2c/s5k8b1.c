@@ -288,16 +288,13 @@ static int s5k8b1_probe(struct i2c_client *client)
 
 	ret = devm_regulator_bulk_get(&client->dev, S5K8B1_NUM_SUPPLIES,
 				      sensor->supplies);
-	if (ret < 0) {
-		dev_err(dev, "failed to probe: failed to get regulator, ret = %d\n", ret);
-		return ret;
-	}
+	if (ret < 0)
+		return dev_err_probe(dev, ret, "failed to get the supplies\n");
 
 	sensor->clock = devm_clk_get(dev, S5K8B1_CLK_NAME);
-	if (IS_ERR(sensor->clock)) {
-		dev_err(dev, "defering probe: failed to request clock\n");
-		return -EPROBE_DEFER;
-	}
+	if (IS_ERR(sensor->clock))
+		return dev_err_probe(dev, PTR_ERR(sensor->clock),
+				     "failed to get extclk\n");
 
 	sd = &sensor->subdev;
 	v4l2_i2c_subdev_init(sd, client, &s5k8b1_subdev_ops);
