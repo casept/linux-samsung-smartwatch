@@ -255,6 +255,22 @@
 		max-microvolt = <2700000>;
 	};
 
+	sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "Rinato";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&codec_dai>;
+		simple-audio-card,frame-master = <&codec_dai>;
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s2 0>;
+		};
+
+		codec_dai: simple-audio-card,codec {
+			sound-dai = <&audio_codec>;
+		};
+	};
+
 	thermal-zones {
 		cpu {
 			polling-delay = <2000>;
@@ -1001,6 +1017,36 @@
 		ap-mcu-gpios = <&gpx0 0 GPIO_ACTIVE_HIGH>;
 		mcu-ap-gpios = <&gpx0 4 GPIO_ACTIVE_HIGH>;
 		mcu-reset-gpios = <&gpx0 5 GPIO_ACTIVE_HIGH>;
+
+		controller-data {
+			samsung,spi-feedback-delay = <2>;
+		};
+	};
+};
+
+&spi_1 {
+	status = "okay";
+
+	cs-gpios = <&gpb 5 GPIO_ACTIVE_LOW>;
+	assigned-clocks = <&cmu CLK_MOUT_SPI1>, <&cmu CLK_DIV_SPI1>,
+		<&cmu CLK_DIV_SPI1_PRE>, <&cmu CLK_SCLK_SPI1>;
+	assigned-clock-parents = <&cmu CLK_DIV_MPLL_PRE>, /* for: CLK_MOUT_SPI1 */
+		<&cmu CLK_MOUT_SPI1>,    /* for: CLK_DIV_SPI1 */
+		<&cmu CLK_DIV_SPI1>,     /* for: CLK_DIV_SPI1_PRE */
+		<&cmu CLK_DIV_SPI1_PRE>; /* for: CLK_SCLK_SPI1 */
+
+	audio_codec: audio-codec@0 {
+		compatible = "yamaha,ymu831";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		interrupt-parent = <&gpx1>;
+		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
+		codec-en-gpios = <&gpx3 6 GPIO_ACTIVE_HIGH>;
+		clocks = <&pmu_system_controller 0>;
+		clock-names = "mclk";
+		assigned-clocks = <&pmu_system_controller 0>;
+		assigned-clock-parents = <&xusbxti>;
+		#sound-dai-cells = <0>;
 
 		controller-data {
 			samsung,spi-feedback-delay = <2>;
