@@ -261,22 +261,39 @@
 			polling-delay-passive = <2000>;
 			thermal-sensors = <&thermistor_ap>, <&tmu>;
 
-			/* Trip points are based on semi-educated guess, no real data */
 			trips {
-				cpu_warm: cpu-warm {
-				        temperature = <55000>;
-				        hysteresis = <2000>;
-				        type = "passive";
+				cpu_80c: cpu-80c {
+					temperature = <80000>;
+					hysteresis = <2000>;
+					type = "passive";
 				};
 
-				cpu_hot: cpu-hot {
-					temperature = <67000>;
+				cpu_85c: cpu-85c {
+					temperature = <85000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+
+				cpu_90c: cpu-90c {
+					temperature = <90000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+
+				cpu_95c: cpu-95c {
+					temperature = <95000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+
+				cpu_100c: cpu-100c {
+					temperature = <100000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 
 				cpu-crit {
-					temperature = <90000>;
+					temperature = <110000>;
 					hysteresis = <1000>;
 					type = "critical";
 				};
@@ -284,16 +301,34 @@
 
 			cooling-maps {
 				map0 {
-					trip = <&cpu_warm>;
+					trip = <&cpu_80c>;
+					/* Corresponds to 900MHz */
+					cooling-device = <&cpu0 1 1>,
+							 <&cpu1 1 1>;
+				};
+				map1 {
+					trip = <&cpu_85c>;
+					/* Corresponds to 800MHz */
+					cooling-device = <&cpu0 2 2>,
+							 <&cpu1 2 2>;
+				};
+				map2 {
+					trip = <&cpu_90c>;
+					/* Corresponds to 700MHz */
+					cooling-device = <&cpu0 3 3>,
+							 <&cpu1 3 3>;
+				};
+				map3 {
+					trip = <&cpu_95c>;
+					/* Corresponds to 600MHz */
+					cooling-device = <&cpu0 4 4>,
+							 <&cpu1 4 4>;
+				};
+				map4 {
+					trip = <&cpu_100c>;
 					/* Corresponds to 500MHz */
 					cooling-device = <&cpu0 5 5>,
 							 <&cpu1 5 5>;
-				};
-				map1 {
-					trip = <&cpu_hot>;
-					/* Corresponds to 200MHz */
-					cooling-device = <&cpu0 8 8>,
-							 <&cpu1 8 8>;
 				};
 			};
 		};
