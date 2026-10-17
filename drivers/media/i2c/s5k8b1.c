@@ -54,6 +54,9 @@ enum {
  * @gpio_reset: GPIO connected to the sensor's XSHUTDOWN pin
  * @lock: mutex protecting the structure's members below
  * @format: media bus format at the sensor's source pad
+ * @clock: the sensor's EXTCLK
+ * @clock_frequency: the EXTCLK rate to run the sensor at
+ * @power_count: whether the sensor is powered on
  */
 struct s5k8b1 {
 	struct device *dev;
@@ -65,6 +68,7 @@ struct s5k8b1 {
 	struct v4l2_mbus_framefmt format;
 	struct clk *clock;
 	u32 clock_frequency;
+	int power_count;
 };
 
 static const char * const s5k8b1_supply_names[] = {
@@ -240,11 +244,22 @@ static int __s5k8b1_power_off(struct s5k8b1 *sensor)
 static int s5k8b1_s_power(struct v4l2_subdev *sd, int on)
 {
 	struct s5k8b1 *sensor = sd_to_s5k8b1(sd);
+	int ret = 0;
 
-	if (on)
-		return __s5k8b1_power_on(sensor);
-	else
-		return __s5k8b1_power_off(sensor);
+	mutex_lock(&sensor->lock);
+
+	if (sensor->power_count == !on) {
+		if (on)
+			ret = __s5k8b1_power_on(sensor);
+		else
+			ret = __s5k8b1_power_off(sensor);
+
+		if (ret == 0)
+			sensor->power_count += on ? 1 : -1;
+	}
+
+	mutex_unlock(&sensor->lock);
+	return ret;
 }
 
 static const struct v4l2_subdev_core_ops s5k8b1_core_ops = {
