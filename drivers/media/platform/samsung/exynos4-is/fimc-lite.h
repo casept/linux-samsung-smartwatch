@@ -134,7 +134,6 @@ struct flite_buffer {
  * @pending_buf_q: pending buffers queue head
  * @active_buf_q: the queue head of buffers scheduled in hardware
  * @vb_queue: vb2 buffers queue
- * @buf_index: helps to keep track of the DMA start address register index
  * @frame_count: the captured frames counter
  * @reqbufs_count: the number of buffers requested with REQBUFS ioctl
  * @events: event info
@@ -171,7 +170,6 @@ struct fimc_lite {
 	struct list_head	pending_buf_q;
 	struct list_head	active_buf_q;
 	struct vb2_queue	vb_queue;
-	unsigned short		buf_index;
 	unsigned int		frame_count;
 	unsigned int		reqbufs_count;
 

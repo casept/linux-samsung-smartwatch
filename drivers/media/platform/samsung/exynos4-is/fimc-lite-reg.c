@@ -68,6 +68,14 @@ bool flite_hw_clear_fifo_overflow(struct fimc_lite *dev)
 	return true;
 }
 
+/* Returns the 1-based DMA buffer slot of the current frame, 0 if none */
+u32 flite_hw_get_present_buffer(struct fimc_lite *dev)
+{
+	u32 status = readl(dev->regs + FLITE_REG_CISTATUS3);
+
+	return status & FLITE_REG_CISTATUS3_PRESENT_MASK;
+}
+
 u32 flite_hw_get_interrupt_source(struct fimc_lite *dev)
 {
 	u32 intsrc = readl(dev->regs + FLITE_REG_CISTATUS);

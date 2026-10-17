@@ -134,6 +134,7 @@ void flite_hw_reset(struct fimc_lite *dev);
 void flite_hw_clear_pending_irq(struct fimc_lite *dev);
 bool flite_hw_clear_fifo_overflow(struct fimc_lite *dev);
 void flite_hw_mask_overflow_irq(struct fimc_lite *dev, bool mask);
+u32 flite_hw_get_present_buffer(struct fimc_lite *dev);
 u32 flite_hw_get_interrupt_source(struct fimc_lite *dev);
 void flite_hw_clear_last_capture_end(struct fimc_lite *dev);
 void flite_hw_set_interrupt_mask(struct fimc_lite *dev);

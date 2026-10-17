@@ -243,6 +243,31 @@ static void fimc_lite_config_update(struct fimc_lite *fimc)
 	clear_bit(ST_FLITE_CONFIG, &fimc->state);
 }
 
+/*
+ * Returns the active buffer the frame that just ended was written to. With
+ * several DMA buffer slots, that's the slot the hardware reports, as frames
+ * the hardware drops don't use up a buffer. Called with slock held.
+ */
+static struct flite_buffer *fimc_lite_written_buffer(struct fimc_lite *fimc)
+{
+	struct flite_buffer *buf;
+	u32 slot;
+
+	if (list_empty(&fimc->active_buf_q))
+		return NULL;
+
+	if (fimc->dd->max_dma_bufs == 1)
+		return list_first_entry(&fimc->active_buf_q,
+					struct flite_buffer, list);
+
+	slot = flite_hw_get_present_buffer(fimc);
+	list_for_each_entry(buf, &fimc->active_buf_q, list)
+		if (buf->index + 1 == slot)
+			return buf;
+
+	return NULL;
+}
+
 static irqreturn_t flite_irq_handler(int irq, void *priv)
 {
 	struct fimc_lite *fimc = priv;
@@ -292,9 +317,11 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 	}
 
 	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMEND) {
-		if (test_bit(ST_FLITE_RUN, &fimc->state) &&
-		    !list_empty(&fimc->active_buf_q)) {
-			vbuf = fimc_lite_active_queue_pop(fimc);
+		vbuf = NULL;
+		if (test_bit(ST_FLITE_RUN, &fimc->state))
+			vbuf = fimc_lite_written_buffer(fimc);
+		if (vbuf) {
+			list_del(&vbuf->list);
 			vbuf->vb.vb2_buf.timestamp = ktime_get_ns();
 			vbuf->vb.sequence = fimc->frame_count++;
 			flite_hw_mask_dma_buffer(fimc, vbuf->index);
@@ -306,7 +333,11 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 	if (test_bit(ST_FLITE_CONFIG, &fimc->state))
 		fimc_lite_config_update(fimc);
 
-	if (list_empty(&fimc->pending_buf_q)) {
+	/*
+	 * With several DMA buffer slots, the hardware drops frames while no
+	 * slot is enabled, so keep capturing.
+	 */
+	if (fimc->dd->max_dma_bufs == 1 && list_empty(&fimc->pending_buf_q)) {
 		flite_hw_capture_stop(fimc);
 		clear_bit(ST_FLITE_STREAM, &fimc->state);
 	}
@@ -319,12 +350,12 @@ done:
 static int start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct fimc_lite *fimc = q->drv_priv;
+	struct flite_buffer *buf;
 	unsigned long flags;
 	int ret;
 
 	spin_lock_irqsave(&fimc->slock, flags);
 
-	fimc->buf_index = 0;
 	fimc->frame_count = 0;
 
 	spin_unlock_irqrestore(&fimc->slock, flags);
@@ -334,6 +365,12 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 		fimc_lite_reinit(fimc, false);
 		return ret;
 	}
+
+	/* Initializing the hardware disabled the queued buffers' slots */
+	spin_lock_irqsave(&fimc->slock, flags);
+	list_for_each_entry(buf, &fimc->active_buf_q, list)
+		flite_hw_set_dma_buffer(fimc, buf);
+	spin_unlock_irqrestore(&fimc->slock, flags);
 
 	set_bit(ST_FLITE_PENDING, &fimc->state);
 
@@ -425,9 +462,7 @@ static void buffer_queue(struct vb2_buffer *vb)
 	spin_lock_irqsave(&fimc->slock, flags);
 	buf->addr = vb2_dma_contig_plane_dma_addr(vb, 0);
 
-	buf->index = fimc->buf_index++;
-	if (fimc->buf_index >= fimc->reqbufs_count)
-		fimc->buf_index = 0;
+	buf->index = vb->index;
 
 	if (!test_bit(ST_FLITE_SUSPENDED, &fimc->state) &&
 	    !test_bit(ST_FLITE_STREAM, &fimc->state) &&
@@ -1291,6 +1326,9 @@ static int fimc_lite_subdev_registered(struct v4l2_subdev *sd)
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->lock = &fimc->lock;
 	q->dev = &fimc->pdev->dev;
+	/* Each buffer gets a DMA buffer slot of its own */
+	if (fimc->dd->max_dma_bufs > 1)
+		q->max_num_buffers = fimc->dd->max_dma_bufs;
 
 	ret = vb2_queue_init(q);
 	if (ret < 0)
