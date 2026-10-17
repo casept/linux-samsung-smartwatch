@@ -396,7 +396,7 @@ static void s5pcsis_set_hsync_settle(struct csis_state *state, int settle)
 {
 	u32 val = s5pcsis_read(state, S5PCSIS_DPHYCTRL);
 
-	int shift = ffz(state->drv_data->hss_mask);
+	int shift = __ffs(state->drv_data->hss_mask);
 	val = (val & ~state->drv_data->hss_mask) | (settle << shift);
 
 	s5pcsis_write(state, S5PCSIS_DPHYCTRL, val);
