@@ -8114,98 +8114,50 @@ exit:
 	mutex_unlock(&hsdet_mutex);
 }
 
-static struct workqueue_struct	*my_wq;
-
-static void irq_func(struct work_struct *work)
+static irqreturn_t mc_asoc_irq_thread(int irq, void *data)
 {
 	int	err;
-	struct mc_asoc_data	*mc_asoc	= NULL;
-
-	TRACE_FUNC();
-
-	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-
-	err	= _McDrv_Ctrl(MCDRV_IRQ, NULL, NULL, 0);
-	if (err < 0)
-		dev_err(mc_asoc_get_dev(), "failed to handle the IRQ: %d\n",
-			map_drv_error(err));
-
-	if (IRQ_TYPE == IRQ_TYPE_LEVEL_LOW) {
-		;
-		enable_irq(mc_asoc->irq);
-	}
-	kfree(work);
-}
-irqreturn_t irq_handler(int irq, void *data)
-{
-	int	ret;
-	struct work_struct	*work;
-	struct mc_asoc_data	*mc_asoc	= NULL;
 
 	TRACE_FUNC();
 
 	if (mc_asoc_suspended == 1) {
+		/* handled on resume */
 		mc_asoc_irq_func	= 1;
 		return IRQ_HANDLED;
 	}
 
-	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
+	err	= _McDrv_Ctrl(MCDRV_IRQ, NULL, NULL, 0);
+	if (err < 0)
+		dev_err(mc_asoc_get_dev(), "failed to handle IRQ: %d\n",
+			map_drv_error(err));
 
-	work	= kmalloc(sizeof(struct work_struct), GFP_ATOMIC);
-	if (work) {
-		if (IRQ_TYPE == IRQ_TYPE_LEVEL_LOW) {
-			;
-			disable_irq_nosync(mc_asoc->irq);
-		}
-		INIT_WORK(work, irq_func);
-		ret	= queue_work(my_wq, work);
-	}
 	return IRQ_HANDLED;
 }
 
 static int init_irq(struct snd_soc_component *codec)
 {
-	int	err	= 0;
-	struct mc_asoc_data	*mc_asoc	= NULL;
+	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(codec);
+	int	err;
 
-	TRACE_FUNC();
-
-	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if (!mc_asoc->irq) {
-		dev_err(codec->dev, "%s : No irq supported\n", __func__);
+		dev_dbg(codec->dev, "no IRQ, headset and DSP events unavailable\n");
 		return 0;
 	}
 
-	my_wq	= create_workqueue("irq_queue");
+	err	= request_threaded_irq(mc_asoc->irq, NULL, mc_asoc_irq_thread,
+				       IRQF_ONESHOT, "ymu831", mc_asoc);
+	if (err < 0)
+		dev_err(codec->dev, "failed to request IRQ: %d\n", err);
 
-	err	= irq_set_irq_type(mc_asoc->irq, IRQ_TYPE);
-	if (err < 0) {
-		dev_err(codec->dev, "Failed to set_irq_type: %d\n", err);
-		return -EIO;
-	}
-	err	= request_irq(mc_asoc->irq, irq_handler, 0,
-			      "MC_YAMAHA IRQ", NULL);
-	if (err < 0) {
-		dev_err(codec->dev, "Failed to request_irq: %d\n", err);
-		return -EIO;
-	}
-	return 0;
+	return err;
 }
-static int term_irq(void)
+
+static void term_irq(void)
 {
-	struct mc_asoc_data	*mc_asoc	= NULL;
+	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
 
-	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-
-	if (!mc_asoc->irq) {
-		dev_err(mc_asoc_codec->dev, "%s : No irq supported\n", __func__);
-		return 0;
-	}
-
-	free_irq(mc_asoc->irq, NULL);
-	destroy_workqueue(my_wq);
-
-	return 0;
+	if (mc_asoc->irq)
+		free_irq(mc_asoc->irq, mc_asoc);
 }
 
 
