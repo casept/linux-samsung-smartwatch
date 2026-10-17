@@ -14,6 +14,7 @@ properties:
   compatible:
     enum:
       - samsung,s5pv210-csis
+      - samsung,exynos3250-csis
       - samsung,exynos4210-csis
       - samsung,exynos4212-csis
       - samsung,exynos5250-csis
@@ -34,9 +35,11 @@ properties:
       Number of data lines supported.
 
   clocks:
+    minItems: 1
     maxItems: 2
 
   clock-names:
+    minItems: 1
     items:
       - const: csis
       - const: sclk_csis
@@ -124,6 +127,23 @@ allOf:
     then:
       required:
         - samsung,sysreg
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: samsung,exynos3250-csis
+    then:
+      properties:
+        clocks:
+          maxItems: 1
+        clock-names:
+          maxItems: 1
+    else:
+      properties:
+        clocks:
+          minItems: 2
+        clock-names:
+          minItems: 2
 
 additionalProperties: false
 
