@@ -138,7 +138,7 @@ static void isp_video_output_buffer_cleanup(struct vb2_buffer *vb)
 {
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct fimc_is_isp *isp = vb2_get_drv_priv(vq);
-	struct fimc_is_buf *fbuf = container_of(vb, struct fimc_is_buf, vb);
+	struct fimc_is_buf *fbuf = to_fimc_is_buf(vb);
 
 	/*
 	 * Skip the cleanup case the buffer

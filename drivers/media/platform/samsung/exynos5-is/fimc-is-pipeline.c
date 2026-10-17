@@ -1601,14 +1601,14 @@ static void fimc_is_pipeline_shot_cancel(struct fimc_is_pipeline *pipeline)
         while (!list_empty(&isp->wait_queue)) {
                 buffer = fimc_is_isp_wait_queue_get(isp);
 		buffer->state = FIMC_IS_BUF_INVALID;
-                vb2_buffer_done(&buffer->vb, VB2_BUF_STATE_ERROR);
+                vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
         }
 
         if(!list_empty(&isp->run_queue)) {
                 while (!list_empty(&isp->run_queue)) {
                         buffer = fimc_is_isp_run_queue_get(isp);
 			buffer->state = FIMC_IS_BUF_INVALID;
-                        vb2_buffer_done(&buffer->vb, VB2_BUF_STATE_ERROR);
+                        vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
                 }
         }
         /* Release scaler buffers */
@@ -1617,12 +1617,12 @@ static void fimc_is_pipeline_shot_cancel(struct fimc_is_pipeline *pipeline)
                 while (!list_empty(&scaler->wait_queue)) {
                         buffer = fimc_is_scaler_wait_queue_get(scaler);
 			buffer->state = FIMC_IS_BUF_INVALID;
-                        vb2_buffer_done(&buffer->vb, VB2_BUF_STATE_ERROR);
+                        vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
                 }
                 while (!list_empty(&scaler->run_queue)) {
                         buffer = fimc_is_scaler_run_queue_get(scaler);
 			buffer->state = FIMC_IS_BUF_INVALID;
-                        vb2_buffer_done(&buffer->vb, VB2_BUF_STATE_ERROR);
+                        vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
                 }
         }
         scaler = &pipeline->scaler[SCALER_SCP];
@@ -1630,12 +1630,12 @@ static void fimc_is_pipeline_shot_cancel(struct fimc_is_pipeline *pipeline)
                 while (!list_empty(&scaler->wait_queue)) {
                         buffer = fimc_is_scaler_wait_queue_get(scaler);
 			buffer->state = FIMC_IS_BUF_INVALID;
-                        vb2_buffer_done(&buffer->vb, VB2_BUF_STATE_ERROR);
+                        vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
                 }
                 while (!list_empty(&scaler->run_queue)) {
                         buffer = fimc_is_scaler_run_queue_get(scaler);
 			buffer->state = FIMC_IS_BUF_INVALID;
-                        vb2_buffer_done(&buffer->vb, VB2_BUF_STATE_ERROR);
+                        vb2_buffer_done(&buffer->vb.vb2_buf, VB2_BUF_STATE_ERROR);
                 }
         }
         fimc_is_pipeline_buf_unlock(pipeline);
@@ -1711,11 +1711,11 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 			fimc_is_scaler_run_queue_add(
 					&pipeline->scaler[SCALER_SCC],
 					scc_buf);
-                        if (scc_buf->vb.num_planes > FIMC_IS_MAX_PLANES)
+                        if (scc_buf->vb.vb2_buf.num_planes > FIMC_IS_MAX_PLANES)
                                 dev_dbg(pipeline->dev, "Invalid number of planes!");
                         shared_reg = (unsigned int*)(pipeline->minfo->shared.vaddr
                                      + FIMC_IS_SCC_REGION_INDEX * sizeof(unsigned int));
-                        for (i = 0; i < scc_buf->vb.num_planes; i++) {
+                        for (i = 0; i < scc_buf->vb.vb2_buf.num_planes; i++) {
                                 scaler_ud->scc_target_address[i] =
 							scc_buf->paddr[i];
                                 shared_reg[i] = scc_buf->paddr[i];
@@ -1737,7 +1737,7 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 			fimc_is_scaler_run_queue_add(
 					&pipeline->scaler[SCALER_SCP],
 					scp_buf);
-                        if (scp_buf->vb.num_planes > FIMC_IS_MAX_PLANES)
+                        if (scp_buf->vb.vb2_buf.num_planes > FIMC_IS_MAX_PLANES)
                                  dev_dbg(pipeline->dev,
 					"Invalid number of planes!");
                         shared_reg = (unsigned int*)(pipeline->minfo->shared.vaddr

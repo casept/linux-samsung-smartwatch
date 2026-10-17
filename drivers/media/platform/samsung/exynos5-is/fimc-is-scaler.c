@@ -183,7 +183,7 @@ static void scaler_video_capture_buffer_cleanup(struct vb2_buffer *vb)
 {
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
-	struct fimc_is_buf *fbuf = container_of(vb, struct fimc_is_buf, vb);
+	struct fimc_is_buf *fbuf = to_fimc_is_buf(vb);
 
 
 	/*
