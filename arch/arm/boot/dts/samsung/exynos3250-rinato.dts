@@ -999,6 +999,8 @@
 		interrupt-parent = <&gpx1>;
 		interrupts = <1 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "host-wake";
+
+		brcm,ccode-map-trivial;
 	};
 };
 
