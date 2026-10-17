@@ -103,13 +103,12 @@ static int fimc_is_exyno3250_clk_cfg(struct fimc_is *is)
 	}
 
 	/* ACLK 266 */
-	clk_set_parent(is->clocks[IS_CLK_MOUT_ACLK266_0],
-			 is->clocks[IS_CLK_DIV_MPLL_PRE]);
-
+	ret = clk_set_parent(is->clocks[IS_CLK_MOUT_ACLK266_0],
+			     is->clocks[IS_CLK_DIV_MPLL_PRE]);
 	if (ret) {
-		 FIMC_IS_CLK_ERR(&is->pdev->dev, IS_CLK_MOUT_ACLK266_0,
-				 ser rate);
-		 return ret;
+		FIMC_IS_CLK_ERR(&is->pdev->dev, IS_CLK_MOUT_ACLK266_0,
+				set parentness);
+		return ret;
 	}
 
 	ret = clk_set_parent(is->clocks[IS_CLK_MOUT_ACLK266],
