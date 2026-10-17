@@ -12,7 +12,6 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/timekeeping.h>
-#include <linux/time.h>
 #include "fimc-is.h"
 #include "fimc-is-cmd.h"
 #include "fimc-is-regs.h"
@@ -440,8 +439,6 @@ static void itf_handle_scaler_done(struct fimc_is_interface *itf,
 	struct fimc_is_buf *buf;
 	struct fimc_is_scaler *scl;
 	const struct fimc_is_fmt *fmt;
-	struct timeval *tv;
-	struct timespec64 ts;
 	unsigned int wh, i;
 	unsigned int fcount = msg->param[0];
 	unsigned long *comp_state;
@@ -462,22 +459,15 @@ static void itf_handle_scaler_done(struct fimc_is_interface *itf,
 		wh = scl->width * scl->height;
 		buf = fimc_is_scaler_run_queue_get(scl);
 		for (i = 0; i < fmt->num_planes; i++)
-			vb2_set_plane_payload(&buf->vb, i,
+			vb2_set_plane_payload(&buf->vb.vb2_buf, i,
 					(wh * fmt->depth[i]) / 8);
 
-		/* Set timestamp */
-		/*
-		ktime_get_ts64(&ts);
-		tv = &buf->vb.v4l2_buf.timestamp;
-		tv->tv_sec = ts.tv_sec;
-		tv->tv_usec = ts.tv_nsec / NSEC_PER_USEC;
-		buf->vb.v4l2_buf.sequence = fcount;
-		*/
-		panic("%s: Unimplemented!\n", __func__);
+		buf->vb.vb2_buf.timestamp = ktime_get_ns();
+		buf->vb.sequence = fcount;
 
 		pr_debug("SCP buffer done %d/%d\n",
 				msg->param[0], msg->param[2]);
-		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_DONE);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
 	}
 	fimc_is_pipeline_buf_unlock(pipeline);
 	clear_bit(COMP_RUN, comp_state);
@@ -500,7 +490,7 @@ static void itf_handle_shot_done(struct fimc_is_interface *itf,
 	fimc_is_pipeline_buf_lock(pipeline);
 	bayer_buf = fimc_is_isp_run_queue_get(&pipeline->isp);
 	if (bayer_buf) {
-		vb2_buffer_done(&bayer_buf->vb, VB2_BUF_STATE_DONE);
+		vb2_buffer_done(&bayer_buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
 		pr_debug("Bayer buffer done.\n");
 	}
 	fimc_is_pipeline_buf_unlock(pipeline);

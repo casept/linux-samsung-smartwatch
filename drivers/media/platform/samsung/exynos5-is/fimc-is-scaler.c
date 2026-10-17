@@ -82,11 +82,11 @@ static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 	/* Release un-used buffers */
 	while (!list_empty(&ctx->wait_queue)) {
 		buf = fimc_is_scaler_wait_queue_get(ctx);
-		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_ERROR);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 	}
 	while (!list_empty(&ctx->run_queue)) {
 		buf = fimc_is_scaler_run_queue_get(ctx);
-		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_ERROR);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 	}
 
 	clear_bit(STATE_RUNNING, &ctx->capture_state);
@@ -119,7 +119,7 @@ static int scaler_video_capture_buffer_init(struct vb2_buffer *vb)
 {
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
-	struct fimc_is_buf *buf = container_of(vb, struct fimc_is_buf, vb);
+	struct fimc_is_buf *buf = to_fimc_is_buf(vb);
 	const struct fimc_is_fmt *fmt;
 	int i;
 
@@ -156,7 +156,7 @@ static void scaler_video_capture_buffer_queue(struct vb2_buffer *vb)
 {
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
-	struct fimc_is_buf *buf = container_of(vb, struct fimc_is_buf, vb);
+	struct fimc_is_buf *buf = to_fimc_is_buf(vb);
 
 	/* Add buffer to the wait queue */
 	fimc_is_pipeline_buf_lock(ctx->pipeline);

@@ -66,11 +66,11 @@ static void isp_video_output_stop_streaming(struct vb2_queue *vq)
 	/* Release unused buffers */
 	while (!list_empty(&isp->wait_queue)) {
 		buf = fimc_is_isp_wait_queue_get(isp);
-		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_ERROR);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 	}
 	while (!list_empty(&isp->run_queue)) {
 		buf = fimc_is_isp_run_queue_get(isp);
-		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_ERROR);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 	}
 
 	clear_bit(STATE_RUNNING, &isp->output_state);
@@ -99,7 +99,7 @@ static int isp_video_output_queue_setup(struct vb2_queue *vq,
 
 static int isp_video_output_buffer_init(struct vb2_buffer *vb)
 {
-	struct fimc_is_buf *buf = container_of(vb, struct fimc_is_buf, vb);
+	struct fimc_is_buf *buf = to_fimc_is_buf(vb);
 
 	buf->paddr[0] = vb2_dma_contig_plane_dma_addr(vb, 0);
 	return 0;
@@ -126,7 +126,7 @@ static void isp_video_output_buffer_queue(struct vb2_buffer *vb)
 {
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct fimc_is_isp *isp = vb2_get_drv_priv(vq);
-	struct fimc_is_buf *buf = container_of(vb, struct fimc_is_buf, vb);
+	struct fimc_is_buf *buf = to_fimc_is_buf(vb);
 
 	fimc_is_pipeline_buf_lock(isp->pipeline);
 	fimc_is_isp_wait_queue_add(isp, buf);

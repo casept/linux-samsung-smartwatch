@@ -21,7 +21,7 @@
 
 #include <media/media-entity.h>
 #include <media/drv-intf/exynos-fimc.h>
-#include <media/videobuf2-core.h>
+#include <media/videobuf2-v4l2.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 
@@ -74,10 +74,15 @@ enum fimc_is_sensor_pos {
 };
 
 struct fimc_is_buf {
-	struct vb2_buffer vb;
+	struct vb2_v4l2_buffer vb;
 	struct list_head list;
 	unsigned int paddr[FIMC_IS_MAX_PLANES];
 };
+
+static inline struct fimc_is_buf *to_fimc_is_buf(struct vb2_buffer *vb)
+{
+	return container_of(to_vb2_v4l2_buffer(vb), struct fimc_is_buf, vb);
+}
 
 struct fimc_is_memory {
 	/* physical base address */
