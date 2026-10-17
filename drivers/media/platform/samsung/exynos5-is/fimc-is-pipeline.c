@@ -505,7 +505,7 @@ static int fimc_is_pipeline_initmem(struct fimc_is_pipeline *pipeline)
                 return -EINVAL;
         }
 	/* Allocate fw memory */
-        minfo->fw.vaddr = dma_zalloc_coherent(pipeline->dev, fw_minfo.fw_size,
+        minfo->fw.vaddr = dma_alloc_coherent(pipeline->dev, fw_minfo.fw_size,
 			&minfo->fw.paddr, GFP_KERNEL);
 	if (minfo->fw.vaddr == NULL)
 		return -ENOMEM;
@@ -534,7 +534,7 @@ static int fimc_is_pipeline_initmem(struct fimc_is_pipeline *pipeline)
 		 minfo->fw.vaddr);
 
 	/* Allocate shot buffer */
-        minfo->shot.vaddr = dma_zalloc_coherent(pipeline->dev,
+        minfo->shot.vaddr = dma_alloc_coherent(pipeline->dev,
                         fw_minfo.shot_size,
 			&minfo->shot.paddr, GFP_KERNEL);
 	if (minfo->shot.vaddr == NULL) {
