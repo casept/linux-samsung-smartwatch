@@ -608,7 +608,7 @@ int __init fimc_is_init(void)
 	return platform_driver_register(&fimc_is_driver);
 }
 
-void __exit fimc_is_cleanup(void)
+void fimc_is_cleanup(void)
 {
 	platform_driver_unregister(&fimc_is_driver);
 }

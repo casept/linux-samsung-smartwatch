@@ -164,8 +164,8 @@ struct fimc_is_event_listener {
 int fimc_is_init(void);
 void fimc_is_cleanup(void);
 #else
-int fimc_is_init(void) { return 0; }
-void fimc_is_cleanup(void) { };
+static inline int fimc_is_init(void) { return 0; }
+static inline void fimc_is_cleanup(void) { }
 #endif
 
 #endif
