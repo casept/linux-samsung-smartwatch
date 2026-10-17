@@ -24,17 +24,14 @@
 #define SMC_CMD_L2X0SETUP2	(-23)
 #define SMC_CMD_L2X0INVALL	(-24)
 #define SMC_CMD_L2X0DEBUG	(-25)
-/* For Register Access */
-#define SMC_CMD_REG		(-101)
-#define SMC_REG_SFR_W(a)	((0x1 << 30) | ((a) >> 2))
-#define SMC_REG_SFR_R(a)	((0x3 << 30) | ((a) >> 2))
-
 /* For Accessing CP15/SFR (General) */
 #define SMC_CMD_REG		(-101)
 
 /* defines for SMC_CMD_REG */
 #define SMC_REG_CLASS_SFR_W	(0x1 << 30)
 #define SMC_REG_ID_SFR_W(addr)	(SMC_REG_CLASS_SFR_W | ((addr) >> 2))
+#define SMC_REG_CLASS_SFR_R	(0x3 << 30)
+#define SMC_REG_ID_SFR_R(addr)	(SMC_REG_CLASS_SFR_R | ((addr) >> 2))
 
 #ifndef __ASSEMBLY__
 

@@ -149,13 +149,13 @@ static int exynos_resume(void)
 
 static int exynos_readsfr(unsigned int addr, unsigned int *value)
 {
-	*value = exynos_smc2(SMC_CMD_REG, SMC_REG_SFR_R(addr), 0, 0);
+	*value = exynos_smc2(SMC_CMD_REG, SMC_REG_ID_SFR_R(addr), 0, 0);
 	return 0;
 }
 
 static int exynos_writesfr(unsigned int addr, unsigned int value)
 {
-	exynos_smc(SMC_CMD_REG, SMC_REG_SFR_W(addr), value, 0);
+	exynos_smc(SMC_CMD_REG, SMC_REG_ID_SFR_W(addr), value, 0);
 	return 0;
 }
 
@@ -166,8 +166,8 @@ static const struct firmware_ops exynos_firmware_ops = {
 	.cpu_boot		= exynos_cpu_boot,
 	.suspend		= IS_ENABLED(CONFIG_PM_SLEEP) ? exynos_suspend : NULL,
 	.resume			= IS_ENABLED(CONFIG_EXYNOS_CPU_SUSPEND) ? exynos_resume : NULL,
-	.readsfr	= exynos_readsfr,
-	.writesfr	= exynos_writesfr,
+	.readsfr		= exynos_readsfr,
+	.writesfr		= exynos_writesfr,
 };
 
 static void exynos_l2_write_sec(unsigned long val, unsigned reg)
