@@ -180,8 +180,8 @@ struct fimc_is_fw_commands{
 struct fimc_is_fw_data {
         unsigned int		 		 version;
         const struct fimc_is_fw_commands 	 instruction_set;
-        const struct mcuctl_sreg_desc const	*mcuctl_sreg_map;
-        const unsigned int const		*interrupt_map;
+        const struct mcuctl_sreg_desc		*mcuctl_sreg_map;
+        const unsigned int			*interrupt_map;
         unsigned int				 interrupt_map_size;
 };
 

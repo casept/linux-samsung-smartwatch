@@ -405,7 +405,7 @@ static int fimc_is_pipeline_unregister_subdevs(struct fimc_is_pipeline *p)
 	return 0;
 }
 
-void fimc_is_pipeline_notify(struct fimc_is_event_listener *listener,
+static void fimc_is_pipeline_notify(struct fimc_is_event_listener *listener,
                              unsigned int event_id,
                              void *arg)
 {
@@ -1226,7 +1226,7 @@ void fimc_is_pipeline_buf_unlock(struct fimc_is_pipeline *pipeline)
 	spin_unlock_irqrestore(&pipeline->slock_buf, pipeline->slock_flags);
 }
 
-int fimc_is_pipeline_set_params(struct fimc_is_pipeline *pipeline)
+static int fimc_is_pipeline_set_params(struct fimc_is_pipeline *pipeline)
 {
 	int ret;
         struct v4l2_rect crop_rect = {0,};
@@ -1894,7 +1894,7 @@ err_exit:
 	return ret;
 }
 
-int fimc_is_pipeline_stop_fast_path(struct fimc_is_pipeline *pipeline)
+static int fimc_is_pipeline_stop_fast_path(struct fimc_is_pipeline *pipeline)
 {
         unsigned long timeout = FIMC_IS_COMMAND_TIMEOUT/2;
 

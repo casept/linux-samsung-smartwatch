@@ -370,7 +370,7 @@ static const struct of_device_id fimc_is_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, fimc_is_of_match);
 
-int fimc_is_clk_enable(struct fimc_is *is)
+static int fimc_is_clk_enable(struct fimc_is *is)
 {
         int i, ret = 0;
 
@@ -391,7 +391,7 @@ int fimc_is_clk_enable(struct fimc_is *is)
         return ret;
 }
 
-void fimc_is_clk_disable(struct fimc_is *is)
+static void fimc_is_clk_disable(struct fimc_is *is)
 {
         int i;
         for (i = 0; i < IS_CLK_GATE_MAX; ++i)

@@ -128,5 +128,9 @@ int fimc_is_itf_shot_nblk(struct fimc_is_interface *itf,
 int fimc_is_itf_power_down(struct fimc_is_interface *itf,
 		unsigned int instance);
 int fimc_is_itf_hw_running(struct fimc_is_interface *itf);
+int fimc_is_itf_i2c_lock(struct fimc_is_interface *itf,
+			 unsigned int instance, int i2c_clk, bool lock);
+int fimc_is_itf_sys_ctrl(struct fimc_is_interface *itf,
+			 unsigned int instance, int cmd, int val);
 void fimc_is_itf_notify_frame_done(struct fimc_is_interface *itf);
 #endif
