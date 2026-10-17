@@ -1,0 +1,228 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/samsung,exynos3250-fimc-is.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Samsung Exynos3250 SoC Imaging Subsystem (FIMC-IS)
+
+maintainers:
+  - Davids Paskevics <davids.paskevics@gmail.com>
+
+description:
+  The Exynos3250 FIMC-IS is a cut down version of the Exynos5 FIMC-IS. Its
+  firmware runs on a dedicated ARM Cortex-A5 and drives the ISP, DRC, FD and
+  scaler blocks, as well as the image sensors on the ISP I2C bus. The
+  FIMC-LITE and MIPI CSIS instances feeding it are described as its child
+  nodes, and the FIMC-IS acts as the media device for all of them.
+
+properties:
+  compatible:
+    const: samsung,exynos3250-fimc-is
+
+  reg:
+    maxItems: 1
+    description: MCUCTL registers, the mailbox to the firmware.
+
+  ranges: true
+
+  '#address-cells':
+    const: 1
+
+  '#size-cells':
+    const: 1
+
+  interrupts:
+    items:
+      - description: MCUCTL interrupt, the firmware's messages
+      - description: second MCUCTL interrupt
+
+  clocks:
+    maxItems: 17
+
+  clock-names:
+    items:
+      - const: isp
+      - const: mcu_isp
+      - const: isp_divmpwm
+      - const: isp_div0
+      - const: isp_div1
+      - const: mcu_isp_div0
+      - const: mcu_isp_div1
+      - const: cam1
+      - const: mout_aclk400_mcuisp_sub
+      - const: div_aclk400_mcuisp
+      - const: mout_aclk400_mcuisp
+      - const: mout_aclk266_0
+      - const: mout_aclk266
+      - const: div_aclk266
+      - const: mout_aclk266_sub
+      - const: div_mpll_pre
+      - const: fin_pll
+
+  memory-region:
+    maxItems: 1
+    description:
+      Memory to load the firmware to. The firmware has to be placed at a
+      64 MiB aligned address.
+
+  pinctrl-0: true
+
+  pinctrl-names:
+    items:
+      - const: default
+
+  power-domains:
+    maxItems: 1
+
+  samsung,pmu-syscon:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description:
+      Power Management Unit (PMU) system controller interface, used to
+      power, start and reset the ISP.
+
+patternProperties:
+  "^fimc-lite@[0-9a-f]+$":
+    type: object
+    $ref: samsung,exynos4212-fimc-lite.yaml#
+
+  "^csis@[0-9a-f]+$":
+    type: object
+    $ref: samsung,exynos4210-csis.yaml#
+
+  "^i2c-isp@[0-9a-f]+$":
+    type: object
+    $ref: /schemas/i2c/i2c-controller.yaml#
+    unevaluatedProperties: false
+    description:
+      ISP I2C bus controller. The image sensors controlled by the firmware
+      are its child nodes.
+
+    properties:
+      compatible:
+        const: samsung,exynos4212-i2c-isp
+
+      reg:
+        maxItems: 1
+
+      clocks:
+        maxItems: 1
+
+      clock-names:
+        items:
+          - const: i2c_isp
+
+      pinctrl-0: true
+
+      pinctrl-names:
+        items:
+          - const: default
+
+    required:
+      - compatible
+      - reg
+      - clocks
+      - clock-names
+
+required:
+  - compatible
+  - reg
+  - '#address-cells'
+  - '#size-cells'
+  - clocks
+  - clock-names
+  - interrupts
+  - ranges
+  - samsung,pmu-syscon
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/exynos3250.h>
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+
+    fimc-is@12180000 {
+        compatible = "samsung,exynos3250-fimc-is";
+        reg = <0x12180000 0x10000>;
+        interrupts = <GIC_SPI 196 IRQ_TYPE_LEVEL_HIGH>,
+                     <GIC_SPI 197 IRQ_TYPE_LEVEL_HIGH>;
+        clocks = <&cmu_isp CLK_ISP>,
+                 <&cmu_isp CLK_MCUISP>,
+                 <&cmu_isp CLK_DIV_MPWM>,
+                 <&cmu_isp CLK_DIV_ISP0>,
+                 <&cmu_isp CLK_DIV_ISP1>,
+                 <&cmu_isp CLK_DIV_MCUISP0>,
+                 <&cmu_isp CLK_DIV_MCUISP1>,
+                 <&cmu CLK_CAM1>,
+                 <&cmu CLK_MOUT_ACLK_400_MCUISP_SUB>,
+                 <&cmu CLK_DIV_ACLK_400_MCUISP>,
+                 <&cmu CLK_MOUT_ACLK_400_MCUISP>,
+                 <&cmu CLK_MOUT_ACLK_266_0>,
+                 <&cmu CLK_MOUT_ACLK_266>,
+                 <&cmu CLK_DIV_ACLK_266>,
+                 <&cmu CLK_MOUT_ACLK_266_SUB>,
+                 <&cmu CLK_DIV_MPLL_PRE>,
+                 <&cmu CLK_FIN_PLL>;
+        clock-names = "isp", "mcu_isp", "isp_divmpwm",
+                      "isp_div0", "isp_div1",
+                      "mcu_isp_div0", "mcu_isp_div1", "cam1",
+                      "mout_aclk400_mcuisp_sub",
+                      "div_aclk400_mcuisp",
+                      "mout_aclk400_mcuisp",
+                      "mout_aclk266_0", "mout_aclk266",
+                      "div_aclk266", "mout_aclk266_sub",
+                      "div_mpll_pre", "fin_pll";
+        memory-region = <&fimc_is_mem>;
+        power-domains = <&pd_isp>;
+        samsung,pmu-syscon = <&pmu_system_controller>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+
+        fimc-lite@120a0000 {
+            compatible = "samsung,exynos3250-fimc-lite";
+            reg = <0x120a0000 0x1000>;
+            interrupts = <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH>;
+            clocks = <&cmu_isp CLK_LITE0>;
+            clock-names = "flite";
+            power-domains = <&pd_isp>;
+        };
+
+        csis@120c0000 {
+            compatible = "samsung,exynos3250-csis";
+            reg = <0x120c0000 0x4000>;
+            interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
+            clocks = <&cmu_isp CLK_CSIS0>;
+            clock-names = "csis";
+            bus-width = <2>;
+            power-domains = <&pd_cam>;
+            phys = <&mipi_phy 0>;
+            phy-names = "csis";
+            vddcore-supply = <&ldo6_reg>;
+            vddio-supply = <&ldo6_reg>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port@3 {
+                reg = <3>;
+
+                csis0_ep: endpoint {
+                    remote-endpoint = <&s5k8b1_ep>;
+                    data-lanes = <1>;
+                    samsung,csis-hs-settle = <16>;
+                };
+            };
+        };
+
+        i2c-isp@12130000 {
+            compatible = "samsung,exynos4212-i2c-isp";
+            reg = <0x12130000 0x100>;
+            clocks = <&cmu_isp CLK_I2C0_ISP>;
+            clock-names = "i2c_isp";
+            pinctrl-names = "default";
+            pinctrl-0 = <&fimc_is_i2c0>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+        };
+    };
