@@ -530,6 +530,9 @@ static int fimc_is_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
+	INIT_LIST_HEAD(&is->event_listeners);
+	spin_lock_init(&is->events_lock);
+
 	platform_set_drvdata(pdev, is);
 	pm_runtime_enable(dev);
 	if (!pm_runtime_enabled(dev)) {
@@ -546,7 +549,7 @@ static int fimc_is_probe(struct platform_device *pdev)
 	/* Get IS-sensor contexts */
 	ret = fimc_is_parse_sensor(is);
 	if (ret < 0)
-		goto err_clk;
+		goto err_rpm;
 
 	/* Initialize FIMC Pipeline */
 	for (i = 0; i < is->drvdata->num_instances; i++) {
@@ -568,21 +571,25 @@ static int fimc_is_probe(struct platform_device *pdev)
 	if (is->drvdata->master_node) {
 		ret = exynos_camera_register(dev, &is->md);
 		if (ret < 0)
-			goto err_cam;
+			goto err_depopulate;
 	}
-
-	INIT_LIST_HEAD(&is->event_listeners);
-	spin_lock_init(&is->events_lock);
 
 	dev_dbg(dev, "FIMC-IS registered successfully\n");
 
 	return 0;
-err_cam:
-	exynos_camera_unregister(is->md);
+err_depopulate:
+	/*
+	 * Keep the child devices around when deferring, re-creating them would
+	 * trigger the next probe attempt right away, over and over again.
+	 */
+	if (ret != -EPROBE_DEFER)
+		of_platform_depopulate(dev);
 err_itf:
 	fimc_is_interface_destroy(&is->interface);
 err_sd:
 	fimc_is_pipelines_destroy(is);
+err_rpm:
+	pm_runtime_disable(dev);
 err_clk:
 	fimc_is_put_clocks(is);
 err_fw_mem:
@@ -599,6 +606,7 @@ static void fimc_is_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	exynos_camera_unregister(is->md);
+	of_platform_depopulate(dev);
 
 	pm_runtime_disable(dev);
 	pm_runtime_set_suspended(dev);
