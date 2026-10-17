@@ -11,7 +11,8 @@ Required properties:
 - vdda-supply	  : analogue power supply (typically 2.8 V);
 - vddio-supply	  : digital I/O power supply (typically 1.8 V);
 - vddd-supply	  : digital core power supply (typically 1.2 V);
-- xshutdown-gpios : specifier of a GPIO connected to the XSHUTDOWN pin;
+- xshutdown-gpios : specifier of a GPIO connected to the active low
+		    XSHUTDOWN pin;
 - clocks	  : should contain the sensor's EXTCLK clock specifier, from
 		    the common clock bindings.
 - clock-names	  : should contain "extclk" entry;
