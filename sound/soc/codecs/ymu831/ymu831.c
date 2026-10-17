@@ -897,6 +897,7 @@ static void set_BIAS(
 	int	err;
 	struct MCDRV_HSDET_INFO	stHSDetInfo;
 	struct MCDRV_REG_INFO	reg_info;
+	UINT8	mbsel4;
 
 	if (mc_asoc_jack_status == SND_JACK_HEADPHONE) {
 		err	= _McDrv_Ctrl(MCDRV_GET_HSDET,
@@ -916,35 +917,32 @@ static void set_BIAS(
 	|| ((path_info->asHp[1].dSrcOnOff & MCDRV_ASRC_DAC0_R_ON) != 0)
 	|| ((path_info->asAdc0[0].dSrcOnOff & MCDRV_ASRC_MIC4_ON) != 0)
 	|| ((path_info->asAdc0[1].dSrcOnOff & MCDRV_ASRC_MIC4_ON) != 0)
-	|| ((path_info->asAdc1[0].dSrcOnOff & MCDRV_ASRC_MIC4_ON) != 0)) {
-		reg_info.bRegType = MCDRV_REGTYPE_ANA;
-		reg_info.bAddress = 13;
-		err	= _McDrv_Ctrl(MCDRV_READ_REG, (void *)&reg_info, NULL,
-					0);
-		if (err == MCDRV_SUCCESS) {
-			reg_info.bData &= 0x3F;
-			reg_info.bData |= 0x80;
-			err	= _McDrv_Ctrl(MCDRV_WRITE_REG,
-						(void *)&reg_info, NULL, 0);
-		}
-	} else {
-		reg_info.bRegType = MCDRV_REGTYPE_ANA;
-		reg_info.bAddress = 13;
-		err	= _McDrv_Ctrl(MCDRV_READ_REG, (void *)&reg_info, NULL,
-					0);
-		if (err == MCDRV_SUCCESS) {
-			reg_info.bData &= 0x3F;
-			reg_info.bData	|= mc_asoc_MBSEL4;
-			err	= _McDrv_Ctrl(MCDRV_WRITE_REG,
-						(void *)&reg_info, NULL, 0);
-		}
-	}
-	if (err != MCDRV_SUCCESS) {
-		;
-		dbg_info("%d: Error in set_BIAS\n", err);
-	}
+	|| ((path_info->asAdc1[0].dSrcOnOff & MCDRV_ASRC_MIC4_ON) != 0))
+		mbsel4	= 0x80;
+	else
+		mbsel4	= mc_asoc_MBSEL4;
 
 	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
+	/* each access costs a round trip through the core, skip it if we can */
+	if (mbsel4 != mc_asoc->mbsel4) {
+		reg_info.bRegType = MCDRV_REGTYPE_ANA;
+		reg_info.bAddress = 13;
+		err	= _McDrv_Ctrl(MCDRV_READ_REG, (void *)&reg_info, NULL,
+					0);
+		if (err == MCDRV_SUCCESS) {
+			reg_info.bData &= 0x3F;
+			reg_info.bData |= mbsel4;
+			err	= _McDrv_Ctrl(MCDRV_WRITE_REG,
+						(void *)&reg_info, NULL, 0);
+		}
+		if (err != MCDRV_SUCCESS) {
+			dbg_info("%d: Error in %s\n", err, __func__);
+			mc_asoc->mbsel4	= -1;
+		} else {
+			mc_asoc->mbsel4	= mbsel4;
+		}
+	}
+
 	if (mc_asoc->mic1_bias) {
 		bool mic1_on;
 
@@ -2152,7 +2150,8 @@ static int mc_asoc_add_widgets(struct snd_soc_component *codec)
 static void ymu831_dapm_update_locked(struct snd_soc_component *codec)
 {
 	struct mc_asoc_data	*mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	struct MCDRV_PATH_INFO	path_info;
+	struct ymu831_dapm	*ymu_dapm	= &mc_asoc->dapm;
+	struct MCDRV_PATH_INFO	path_info, cur_info;
 	int	active;
 	int	err;
 
@@ -2165,11 +2164,31 @@ static void ymu831_dapm_update_locked(struct snd_soc_component *codec)
 
 	mc_asoc_lock("ymu831_dapm_update");
 	set_BIAS(&path_info);
+
+	/*
+	 * DAPM calls this after every step of a power sequence. Setting a path
+	 * costs the core a full mute, power and volume cycle, so skip it when
+	 * neither the routes nor the core's state changed since the last time.
+	 */
+	if (ymu_dapm->valid &&
+	    !memcmp(&path_info, &ymu_dapm->requested, sizeof(path_info)) &&
+	    _McDrv_Ctrl(MCDRV_GET_PATH, &cur_info, NULL, 0) == MCDRV_SUCCESS &&
+	    !memcmp(&cur_info, &ymu_dapm->applied, sizeof(cur_info)))
+		goto unlock;
+
+	ymu_dapm->valid	= false;
 	err	= _McDrv_Ctrl(MCDRV_SET_PATH, &path_info, NULL, 0);
-	if (err != MCDRV_SUCCESS)
+	if (err != MCDRV_SUCCESS) {
 		dev_err(codec->dev, "failed to set path: %d\n", err);
-	else if (!active)
+		goto unlock;
+	}
+	if (!active)
 		auto_powerdown(codec);
+
+	ymu_dapm->requested	= path_info;
+	ymu_dapm->valid	= _McDrv_Ctrl(MCDRV_GET_PATH, &ymu_dapm->applied,
+				      NULL, 0) == MCDRV_SUCCESS;
+unlock:
 	mc_asoc_unlock("ymu831_dapm_update");
 }
 
@@ -3010,6 +3029,8 @@ static int mc_asoc_probe(
 		err	= -EIO;
 		goto error_init_hw;
 	}
+	mc_asoc->mbsel4		= -1;
+	mc_asoc->dapm.valid	= false;
 
 	reg_info.bRegType	= MCDRV_REGTYPE_ANA;
 	reg_info.bAddress	= 0;

@@ -147,6 +147,7 @@ struct mc_asoc_data {
 	struct mc_asoc_dsp_param	param_store[4][2];
 	struct mc_asoc_jack		jack;
 	struct ymu831_dapm		dapm;
+	int				mbsel4;
 	struct regmap			*regmap;
 	struct clk			*mclk;
 	bool				mclk_enabled;

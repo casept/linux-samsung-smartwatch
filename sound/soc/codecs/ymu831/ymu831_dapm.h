@@ -10,6 +10,10 @@ struct ymu831_dapm {
 	/* sink and source widget of every route bit */
 	struct snd_soc_dapm_widget	**widgets;
 	struct snd_soc_dapm_widget	*micbias[BIAS_PATH_CHANNELS];
+	/* last path handed to the core, and the path the core made of it */
+	struct MCDRV_PATH_INFO		requested;
+	struct MCDRV_PATH_INFO		applied;
+	bool				valid;
 };
 
 extern const struct snd_soc_dapm_widget ymu831_dapm_widgets[];
