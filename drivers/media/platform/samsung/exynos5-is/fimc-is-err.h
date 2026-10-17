@@ -1,13 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Samsung Exynos5 SoC series FIMC-IS driver
  *
  * Copyright (c) 2013 Samsung Electronics Co., Ltd
  * Arun Kumar K <arun.kk@samsung.com>
  * Kil-yeon Lim <kilyeon.im@samsung.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 
 #ifndef FIMC_IS_ERR_H
