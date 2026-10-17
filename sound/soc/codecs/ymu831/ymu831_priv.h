@@ -267,13 +267,6 @@ struct mc_asoc_jack {
 	struct snd_soc_jack *hs_jack;
 };
 
-struct mc_asoc_platform_data {
-	void	(*set_ext_micbias)(int en);
-	void	(*set_codec_ldod)(int status);
-	void	(*set_codec_mclk)(bool enable, bool forced);
-	int	irq;
-};
-
 struct mc_asoc_data {
 	struct mutex			mutex;
 	struct mc_asoc_setup		setup;
@@ -289,7 +282,10 @@ struct mc_asoc_data {
 	struct MCDRV_HSDET2_INFO	hsdet2_store;
 	struct mc_asoc_dsp_param	param_store[4][2];
 	struct mc_asoc_jack		jack;
-	struct mc_asoc_platform_data	*pdata;
+	struct clk			*mclk;
+	struct gpio_desc		*ldo_gpio;
+	struct gpio_desc		*ext_micbias_gpio;
+	int				irq;
 	int	(*penableclkfn)(struct snd_soc_component *, int, bool);
 };
 

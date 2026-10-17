@@ -3942,18 +3942,13 @@ static void set_BIAS(
 	}
 
 	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-	if (mc_asoc->pdata != NULL) {
-		if (mc_asoc->pdata->set_ext_micbias != NULL) {
-			if ((path_info->asAdc0[0].dSrcOnOff&MCDRV_ASRC_MIC1_ON)
-			|| (path_info->asAdc0[1].dSrcOnOff&MCDRV_ASRC_MIC1_ON)
-			|| (path_info->asAdc1[0].dSrcOnOff&MCDRV_ASRC_MIC1_ON)
-			) {
-				;
-				(*mc_asoc->pdata->set_ext_micbias)(1);
-			} else {
-				(*mc_asoc->pdata->set_ext_micbias)(0);
-			}
-		}
+	if (mc_asoc->ext_micbias_gpio) {
+		bool mic1_on;
+
+		mic1_on = (path_info->asAdc0[0].dSrcOnOff & MCDRV_ASRC_MIC1_ON) ||
+			  (path_info->asAdc0[1].dSrcOnOff & MCDRV_ASRC_MIC1_ON) ||
+			  (path_info->asAdc1[0].dSrcOnOff & MCDRV_ASRC_MIC1_ON);
+		gpiod_set_value_cansleep(mc_asoc->ext_micbias_gpio, mic1_on);
 	}
 }
 
@@ -8137,7 +8132,7 @@ static void irq_func(struct work_struct *work)
 
 	if (IRQ_TYPE == IRQ_TYPE_LEVEL_LOW) {
 		;
-		enable_irq(mc_asoc->pdata->irq);
+		enable_irq(mc_asoc->irq);
 	}
 	kfree(work);
 }
@@ -8160,7 +8155,7 @@ irqreturn_t irq_handler(int irq, void *data)
 	if (work) {
 		if (IRQ_TYPE == IRQ_TYPE_LEVEL_LOW) {
 			;
-			disable_irq_nosync(mc_asoc->pdata->irq);
+			disable_irq_nosync(mc_asoc->irq);
 		}
 		INIT_WORK(work, irq_func);
 		ret	= queue_work(my_wq, work);
@@ -8176,19 +8171,19 @@ static int init_irq(struct snd_soc_component *codec)
 	TRACE_FUNC();
 
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
-	if (!mc_asoc->pdata->irq) {
+	if (!mc_asoc->irq) {
 		dev_err(codec->dev, "%s : No irq supported\n", __func__);
 		return 0;
 	}
 
 	my_wq	= create_workqueue("irq_queue");
 
-	err	= irq_set_irq_type(mc_asoc->pdata->irq, IRQ_TYPE);
+	err	= irq_set_irq_type(mc_asoc->irq, IRQ_TYPE);
 	if (err < 0) {
 		dev_err(codec->dev, "Failed to set_irq_type: %d\n", err);
 		return -EIO;
 	}
-	err	= request_irq(mc_asoc->pdata->irq, irq_handler, 0,
+	err	= request_irq(mc_asoc->irq, irq_handler, 0,
 			      "MC_YAMAHA IRQ", NULL);
 	if (err < 0) {
 		dev_err(codec->dev, "Failed to request_irq: %d\n", err);
@@ -8202,12 +8197,12 @@ static int term_irq(void)
 
 	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
 
-	if (!mc_asoc->pdata->irq) {
+	if (!mc_asoc->irq) {
 		dev_err(mc_asoc_codec->dev, "%s : No irq supported\n", __func__);
 		return 0;
 	}
 
-	free_irq(mc_asoc->pdata->irq, NULL);
+	free_irq(mc_asoc->irq, NULL);
 	destroy_workqueue(my_wq);
 
 	return 0;
@@ -8268,13 +8263,8 @@ static int mc_asoc_probe(
 
 	/* init hardware */
 	mc_asoc->setup	= mc_asoc_cfg_setup;
-	mc_asoc->setup.init2.bOption[19]	= 1;
-	if (mc_asoc->pdata != NULL) {
-		if (mc_asoc->pdata->set_codec_ldod != NULL) {
-			;
-			mc_asoc->setup.init2.bOption[19]	= 0;
-		}
-	}
+	/* external control of the digital LDO */
+	mc_asoc->setup.init2.bOption[19]	= mc_asoc->ldo_gpio ? 0 : 1;
 	err	= _McDrv_Ctrl(MCDRV_INIT, &mc_asoc->setup.init,
 						&mc_asoc->setup.init2, 0);
 	if (err != MCDRV_SUCCESS) {
@@ -8611,7 +8601,7 @@ static int mc_asoc_suspend(
 					stHSDetInfo_Default.bDlyIrqStop;
 
 	if (device_may_wakeup(codec->dev))
-		enable_irq_wake(mc_asoc->pdata->irq);
+		enable_irq_wake(mc_asoc->irq);
 
 	stHSDetInfo	= stHSDetInfo_Suspend;
 	if (mc_asoc_ver_id == 0) {
@@ -8650,8 +8640,7 @@ static int mc_asoc_suspend(
 	&& (mixer_ctl_info.btmic_play == 0)
 	&& (mixer_ctl_info.lin1_play == 0)
 	&& (mixer_ctl_info.dtmf_control == 0)) {
-		if (mc_asoc->pdata->set_codec_mclk)
-			mc_asoc->pdata->set_codec_mclk(0, 1);
+		clk_disable_unprepare(mc_asoc->mclk);
 	}
 #endif
 	mc_asoc_suspended	= 1;
@@ -8681,8 +8670,11 @@ static int mc_asoc_resume(
 		return -EINVAL;
 
 #ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	if (mc_asoc->pdata->set_codec_mclk)
-		mc_asoc->pdata->set_codec_mclk(1, 0);
+	err = clk_prepare_enable(mc_asoc->mclk);
+	if (err) {
+		dev_err(codec->dev, "failed to enable MCLK: %d\n", err);
+		return err;
+	}
 #endif
 
 	mc_asoc_suspended	= 0;
@@ -8749,10 +8741,10 @@ static int mc_asoc_resume(
 		goto error;
 	}
 	if (device_may_wakeup(codec->dev)) {
-		if (!mc_asoc->pdata->irq)
+		if (!mc_asoc->irq)
 			dev_err(codec->dev, "%s : No irq supported\n", __func__);
 		else
-			disable_irq_wake(mc_asoc->pdata->irq);
+			disable_irq_wake(mc_asoc->irq);
 	}
 
 
@@ -8927,59 +8919,12 @@ void mc_asoc_set_codec_ldod(int status)
 	struct mc_asoc_data	*mc_asoc	= NULL;
 
 	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-	if (mc_asoc->pdata != NULL) {
-		if (mc_asoc->pdata->set_codec_ldod != NULL) {
-			(*mc_asoc->pdata->set_codec_ldod)(status);
-			if (status == 1) {
-				;
-				usleep_range(500, 600);
-			}
-		}
-	}
-}
+	if (!mc_asoc->ldo_gpio)
+		return;
 
-static struct gpio_desc *codec_en_gpio;
-
-static void ymu831_set_ldod(int status)
-{
-	gpiod_set_value_cansleep(codec_en_gpio, status);
-}
-
-static struct clk *mc_asoc_mclk;
-
-static void ymu831_set_mclk(bool enable, bool forced)
-{
-	if (enable) {
-		if (clk_prepare_enable(mc_asoc_mclk))
-			dev_err(mc_asoc_get_dev(), "failed to enable MCLK\n");
-	} else {
-		clk_disable_unprepare(mc_asoc_mclk);
-	}
-}
-
-static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
-{
-	struct mc_asoc_platform_data *pdata;
-
-	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
-	if (!pdata) {
-		dev_err(dev, "failed to allocate platform data\n");
-		return ERR_PTR(-ENOMEM);
-	}
-
-	codec_en_gpio = devm_gpiod_get(dev, "codec-en", GPIOD_OUT_HIGH);
-	if (IS_ERR(codec_en_gpio))
-		return dev_err_cast_probe(dev, codec_en_gpio,
-					  "failed to get codec-en GPIO\n");
-
-	mc_asoc_mclk = devm_clk_get_optional(dev, "mclk");
-	if (IS_ERR(mc_asoc_mclk))
-		return dev_err_cast_probe(dev, mc_asoc_mclk,
-					  "failed to get MCLK\n");
-
-	pdata->set_codec_mclk = ymu831_set_mclk;
-	pdata->set_codec_ldod = ymu831_set_ldod;
-	return pdata;
+	gpiod_set_value_cansleep(mc_asoc->ldo_gpio, status);
+	if (status == 1)
+		usleep_range(500, 600);
 }
 
 static int mc_asoc_spi_probe(
@@ -8999,22 +8944,36 @@ static int mc_asoc_spi_probe(
 		goto err_alloc_priv;
 	}
 	mc_asoc	= &mc_asoc_priv->data;
-	mc_asoc->pdata	=
-			(struct mc_asoc_platform_data *)spi->dev.platform_data;
+	mc_asoc->irq	= spi->irq;
 
-	if (spi->dev.of_node) {
-		mc_asoc->pdata = mc_asoc_parse_dt(&spi->dev);
-		if (IS_ERR(mc_asoc->pdata))
-			return PTR_ERR(mc_asoc->pdata);
-		mc_asoc->pdata->irq = spi->irq;
-	}
+	mc_asoc->ldo_gpio = devm_gpiod_get_optional(&spi->dev, "codec-en",
+						    GPIOD_OUT_HIGH);
+	if (IS_ERR(mc_asoc->ldo_gpio))
+		return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->ldo_gpio),
+				     "failed to get codec-en GPIO\n");
+
+	mc_asoc->ext_micbias_gpio = devm_gpiod_get_optional(&spi->dev,
+							    "ext-micbias",
+							    GPIOD_OUT_LOW);
+	if (IS_ERR(mc_asoc->ext_micbias_gpio))
+		return dev_err_probe(&spi->dev,
+				     PTR_ERR(mc_asoc->ext_micbias_gpio),
+				     "failed to get ext-micbias GPIO\n");
 
 #ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	if (mc_asoc->pdata->set_codec_mclk)
-		mc_asoc->pdata->set_codec_mclk(1, 0);
+	/* The codec needs MCLK whenever it is not suspended */
+	mc_asoc->mclk = devm_clk_get_optional_enabled(&spi->dev, "mclk");
+#else
+	mc_asoc->mclk = devm_clk_get_optional(&spi->dev, "mclk");
 #endif
+	if (IS_ERR(mc_asoc->mclk))
+		return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->mclk),
+				     "failed to get MCLK\n");
 
-	mutex_init(&mc_asoc->mutex);
+	err = devm_mutex_init(&spi->dev, &mc_asoc->mutex);
+	if (err)
+		return err;
+
 	dev_set_drvdata(&spi->dev, mc_asoc_priv);
 
 	err	= devm_snd_soc_register_component(&spi->dev, &mc_asoc_codec_dev,
@@ -9031,23 +8990,6 @@ err_alloc_priv:
 
 exit:
 	return err;
-}
-
-static void mc_asoc_spi_remove(struct spi_device *spi)
-{
-	struct mc_asoc_priv	*mc_asoc_priv	= dev_get_drvdata(&spi->dev);
-	struct mc_asoc_data	*mc_asoc;
-
-	TRACE_FUNC();
-
-	mc_asoc = &mc_asoc_priv->data;
-
-#ifndef FEATURE_MCLK_CONTROL_BY_YMU831
-	if (mc_asoc->pdata && mc_asoc->pdata->set_codec_mclk)
-		mc_asoc->pdata->set_codec_mclk(0, 0);
-#endif
-
-	mutex_destroy(&mc_asoc_priv->data.mutex);
 }
 
 static const struct of_device_id mc_asoc_of_match[] = {
@@ -9069,7 +9011,6 @@ static struct spi_driver	mc_asoc_spi_driver = {
 	},
 	.id_table = mc_asoc_spi_ids,
 	.probe	= mc_asoc_spi_probe,
-	.remove	= mc_asoc_spi_remove,
 };
 /*
  * Module init and exit
