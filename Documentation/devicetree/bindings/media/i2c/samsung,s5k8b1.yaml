@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/i2c/samsung,s5k8b1.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Samsung S5K8B1(YX) raw image sensor
+
+maintainers:
+  - Davids Paskevics <davids.paskevics@gmail.com>
+
+description:
+  S5K8B1(YX) is a raw image sensor with a MIPI CSI-2 image data interface
+  and a CCI (I2C compatible) control bus.
+
+properties:
+  compatible:
+    const: samsung,s5k8b1
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  clock-names:
+    items:
+      - const: extclk
+
+  clock-frequency:
+    default: 24000000
+    description: Frequency to run extclk at.
+
+  xshutdown-gpios:
+    maxItems: 1
+    description: GPIO connected to the active low XSHUTDOWN pin.
+
+  vdda-supply:
+    description: Analogue voltage supply (typically 2.8 V).
+
+  vddio-supply:
+    description: I/O voltage supply (typically 1.8 V).
+
+  vddd-supply:
+    description: Digital core voltage supply (typically 1.2 V).
+
+  afvdd-supply:
+    description: Lens actuator voltage supply (typically 2.8 V).
+
+  port:
+    $ref: /schemas/graph.yaml#/$defs/port-base
+    additionalProperties: false
+
+    properties:
+      endpoint:
+        $ref: /schemas/media/video-interfaces.yaml#
+        unevaluatedProperties: false
+
+        properties:
+          data-lanes:
+            minItems: 1
+            maxItems: 2
+
+        required:
+          - data-lanes
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - clock-names
+  - xshutdown-gpios
+  - vdda-supply
+  - vddio-supply
+  - vddd-supply
+  - afvdd-supply
+  - port
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/exynos3250.h>
+    #include <dt-bindings/gpio/gpio.h>
+
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        image-sensor@6a {
+            compatible = "samsung,s5k8b1";
+            reg = <0x6a>;
+            clocks = <&cmu CLK_SCLK_CAM1>;
+            clock-names = "extclk";
+            clock-frequency = <24000000>;
+            xshutdown-gpios = <&gpm2 3 GPIO_ACTIVE_LOW>;
+            vdda-supply = <&ldo13_reg>;
+            vddio-supply = <&ldo21_reg>;
+            vddd-supply = <&ldo22_reg>;
+            afvdd-supply = <&ldo18_reg>;
+
+            port {
+                endpoint {
+                    remote-endpoint = <&csis0_ep>;
+                    data-lanes = <1>;
+                };
+            };
+        };
+    };
