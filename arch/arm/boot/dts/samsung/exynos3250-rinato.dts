@@ -269,6 +269,14 @@
 		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&codec_dai>;
 		simple-audio-card,frame-master = <&codec_dai>;
+		simple-audio-card,widgets =
+			"Microphone", "Mic",
+			"Speaker", "Speaker";
+		simple-audio-card,routing =
+			"MIC2", "Mic",
+			"Mic", "MICBIAS2",
+			"Speaker", "SPL",
+			"Speaker", "SPR";
 
 		simple-audio-card,cpu {
 			sound-dai = <&i2s2 0>;

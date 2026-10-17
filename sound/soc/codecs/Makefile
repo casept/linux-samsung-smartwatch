@@ -418,6 +418,7 @@ snd-soc-wsa881x-y := wsa881x.o
 snd-soc-wsa883x-y := wsa883x.o
 snd-soc-wsa884x-y := wsa884x.o
 snd-soc-ymu831-y := ymu831/ymu831.o \
+			ymu831/ymu831_dapm.o \
 			ymu831/ymu831_dbg.o \
 			ymu831/mcbdspdrv.o \
 			ymu831/mccdspdrv.o \

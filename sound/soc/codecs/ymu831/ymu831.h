@@ -80,6 +80,5 @@
 #define YMC_DSP_VOICECALL_BT		(0x00000E00)
 #define YMC_DSP_VOICECALL_BASE_COMMON	(0x00000F00)
 
-int	ymu831_get_codec_suspended(struct snd_soc_component *codec);
 
 #endif

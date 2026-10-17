@@ -25,6 +25,7 @@
 
 #include <sound/soc.h>
 #include "mcdriver.h"
+#include "ymu831_dapm.h"
 
 #undef	MC_ASOC_TEST
 
@@ -58,33 +59,6 @@ enum {
 	MC_ASOC_AVOL_LINEOUT1,
 	MC_ASOC_AVOL_LINEOUT2,
 	MC_ASOC_AVOL_SP_GAIN,
-
-	MC_ASOC_DVOL_MASTER,
-	MC_ASOC_DVOL_VOICE,
-	MC_ASOC_DVOL_APLAY_A,
-	MC_ASOC_DVOL_APLAY_D,
-
-	MC_ASOC_VOICE_RECORDING,
-
-	MC_ASOC_AUDIO_MODE_PLAY,
-	MC_ASOC_AUDIO_MODE_CAP,
-	MC_ASOC_OUTPUT_PATH,
-	MC_ASOC_INPUT_PATH,
-	MC_ASOC_INCALL_MIC_SP,
-	MC_ASOC_INCALL_MIC_RC,
-	MC_ASOC_INCALL_MIC_HP,
-	MC_ASOC_INCALL_MIC_LO1,
-	MC_ASOC_INCALL_MIC_LO2,
-
-	MC_ASOC_MAINMIC_PLAYBACK_PATH,
-	MC_ASOC_SUBMIC_PLAYBACK_PATH,
-	MC_ASOC_2MIC_PLAYBACK_PATH,
-	MC_ASOC_HSMIC_PLAYBACK_PATH,
-	MC_ASOC_BTMIC_PLAYBACK_PATH,
-	MC_ASOC_LIN1_PLAYBACK_PATH,
-
-	MC_ASOC_DTMF_CONTROL,
-	MC_ASOC_DTMF_OUTPUT,
 
 	MC_ASOC_SWITCH_CLOCK,
 
@@ -153,84 +127,12 @@ enum {
 
 	MC_ASOC_VOICE_OUT_SWAP,
 
-	MC_ASOC_ADIF0_SOURCE,
-	MC_ASOC_ADIF1_SOURCE,
-	MC_ASOC_ADIF2_SOURCE,
-
-	MC_ASOC_DSP_PARAM,
-	MC_ASOC_DSP_PARAM_OPT,
 	MC_ASOC_CLEAR_DSP_PARAM,
 
-	MC_ASOC_PLAYBACK_SCENARIO,
-	MC_ASOC_CAPTURE_SCENARIO,
-
-	MC_ASOC_PARAMETER_SETTING,
-
-	MC_ASOC_MAIN_MIC,
-	MC_ASOC_SUB_MIC,
-	MC_ASOC_HS_MIC,
 	MC_ASOC_N_REG
 };
-#define MC_ASOC_N_VOL_REG			(MC_ASOC_DVOL_APLAY_D+1)
 
-
-#define MC_ASOC_AUDIO_MODE_OFF			(0)
-#define MC_ASOC_AUDIO_MODE_AUDIO		(1)
-#define MC_ASOC_AUDIO_MODE_INCALL		(2)
-#define MC_ASOC_AUDIO_MODE_AUDIO_INCALL		(3)
-#define MC_ASOC_AUDIO_MODE_INCOMM		(4)
-#define MC_ASOC_AUDIO_MODE_KARAOKE		(5)
-#define MC_ASOC_AUDIO_MODE_INCALL2		(6)
-#define MC_ASOC_AUDIO_MODE_AUDIO_INCALL2	(7)
-#define MC_ASOC_AUDIO_MODE_INCOMM2		(8)
-#define MC_ASOC_AUDIO_MODE_INCALL3		(9)
-#define MC_ASOC_AUDIO_MODE_AUDIO_INCALL3	(10)
-#define MC_ASOC_AUDIO_MODE_INCALL4		(11)
-#define MC_ASOC_AUDIO_MODE_AUDIO_INCALL4	(12)
-#define MC_ASOC_AUDIO_MODE_AUDIOCP		(13)
-
-#define MC_ASOC_AUDIO_MODE_AUDIOEX		(5)
-#define MC_ASOC_AUDIO_MODE_AUDIOVR		(6)
-#define MC_ASOC_AUDIO_MODE_AUDIOLB		(7)
-
-#define MC_ASOC_OUTPUT_PATH_SP			(0)
-#define MC_ASOC_OUTPUT_PATH_RC			(1)
-#define MC_ASOC_OUTPUT_PATH_HP			(2)
-#define MC_ASOC_OUTPUT_PATH_HS			(3)
-#define MC_ASOC_OUTPUT_PATH_LO1			(4)
-#define MC_ASOC_OUTPUT_PATH_LO2			(5)
-#define MC_ASOC_OUTPUT_PATH_BT			(6)
-#define MC_ASOC_OUTPUT_PATH_SP_RC		(7)
-#define MC_ASOC_OUTPUT_PATH_SP_HP		(8)
-#define MC_ASOC_OUTPUT_PATH_SP_LO1		(9)
-#define MC_ASOC_OUTPUT_PATH_SP_LO2		(10)
-#define MC_ASOC_OUTPUT_PATH_SP_BT		(11)
-#define MC_ASOC_OUTPUT_PATH_LO1_RC		(12)
-#define MC_ASOC_OUTPUT_PATH_LO1_HP		(13)
-#define MC_ASOC_OUTPUT_PATH_LO1_BT		(14)
-#define MC_ASOC_OUTPUT_PATH_LO2_RC		(15)
-#define MC_ASOC_OUTPUT_PATH_LO2_HP		(16)
-#define MC_ASOC_OUTPUT_PATH_LO2_BT		(17)
-#define MC_ASOC_OUTPUT_PATH_LO1_LO2		(18)
-#define MC_ASOC_OUTPUT_PATH_LO2_LO1		(19)
-
-#define MC_ASOC_INPUT_PATH_MAINMIC		(0)
-#define MC_ASOC_INPUT_PATH_SUBMIC		(1)
-#define MC_ASOC_INPUT_PATH_2MIC			(2)
-#define MC_ASOC_INPUT_PATH_HS			(3)
-#define MC_ASOC_INPUT_PATH_BT			(4)
-#define MC_ASOC_INPUT_PATH_VOICECALL		(5)
-#define MC_ASOC_INPUT_PATH_VOICEUPLINK		(6)
-#define MC_ASOC_INPUT_PATH_VOICEDOWNLINK	(7)
-#define MC_ASOC_INPUT_PATH_LIN1			(8)
-
-#define MC_ASOC_INCALL_MIC_MAINMIC		(0)
-#define MC_ASOC_INCALL_MIC_SUBMIC		(1)
-#define MC_ASOC_INCALL_MIC_2MIC			(2)
-
-#define MC_ASOC_DTMF_OUTPUT_SP			(0)
-#define MC_ASOC_DTMF_OUTPUT_NORMAL		(1)
-
+#define MC_ASOC_N_VOL_REG			(MC_ASOC_AVOL_SP_GAIN + 1)
 
 /*
  * Driver private data structure
@@ -281,6 +183,7 @@ struct mc_asoc_data {
 	struct MCDRV_HSDET2_INFO	hsdet2_store;
 	struct mc_asoc_dsp_param	param_store[4][2];
 	struct mc_asoc_jack		jack;
+	struct ymu831_dapm		dapm;
 	struct regmap			*regmap;
 	struct clk			*mclk;
 	bool				mclk_enabled;
@@ -308,7 +211,6 @@ extern void	mc_asoc_read_data(UINT8	bSlaveAdr,
 extern	void	mc_asoc_set_codec_ldod(int status);
 extern	UINT8	mc_asoc_get_bus_select(void);
 extern	void	mc_asoc_enable_clock(int enable);
-
 
 /*
  * Debugging: the core command dumper and the traces are dynamic debug
