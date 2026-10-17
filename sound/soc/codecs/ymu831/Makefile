@@ -10,7 +10,6 @@ snd-soc-yamaha_ymu831-objs := ymu831.o ymu831_dbg.o \
 	mcpacking.o	\
 	mcparser.o	\
 	mcresctrl.o	\
-	mcservice.o	\
-	ymu831_dbg_sec.o
+	mcservice.o
 
 obj-$(CONFIG_SND_SOC_YAMAHA_YMU831) += snd-soc-yamaha_ymu831.o

@@ -319,36 +319,16 @@ extern	void	mc_asoc_enable_clock(int enable);
 
 
 /*
- * For debugging
+ * Debugging: the core command dumper and the traces are dynamic debug
+ * messages, register traffic is visible through the SPI tracepoints.
  */
-#ifdef CONFIG_SND_SOC_YAMAHA_YMU831_DEBUG
+#define dbg_info(format, arg...)	dev_dbg(mc_asoc_get_dev(), format, ## arg)
+#define TRACE_FUNC()	dev_dbg(mc_asoc_get_dev(), "%s\n", __func__)
 
-#define SHOW_REG_ACCESS
-#define dbg_info(format, arg...)	snd_printd(KERN_INFO format, ## arg)
-#define TRACE_FUNC()	snd_printd(KERN_INFO "<trace> %s()\n", __func__)
+struct device *mc_asoc_get_dev(void);
 #define _McDrv_Ctrl	McDrv_Ctrl_dbg
 
 extern SINT32	McDrv_Ctrl_dbg(
 			UINT32 dCmd, void *pvPrm1, void *pvPrm2, UINT32 dPrm);
-
-#else
-
-#ifdef CONFIG_SAMSUNG_PRODUCT_SHIP
-
-#define dbg_info(format, arg...)
-#define TRACE_FUNC()
-#define _McDrv_Ctrl McDrv_Ctrl
-
-#else
-
-#define dbg_info(format, arg...)	printk(KERN_DEBUG "ymu831 " \
-								format, ## arg)
-#define TRACE_FUNC()	printk(KERN_INFO "ymu831 %s\n", __func__)
-#define _McDrv_Ctrl	McDrv_Ctrl_dbg_sec
-
-extern SINT32	McDrv_Ctrl_dbg_sec(
-			UINT32 dCmd, void *pvPrm1, void *pvPrm2, UINT32 dPrm);
-#endif
-#endif /* CONFIG_SND_SOC_YAMAHA_YMU831_DEBUG */
 
 #endif /* YMU831_PRIV_H */

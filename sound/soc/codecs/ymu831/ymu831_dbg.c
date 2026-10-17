@@ -20,8 +20,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#ifdef CONFIG_SND_SOC_YAMAHA_YMU831_DEBUG
-
 #include "mcdriver.h"
 #include "ymu831_priv.h"
 
@@ -461,7 +459,7 @@ struct mc_asoc_dump_func {
 	void (*func)(const void *, UINT32);
 };
 
-struct mc_asoc_dump_func mc_asoc_dump_func_map[] = {
+static const struct mc_asoc_dump_func mc_asoc_dump_func_map[] = {
 	{"MCDRV_INIT", mc_asoc_dump_init_info},
 	{"MCDRV_TERM", NULL},
 	{"MCDRV_READ_REG", mc_asoc_dump_reg_info},
@@ -504,23 +502,6 @@ SINT32 McDrv_Ctrl_dbg(UINT32 dCmd, void *pvPrm1, void *pvPrm2, UINT32 dPrm)
 	err = McDrv_Ctrl(dCmd, pvPrm1, pvPrm2, dPrm);
 	dbg_info("err(%s) = %d\n", mc_asoc_dump_func_map[dCmd].name, (int)err);
 
-	if (dCmd == MCDRV_SET_VOLUME) {
-		/*
-		McDrv_Ctrl(MCDRV_GET_VOLUME, pvPrm1, NULL, 0);
-		mc_asoc_dump_vol_info(pvPrm1, 0xFF);
-		*/
-	}
-	if (dCmd == MCDRV_GET_PATH)
-		/*mc_asoc_dump_path_info(pvPrm1, 0xFFFFFF)*/;
-
-	if (dCmd == MCDRV_SET_PATH) {
-		/*
-		McDrv_Ctrl(MCDRV_GET_PATH, pvPrm1, NULL, 0);
-		mc_asoc_dump_path_info(pvPrm1, 0x00555555);
-		*/
-	}
-
 	return err;
 }
 
-#endif /* CONFIG_SND_SOC_YAMAHA_YMU831_DEBUG */

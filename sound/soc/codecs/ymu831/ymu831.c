@@ -1372,6 +1372,11 @@ static const struct snd_kcontrol_new	mc_asoc_snd_controls[]	= {
 struct snd_soc_component		*mc_asoc_codec;
 static struct spi_device	*mc_asoc_spi;
 
+struct device *mc_asoc_get_dev(void)
+{
+	return mc_asoc_spi ? &mc_asoc_spi->dev : NULL;
+}
+
 static UINT8	mc_asoc_ver_id		= 1;
 static UINT8	mc_asoc_hold		= YMC_NOTITY_HOLD_OFF;
 static UINT8	mc_asoc_suspended;
@@ -1517,7 +1522,8 @@ static UINT8 *get_dsp_mem(int size)
 		dsp_mem_pt	+= size;
 		dbg_info("dsp_mem_pt:%d\n", dsp_mem_pt);
 	} else {
-		pr_info("mem alloc failed!\n");
+		dev_err_ratelimited(mc_asoc_get_dev(),
+				    "out of DSP parameter memory\n");
 	}
 	return p;
 #else
@@ -1540,13 +1546,13 @@ static int load_file(const char *fn, char **fp)
 	strcat(filename, fn);
 	ret	= request_firmware(&fw, filename, dev);
 	if (ret != 0) {
-		pr_err("request_firmware failed(errno %d) for %s", ret, fn);
+		dev_err(dev, "failed to load %s: %d\n", fn, ret);
 		return ret;
 	}
 
 	*fp	= get_dsp_mem(fw->size);
 	if (*fp == NULL) {
-		printk(KERN_INFO "Out of memory loading '%s'.\n", fn);
+		dev_err(dev, "out of DSP parameter memory loading %s\n", fn);
 		release_firmware(fw);
 		return -EIO;
 	}
@@ -1752,12 +1758,13 @@ int ymu831_get_codec_suspended(struct snd_soc_component *codec)
 
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if (mc_asoc == NULL) {
-		pr_err("%s: Can not mc_asoc", __func__);
+		dev_err(codec->dev, "%s: no driver data\n", __func__);
 		return -1;
 	}
 
 	if (get_mixer_path_ctl_info(codec, &mixer_ctl_info) < 0) {
-		pr_err("%s: get_mixer_path_ctl_info failed", __func__);
+		dev_err(codec->dev, "%s: failed to get the mixer path\n",
+			__func__);
 		return -EIO;
 	}
 
@@ -1774,7 +1781,7 @@ int ymu831_get_codec_suspended(struct snd_soc_component *codec)
 	else
 		check_codec_suspend = 0;
 
-	pr_info("%s: %d", __func__, check_codec_suspend);
+	dev_dbg(codec->dev, "%s: %d\n", __func__, check_codec_suspend);
 
 	return check_codec_suspend;
 }
@@ -5196,7 +5203,7 @@ static void work_cfg_slim_sch(struct work_struct *work)
 
 	err	= _McDrv_Ctrl(MCDRV_GET_PATH, &path_info, NULL, 0);
 	if (err != MCDRV_SUCCESS) {
-		pr_info("get path info failed:%d\n", err);
+		dev_err(mc_asoc_get_dev(), "failed to get the path: %d\n", err);
 		return;
 	}
 
@@ -8470,7 +8477,8 @@ static void irq_func(struct work_struct *work)
 
 	err	= _McDrv_Ctrl(MCDRV_IRQ, NULL, NULL, 0);
 	if (err < 0)
-		pr_info("irq_func %d\n", map_drv_error(err));
+		dev_err(mc_asoc_get_dev(), "failed to handle the IRQ: %d\n",
+			map_drv_error(err));
 
 	if (IRQ_TYPE == IRQ_TYPE_LEVEL_LOW) {
 		;
@@ -8603,7 +8611,6 @@ static int mc_asoc_probe(
 #endif
 
 	if (codec == NULL) {
-		/*printk(KERN_ERR "I2C bus is not probed successfully\n");*/
 		err	= -ENODEV;
 		goto error_codec_data;
 	}
@@ -9341,7 +9348,7 @@ static int set_bias_level(
 	struct snd_soc_component	*codec,
 	enum snd_soc_bias_level	level)
 {
-	pr_debug("%s codec[%p] level[%d]\n", __func__, codec, level);
+	dev_dbg(codec->dev, "%s: level %d\n", __func__, level);
 	return 0;
 }
 static int mc_asoc_set_bias_level(
@@ -9435,10 +9442,8 @@ void mc_asoc_read_data(
 
 	if ((dSize+2) > sizeof(buf)) {
 		rx	= kmalloc(dSize+2, GFP_KERNEL);
-		if (rx == NULL) {
-			printk(KERN_ERR "Failed to ReadReg\n");
+		if (!rx)
 			return;
-		}
 		readBuf	= rx;
 	}
 	readBuf[0]	= (u8)(dAddress<<1) | 0x80;
@@ -9446,25 +9451,6 @@ void mc_asoc_read_data(
 		readBuf[0]	|= 0x01;	/*	burst	*/
 	spi_rw(readBuf, readBuf+2, dSize+1);
 	memcpy(pbData, readBuf+3, dSize);
-#ifdef CONFIG_SND_SOC_YAMAHA_YMU831_DEBUG
-	{
-		int i;
-		char	tmp[20], str[256];
-		tmp[0]	= str[0]	= 0;
-#ifdef SHOW_REG_ACCESS
-		pr_info("read %02X:", (UINT8)dAddress);
-#endif
-		strcat(str, "rx data:");
-		for (i = 0; i < dSize && i < 32; i++) {
-			sprintf(tmp, " %02X", pbData[i]);
-			strcat(str, tmp);
-		}
-		strcat(str, "\n");
-#ifdef SHOW_REG_ACCESS
-		pr_info("%s", str);
-#endif
-	}
-#endif
 	if (rx != NULL)
 		kfree(rx);
 }
@@ -9475,27 +9461,6 @@ void mc_asoc_write_data(
 	UINT32 dSize)
 {
 	spi_rw((u8 *)pbData, NULL, dSize);
-#ifdef CONFIG_SND_SOC_YAMAHA_YMU831_DEBUG
-	{
-#ifdef SHOW_REG_ACCESS
-		int i;
-		char	tmp[20], str[256];
-		tmp[0]	= str[0]	= 0;
-		strcat(str, "tx data:");
-		for (i = 0; i < dSize; i++) {
-			if (strlen(str) >= 72) {
-				strcat(str, "\n");
-				pr_info("%s", str);
-				str[0]	= 0;
-			}
-			sprintf(tmp, " %02X", pbData[i]);
-			strcat(str, tmp);
-		}
-		strcat(str, "\n");
-		pr_info("%s", str);
-#endif
-	}
-#endif
 }
 
 void mc_asoc_set_codec_ldod(int status)
@@ -9528,7 +9493,7 @@ static void ymu831_set_mclk(bool enable, bool forced)
 {
 	if (enable) {
 		if (clk_prepare_enable(mc_asoc_mclk))
-			pr_err("ymu831: failed to enable MCLK\n");
+			dev_err(mc_asoc_get_dev(), "failed to enable MCLK\n");
 	} else {
 		clk_disable_unprepare(mc_asoc_mclk);
 	}
@@ -9554,7 +9519,7 @@ static struct mc_asoc_platform_data *mc_asoc_parse_dt(struct device *dev)
 		dev_err(dev, "failed to request gpio\n");
 		return ERR_PTR(ret);
 	}
-	pr_info("gpio: %d, ret: %d\n", gpio_codec_en, ret);
+	dev_dbg(dev, "codec enable GPIO %d\n", gpio_codec_en);
 
 	mc_asoc_mclk = devm_clk_get_optional(dev, "mclk");
 	if (IS_ERR(mc_asoc_mclk))
@@ -9572,6 +9537,7 @@ static int mc_asoc_spi_probe(
 	struct mc_asoc_data	*mc_asoc;
 	int	err;
 
+	mc_asoc_spi	= spi;
 	TRACE_FUNC();
 
 	mc_asoc_priv	= devm_kzalloc(&spi->dev, sizeof(struct mc_asoc_priv),
@@ -9601,7 +9567,6 @@ static int mc_asoc_spi_probe(
 
 	mutex_init(&mc_asoc->mutex);
 	dev_set_drvdata(&spi->dev, mc_asoc_priv);
-	mc_asoc_spi	= spi;
 
 	err	= devm_snd_soc_register_component(&spi->dev, &mc_asoc_codec_dev,
 						  mc_asoc_dai,
@@ -9664,18 +9629,11 @@ static int __init ymu831_init(void)
 {
 	int	err	= 0;
 
-	TRACE_FUNC();
-
 	mutex_init(&mc_asoc_mutex);
 	mutex_init(&hsdet_mutex);
 
 	err	= spi_register_driver(&mc_asoc_spi_driver);
 
-	if (err != 0) {
-		;
-		printk(KERN_ERR "Failed to register MC ASoC Bus driver: %d\n",
-									err);
-	}
 	return err;
 }
 module_init(ymu831_init);
