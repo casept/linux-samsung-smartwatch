@@ -1368,7 +1368,7 @@ static const struct snd_kcontrol_new	mc_asoc_snd_controls[]	= {
 #endif
 };
 
-struct snd_soc_codec		*mc_asoc_codec;
+struct snd_soc_component		*mc_asoc_codec;
 static struct spi_device	*mc_asoc_spi;
 
 static UINT8	mc_asoc_ver_id		= 1;
@@ -1398,10 +1398,10 @@ static struct mutex	mc_asoc_mutex;
 static struct mutex	hsdet_mutex;
 
 static struct mc_asoc_data *mc_asoc_get_mc_asoc(
-			const struct snd_soc_codec *codec);
+			const struct snd_soc_component *codec);
 static int	map_drv_error(int err);
-static int	set_bias_level(struct snd_soc_codec *codec,
-				enum snd_soc_bias_level level);
+static int	set_bias_level(struct snd_soc_component *codec,
+			       enum snd_soc_bias_level level);
 /*
  * Function
  */
@@ -1411,7 +1411,7 @@ UINT8 mc_asoc_get_bus_select(void)
 }
 
 void mc_asoc_set_enable_clock_func(
-	int (*pcbfunc)(struct snd_soc_codec *, int, bool))
+	int (*pcbfunc)(struct snd_soc_component *, int, bool))
 {
 	struct mc_asoc_data	*mc_asoc	= NULL;
 
@@ -1437,14 +1437,14 @@ static void mc_asoc_unlock(char *fn)
 }
 
 static struct mc_asoc_data *mc_asoc_get_mc_asoc(
-	const struct snd_soc_codec *codec)
+	const struct snd_soc_component *codec)
 {
 	struct mc_asoc_priv	*priv;
 
 	if (codec == NULL)
 		return NULL;
 
-	priv	= snd_soc_codec_get_drvdata((struct snd_soc_codec *)codec);
+	priv	= snd_soc_component_get_drvdata((struct snd_soc_component *)codec);
 	if (priv != NULL)
 		return &priv->data;
 
@@ -1470,11 +1470,13 @@ static int map_drv_error(int err)
 }
 
 
+static int mc_asoc_reg_cache[MC_ASOC_N_REG];
+
 static int read_cache(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg)
 {
-	int *cache = codec->reg_cache;
+	int *cache = mc_asoc_reg_cache;
 
 	if (reg >= MC_ASOC_N_REG)
 		return -EIO;
@@ -1483,11 +1485,11 @@ static int read_cache(
 }
 
 static int write_cache(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value)
 {
-	int *cache = codec->reg_cache;
+	int *cache = mc_asoc_reg_cache;
 
 	if (reg >= MC_ASOC_N_REG)
 		return -EIO;
@@ -1610,7 +1612,7 @@ static int get_unused_mic_block_on(void)
 
 
 static int get_incall_mic(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	int	output_path
 )
 {
@@ -1669,7 +1671,7 @@ struct mc_asoc_mixer_path_ctl_info {
 };
 
 static int get_mixer_path_ctl_info(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	struct mc_asoc_mixer_path_ctl_info	*mixer_ctl_info
 )
 {
@@ -1741,7 +1743,7 @@ static int get_mixer_path_ctl_info(
 	return 0;
 }
 
-int ymu831_get_codec_suspended(struct snd_soc_codec *codec)
+int ymu831_get_codec_suspended(struct snd_soc_component *codec)
 {
 	struct mc_asoc_data     *mc_asoc        = NULL;
 	struct mc_asoc_mixer_path_ctl_info	mixer_ctl_info;
@@ -2556,7 +2558,7 @@ static UINT8 get_vol_mute_flg(size_t offset, UINT8 lr)
 }
 
 static int get_master_vol(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	SINT16	*db,
 	int	reg,
 	int	i
@@ -2588,7 +2590,7 @@ static int get_master_vol(
 }
 
 static int get_voice_vol(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	SINT16	*db,
 	int	reg,
 	int	i
@@ -2619,7 +2621,7 @@ static int get_voice_vol(
 }
 
 static int get_aplay_vol(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	SINT16	*db,
 	int	reg,
 	int	i,
@@ -2965,7 +2967,7 @@ static int get_aplay_vol(
 }
 
 static int set_vol_info(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	struct MCDRV_VOL_INFO	*vol_info,
 	int	reg,
 	const struct mc_asoc_mixer_path_ctl_info	*mixer_ctl_info,
@@ -3136,7 +3138,7 @@ static int set_vol_info(
 	return 0;
 }
 static int set_volume(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	const struct mc_asoc_mixer_path_ctl_info	*mixer_ctl_info,
 	int	preset_idx
 )
@@ -4670,7 +4672,7 @@ static void set_adif_src(
 }
 
 static int connect_path(
-	struct snd_soc_codec *codec
+	struct snd_soc_component *codec
 )
 {
 	int	err;
@@ -4830,7 +4832,7 @@ static int is_dio_modified(
 }
 
 static int setup_dai(
-	struct snd_soc_codec	*codec,
+	struct snd_soc_component	*codec,
 	struct mc_asoc_data	*mc_asoc,
 	int	id,
 	int	mode,
@@ -5028,18 +5030,18 @@ static int mc_asoc_set_clkdiv(
 	int div)
 {
 	int	err	= 0;
-	struct snd_soc_codec	*codec	= NULL;
+	struct snd_soc_component	*codec	= NULL;
 	struct mc_asoc_data	*mc_asoc	= NULL;
 	struct mc_asoc_port_params	*port	= NULL;
 
 	/*TRACE_FUNC();*/
 
 	if ((dai == NULL)
-	|| (dai->codec == NULL)
+	|| (dai->component == NULL)
 	|| (get_port_id(dai->id) != 0))
 		return -EINVAL;
 
-	codec	= dai->codec;
+	codec	= dai->component;
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if (mc_asoc == NULL)
 		return -EINVAL;
@@ -5099,18 +5101,18 @@ static int mc_asoc_set_fmt(
 	unsigned int fmt)
 {
 	int	err	= 0;
-	struct snd_soc_codec	*codec	= NULL;
+	struct snd_soc_component	*codec	= NULL;
 	struct mc_asoc_data	*mc_asoc	= NULL;
 	struct mc_asoc_port_params	*port	= NULL;
 
 	/*TRACE_FUNC();*/
 
 	if ((dai == NULL)
-	|| (dai->codec == NULL)
+	|| (dai->component == NULL)
 	|| (get_port_id(dai->id) != 0))
 		return -EINVAL;
 
-	codec	= dai->codec;
+	codec	= dai->component;
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if (mc_asoc == NULL)
 		return -EINVAL;
@@ -5144,10 +5146,10 @@ static int mc_asoc_set_fmt(
 
 	/* master */
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
-	case SND_SOC_DAIFMT_CBM_CFM:
+	case SND_SOC_DAIFMT_CBP_CFP:
 		port->master	= MCDRV_DIO_MASTER;
 		break;
-	case SND_SOC_DAIFMT_CBS_CFS:
+	case SND_SOC_DAIFMT_CBC_CFC:
 		port->master	= MCDRV_DIO_SLAVE;
 		break;
 	default:
@@ -5262,7 +5264,7 @@ static int mc_asoc_hw_params(
 	struct snd_pcm_hw_params *params,
 	struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec	*codec	= NULL;
+	struct snd_soc_component	*codec	= NULL;
 	struct mc_asoc_data	*mc_asoc	= NULL;
 	struct mc_asoc_port_params	*port	= NULL;
 	int	dir;
@@ -5295,7 +5297,7 @@ static int mc_asoc_hw_params(
 		params_format(params),
 		params_channels(params));
 
-	codec	= dai->codec;
+	codec	= dai->component;
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if ((codec == NULL)
 	|| (mc_asoc == NULL)) {
@@ -5466,7 +5468,7 @@ static int mc_asoc_hw_free(
 	struct snd_pcm_substream *substream,
 	struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec	*codec	= NULL;
+	struct snd_soc_component	*codec	= NULL;
 	struct mc_asoc_data	*mc_asoc	= NULL;
 	struct mc_asoc_port_params	*port	= NULL;
 	int	dir;
@@ -5479,7 +5481,7 @@ static int mc_asoc_hw_free(
 		return -EINVAL;
 
 	dir	= substream->stream;
-	codec	= dai->codec;
+	codec	= dai->component;
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if ((codec == NULL)
 	|| (mc_asoc == NULL)
@@ -5556,7 +5558,7 @@ struct snd_soc_dai_driver	mc_asoc_dai[]	= {
  */
 
 static int write_reg_vol(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	  unsigned int reg,
 	  unsigned int value)
 {
@@ -5664,7 +5666,7 @@ static int write_reg_vol(
 }
 
 static void auto_powerdown(
-	struct snd_soc_codec *codec
+	struct snd_soc_component *codec
 )
 {
 #if (AUTO_POWEROFF == AUTO_POWEROFF_ON)
@@ -5824,7 +5826,7 @@ static void del_dsp_prm(
 }
 
 static int set_audio_mode_play(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int value
 )
 {
@@ -5864,7 +5866,7 @@ static int set_audio_mode_play(
 }
 
 static int set_audio_mode_cap(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int value
 )
 {
@@ -5903,7 +5905,7 @@ static int set_audio_mode_cap(
 }
 
 static int set_incall_mic(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value
 )
@@ -5946,7 +5948,7 @@ static int set_incall_mic(
 }
 
 static int set_ain_playback(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value
 )
@@ -6002,7 +6004,7 @@ static int set_ain_playback(
 }
 
 static int set_dtmf_control(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value
 )
@@ -6025,7 +6027,7 @@ static int set_dtmf_control(
 }
 
 static int set_dtmf_output(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value
 )
@@ -6046,7 +6048,7 @@ static int set_dtmf_output(
 }
 
 static int set_switch_clock(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value
 )
@@ -6069,7 +6071,7 @@ static int set_switch_clock(
 }
 
 static int set_masterslave(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort
@@ -6100,7 +6102,7 @@ static int set_masterslave(
 }
 
 static int set_rate(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort
@@ -6131,7 +6133,7 @@ static int set_rate(
 }
 
 static int set_bitclock_rate(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort
@@ -6162,7 +6164,7 @@ static int set_bitclock_rate(
 }
 
 static int set_interface(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort
@@ -6193,7 +6195,7 @@ static int set_interface(
 }
 
 static int set_bitclock_invert(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort
@@ -6224,7 +6226,7 @@ static int set_bitclock_invert(
 }
 
 static int set_da_bit_width(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort,
@@ -6261,7 +6263,7 @@ static int set_da_bit_width(
 }
 
 static int set_da_format(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort,
@@ -6298,7 +6300,7 @@ static int set_da_format(
 }
 
 static int set_pcm_monostereo(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort,
@@ -6335,7 +6337,7 @@ static int set_pcm_monostereo(
 }
 
 static int set_pcm_bit_order(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort,
@@ -6372,7 +6374,7 @@ static int set_pcm_bit_order(
 }
 
 static int set_pcm_format(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort,
@@ -6409,7 +6411,7 @@ static int set_pcm_format(
 }
 
 static int set_pcm_bit_width(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort,
@@ -6446,7 +6448,7 @@ static int set_pcm_bit_width(
 }
 
 static int set_phys_port(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	UINT8	bPort
@@ -6471,7 +6473,7 @@ static int set_phys_port(
 }
 
 static int set_swap(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value,
 	size_t	offset,
@@ -6496,7 +6498,7 @@ static int set_swap(
 }
 
 static int set_dsp(
-	struct snd_soc_codec	*codec,
+	struct snd_soc_component	*codec,
 	UINT8	*param,
 	unsigned long	size,
 	unsigned long	option
@@ -6943,7 +6945,7 @@ error:
 }
 
 static int mc_asoc_write_reg(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg,
 	unsigned int value)
 {
@@ -7474,7 +7476,7 @@ static int mc_asoc_write_reg(
 }
 
 static unsigned int mc_asoc_read_reg(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	unsigned int reg)
 {
 	int	ret;
@@ -7501,11 +7503,11 @@ exit:
  * This function is implimented for compatibility with linux 2.6.29.
  */
 static int mc_asoc_add_controls(
-	struct snd_soc_codec *codec,
+	struct snd_soc_component *codec,
 	const struct snd_kcontrol_new *controls,
 	int n)
 {
-	return snd_soc_add_codec_controls(codec, controls, n);
+	return snd_soc_add_component_controls(codec, controls, n);
 }
 
 static const struct snd_soc_dapm_widget	mc_asoc_widgets[] = {
@@ -7538,38 +7540,38 @@ static const struct snd_soc_dapm_route	mc_asoc_intercon_Headset[] = {
 	{"Mic Jack",		NULL,		"AMIC1"},
 };
 
-static int mc_asoc_add_widgets(struct snd_soc_codec *codec)
+static int mc_asoc_add_widgets(struct snd_soc_component *codec)
 {
 	int	err;
 
 	if (codec == NULL)
 		return -EINVAL;
 
-	err	= snd_soc_dapm_new_controls(&codec->dapm,
-				mc_asoc_widgets,
-				ARRAY_SIZE(mc_asoc_widgets));
+	err	= snd_soc_dapm_new_controls(snd_soc_component_get_dapm(codec),
+					    mc_asoc_widgets,
+					    ARRAY_SIZE(mc_asoc_widgets));
 	if (err < 0)
 		return err;
 
-	err	= snd_soc_dapm_add_routes(&codec->dapm,
-				mc_asoc_intercon,
-				ARRAY_SIZE(mc_asoc_intercon));
+	err	= snd_soc_dapm_add_routes(snd_soc_component_get_dapm(codec),
+					  mc_asoc_intercon,
+					  ARRAY_SIZE(mc_asoc_intercon));
 	if (err < 0)
 		return err;
 
-	err	= snd_soc_dapm_new_controls(&codec->dapm,
-				mc_asoc_widgets_Headset,
-				ARRAY_SIZE(mc_asoc_widgets_Headset));
+	err	= snd_soc_dapm_new_controls(snd_soc_component_get_dapm(codec),
+					    mc_asoc_widgets_Headset,
+					    ARRAY_SIZE(mc_asoc_widgets_Headset));
 	if (err < 0)
 		return err;
 
-	err	= snd_soc_dapm_add_routes(&codec->dapm,
-				mc_asoc_intercon_Headset,
-				ARRAY_SIZE(mc_asoc_intercon_Headset));
+	err	= snd_soc_dapm_add_routes(snd_soc_component_get_dapm(codec),
+					  mc_asoc_intercon_Headset,
+					  ARRAY_SIZE(mc_asoc_intercon_Headset));
 	if (err < 0)
 		return err;
 
-	err	= snd_soc_dapm_new_widgets(codec->component.card);
+	err	= snd_soc_dapm_new_widgets(codec->card);
 	if (err < 0)
 		return err;
 	return 0;
@@ -7599,7 +7601,7 @@ static int hwdep_ioctl_read_reg(struct MCDRV_REG_INFO *args)
 	int	err;
 	struct MCDRV_REG_INFO	reg_info;
 
-	if (!access_ok(VERIFY_WRITE, args, sizeof(struct MCDRV_REG_INFO)))
+	if (!access_ok(args, sizeof(struct MCDRV_REG_INFO)))
 		return -EFAULT;
 	if (copy_from_user(&reg_info, args, sizeof(struct MCDRV_REG_INFO))
 		!= 0)
@@ -7620,7 +7622,7 @@ static int hwdep_ioctl_write_reg(const struct MCDRV_REG_INFO *args)
 	int	err;
 	struct MCDRV_REG_INFO	reg_info;
 
-	if (!access_ok(VERIFY_READ, args, sizeof(struct MCDRV_REG_INFO)))
+	if (!access_ok(args, sizeof(struct MCDRV_REG_INFO)))
 		return -EFAULT;
 
 	if (copy_from_user(&reg_info, args, sizeof(struct MCDRV_REG_INFO))
@@ -7639,7 +7641,7 @@ static int hwdep_ioctl_get_dsp_data(struct ymc_dspdata_args *args)
 	struct ymc_dspdata_args	ymc_dspdata;
 	UINT8	*param	= NULL;
 
-	if (!access_ok(VERIFY_WRITE, args, sizeof(struct ymc_dspdata_args)))
+	if (!access_ok(args, sizeof(struct ymc_dspdata_args)))
 		return -EFAULT;
 
 	if (copy_from_user(&ymc_dspdata, args, sizeof(struct ymc_dspdata_args))
@@ -7684,7 +7686,7 @@ static int hwdep_ioctl_set_dsp_data(struct ymc_dspdata_args *args)
 	struct ymc_dspdata_args	ymc_dspdata;
 	UINT8	*param	= NULL;
 
-	if (!access_ok(VERIFY_WRITE, args, sizeof(struct ymc_dspdata_args)))
+	if (!access_ok(args, sizeof(struct ymc_dspdata_args)))
 		return -EFAULT;
 
 	if (copy_from_user(&ymc_dspdata, args, sizeof(struct ymc_dspdata_args))
@@ -7731,7 +7733,7 @@ static int mc_asoc_hwdep_ioctl(
 {
 	int	err	= 0;
 	UINT8	*param	= NULL;
-	struct snd_soc_codec	*codec	= NULL;
+	struct snd_soc_component	*codec	= NULL;
 	struct ymc_ctrl_args	ymc_ctrl_arg;
 	UINT32	hold;
 
@@ -7742,9 +7744,8 @@ static int mc_asoc_hwdep_ioctl(
 
 	switch (cmd) {
 	case YMC_IOCTL_SET_CTRL:
-		if (!access_ok(VERIFY_READ,
-			(struct ymc_ctrl_args *)arg,
-			sizeof(struct ymc_ctrl_args))) {
+		if (!access_ok((struct ymc_ctrl_args *)arg,
+			       sizeof(struct ymc_ctrl_args))) {
 			err	= -EFAULT;
 			break;
 		}
@@ -7798,7 +7799,7 @@ static int mc_asoc_hwdep_ioctl(
 		break;
 
 	case YMC_IOCTL_NOTIFY_HOLD:
-		if (!access_ok(VERIFY_READ, (UINT32 *)arg, sizeof(UINT32))) {
+		if (!access_ok((UINT32 *)arg, sizeof(UINT32))) {
 			err	= -EFAULT;
 			break;
 		}
@@ -7840,7 +7841,7 @@ static int mc_asoc_hwdep_ioctl(
 	return err;
 }
 
-static int mc_asoc_add_hwdep(struct snd_soc_codec *codec)
+static int mc_asoc_add_hwdep(struct snd_soc_component *codec)
 {
 	struct snd_hwdep	*hw;
 	struct mc_asoc_data	*mc_asoc	= NULL;
@@ -7850,12 +7851,13 @@ static int mc_asoc_add_hwdep(struct snd_soc_codec *codec)
 	if (mc_asoc == NULL)
 		return -EINVAL;
 
-	err	= snd_hwdep_new((struct snd_card *)codec->component.card->snd_card,
+	err	= snd_hwdep_new((struct snd_card *)codec->card->snd_card,
 				MC_ASOC_HWDEP_ID, 0, &hw);
 	if (err < 0)
 		return err;
 
-	hw->iface		= SNDRV_HWDEP_IFACE_YAMAHA_YMU831;
+	/* FIXME: the vendor hwdep interface ID is not in the mainline uapi */
+	hw->iface		= SNDRV_HWDEP_IFACE_OPL2;
 	hw->private_data	= codec;
 	hw->ops.open		= mc_asoc_hwdep_open;
 	hw->ops.release		= mc_asoc_hwdep_release;
@@ -8502,7 +8504,7 @@ irqreturn_t irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int init_irq(struct snd_soc_codec *codec)
+static int init_irq(struct snd_soc_component *codec)
 {
 	int	err	= 0;
 	struct mc_asoc_data	*mc_asoc	= NULL;
@@ -8522,8 +8524,8 @@ static int init_irq(struct snd_soc_codec *codec)
 		dev_err(codec->dev, "Failed to set_irq_type: %d\n", err);
 		return -EIO;
 	}
-	err	= request_irq(mc_asoc->pdata->irq, irq_handler, IRQF_DISABLED,
-							"MC_YAMAHA IRQ", NULL);
+	err	= request_irq(mc_asoc->pdata->irq, irq_handler, 0,
+			      "MC_YAMAHA IRQ", NULL);
 	if (err < 0) {
 		dev_err(codec->dev, "Failed to request_irq: %d\n", err);
 		return -EIO;
@@ -8552,7 +8554,7 @@ static int term_irq(void)
  * Codec device
  */
 static int mc_asoc_probe(
-	struct snd_soc_codec *codec
+	struct snd_soc_component *codec
 )
 {
 	int	i;
@@ -8784,9 +8786,10 @@ static int mc_asoc_probe(
 #endif
 
 	/* Headset jack detection */
-	snd_soc_jack_new(codec, "Headset",
-		SND_JACK_HEADSET|SND_JACK_BTN_0|SND_JACK_BTN_1|SND_JACK_BTN_2,
-		&hs_jack);
+	snd_soc_card_jack_new(codec->card, "Headset",
+			      SND_JACK_HEADSET | SND_JACK_BTN_0 |
+			      SND_JACK_BTN_1 | SND_JACK_BTN_2,
+			      &hs_jack);
 
 	snd_jack_set_key(hs_jack.jack, SND_JACK_BTN_0, KEY_MEDIA);
 	snd_jack_set_key(hs_jack.jack, SND_JACK_BTN_1, KEY_VOLUMEUP);
@@ -8945,7 +8948,7 @@ exit:
 	return err;
 }
 
-static int mc_asoc_remove(struct snd_soc_codec *codec)
+static void mc_asoc_remove(struct snd_soc_component *codec)
 {
 	int err	= 0;
 	struct mc_asoc_data	*mc_asoc	= NULL;
@@ -8954,7 +8957,7 @@ static int mc_asoc_remove(struct snd_soc_codec *codec)
 
 	mc_asoc	= mc_asoc_get_mc_asoc(codec);
 	if (mc_asoc == NULL)
-		return -EINVAL;
+		return;
 
 	/* IRQ terminate */
 	term_irq();
@@ -8987,11 +8990,10 @@ static int mc_asoc_remove(struct snd_soc_codec *codec)
 	destroy_workqueue(workq_cfg_slim_sch);
 	workq_cfg_slim_sch	= NULL;
 #endif
-	return err;
 }
 
 static int mc_asoc_suspend(
-	struct snd_soc_codec *codec
+	struct snd_soc_component *codec
 )
 {
 	int	err;
@@ -9129,7 +9131,7 @@ error:
 }
 
 static int mc_asoc_resume(
-	struct snd_soc_codec *codec
+	struct snd_soc_component *codec
 )
 {
 	struct mc_asoc_data	*mc_asoc	= NULL;
@@ -9335,15 +9337,14 @@ error:
 }
 
 static int set_bias_level(
-	struct snd_soc_codec	*codec,
+	struct snd_soc_component	*codec,
 	enum snd_soc_bias_level	level)
 {
 	pr_debug("%s codec[%p] level[%d]\n", __func__, codec, level);
-	codec->dapm.bias_level	= level;
 	return 0;
 }
 static int mc_asoc_set_bias_level(
-	struct snd_soc_codec	*codec,
+	struct snd_soc_component	*codec,
 	enum snd_soc_bias_level	level)
 {
 	mc_asoc_lock("mc_asoc_set_bias_level");
@@ -9352,17 +9353,15 @@ static int mc_asoc_set_bias_level(
 	return 0;
 }
 
-struct snd_soc_codec_driver	mc_asoc_codec_dev	= {
+static const struct snd_soc_component_driver mc_asoc_codec_dev = {
 	.probe		= mc_asoc_probe,
 	.remove		= mc_asoc_remove,
 	.suspend	= mc_asoc_suspend,
 	.resume		= mc_asoc_resume,
 	.read		= mc_asoc_read_reg,
 	.write		= mc_asoc_write_reg,
-	.reg_cache_size	= MC_ASOC_N_REG,
-	.reg_word_size	= sizeof(int),
-	.reg_cache_step	= 1,
-	.idle_bias_off	= true,
+	.endianness	= 1,
+	.idle_bias_on	= 0,
 	.set_bias_level	= mc_asoc_set_bias_level
 };
 
@@ -9585,8 +9584,9 @@ static int mc_asoc_spi_probe(
 	dev_set_drvdata(&spi->dev, mc_asoc_priv);
 	mc_asoc_spi	= spi;
 
-	err	= snd_soc_register_codec(&spi->dev, &mc_asoc_codec_dev,
-				mc_asoc_dai, ARRAY_SIZE(mc_asoc_dai));
+	err	= devm_snd_soc_register_component(&spi->dev, &mc_asoc_codec_dev,
+						  mc_asoc_dai,
+						  ARRAY_SIZE(mc_asoc_dai));
 	if (err < 0)
 		goto err_reg_codec;
 
@@ -9601,7 +9601,7 @@ exit:
 	return err;
 }
 
-static int mc_asoc_spi_remove(struct spi_device *spi)
+static void mc_asoc_spi_remove(struct spi_device *spi)
 {
 	struct mc_asoc_priv	*mc_asoc_priv	= dev_get_drvdata(&spi->dev);
 	struct mc_asoc_data	*mc_asoc;
@@ -9621,7 +9621,6 @@ static int mc_asoc_spi_remove(struct spi_device *spi)
 		mutex_destroy(&mc_asoc_priv->data.mutex);
 		kfree(mc_asoc_priv);
 	}
-	return 0;
 }
 
 static struct spi_driver	mc_asoc_spi_driver = {

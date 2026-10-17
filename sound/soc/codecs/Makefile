@@ -859,6 +859,7 @@ obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_WSA881X)	+= snd-soc-wsa881x.o
 obj-$(CONFIG_SND_SOC_WSA883X)	+= snd-soc-wsa883x.o
 obj-$(CONFIG_SND_SOC_WSA884X)	+= snd-soc-wsa884x.o
+obj-$(CONFIG_SND_SOC_YAMAHA_YMU831)	+= ymu831/
 obj-$(CONFIG_SND_SOC_ZL38060)	+= snd-soc-zl38060.o
 
 # Amp

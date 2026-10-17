@@ -299,7 +299,7 @@ struct mc_asoc_data {
 	struct mc_asoc_dsp_param	param_store[4][2];
 	struct mc_asoc_jack		jack;
 	struct mc_asoc_platform_data	*pdata;
-	int	(*penableclkfn)(struct snd_soc_codec *, int, bool);
+	int	(*penableclkfn)(struct snd_soc_component *, int, bool);
 };
 
 struct mc_asoc_priv {
