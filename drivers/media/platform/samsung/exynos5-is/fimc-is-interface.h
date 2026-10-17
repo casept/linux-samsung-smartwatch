@@ -11,7 +11,8 @@
 #include "fimc-is-core.h"
 #include "fimc-is-backend.h"
 
-#define TRY_RECV_AWARE_COUNT    100
+#define FIMC_IS_HW_READY_POLL_US	100
+#define FIMC_IS_HW_READY_TIMEOUT_US	10000
 
 #define EXYNOS5_ISDRV_VERSION   111
 #define EXYNOS3_ISDRV_VERSION   244

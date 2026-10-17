@@ -7,6 +7,7 @@
  */
 
 #include <linux/debugfs.h>
+#include <linux/iopoll.h>
 #include <linux/seq_file.h>
 #include <linux/timekeeping.h>
 #include "fimc-is.h"
@@ -217,17 +218,17 @@ static void itf_busy_wakeup(struct fimc_is_interface *itf)
 
 static int itf_wait_hw_ready(struct fimc_is_interface *itf)
 {
-	int t;
+	unsigned int cfg;
+	int ret;
 
-	for (t = TRY_RECV_AWARE_COUNT; t >= 0; t--) {
-		unsigned int cfg = readl(itf->regs + INTMSR0);
-
-		if (INTMSR0_GET_INTMSD(0, cfg) == 0)
-			return 0;
-
-	}
-	dev_err(itf->dev, "INTMSR0's 0 bit is not cleared.\n");
-	return -EINVAL;
+	/* Wait for the firmware to pick up the previous command */
+	ret = readl_poll_timeout_atomic(itf->regs + INTMSR0, cfg,
+					!INTMSR0_GET_INTMSD(0, cfg),
+					FIMC_IS_HW_READY_POLL_US,
+					FIMC_IS_HW_READY_TIMEOUT_US);
+	if (ret)
+		dev_err(itf->dev, "INTMSR0's 0 bit is not cleared.\n");
+	return ret;
 }
 
 static int itf_wait_idlestate(struct fimc_is_interface *itf)
