@@ -341,9 +341,15 @@ static int s5k8b1_probe(struct i2c_client *client)
 static void s5k8b1_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct s5k8b1 *sensor = sd_to_s5k8b1(sd);
+
+	v4l2_async_unregister_subdev(sd);
+
+	/* The supplies can't be released while still enabled */
+	if (sensor->power_count)
+		__s5k8b1_power_off(sensor);
 
 	pm_runtime_disable(&client->dev);
-	v4l2_async_unregister_subdev(sd);
 	media_entity_cleanup(&sd->entity);
 }
 
