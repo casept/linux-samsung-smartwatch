@@ -104,16 +104,20 @@
 		cm-poll-interval = <30000>;
 
 		cm-fullbatt-capacity = <300000>;
-		cm-fullbatt-voltage = <4348000>;
-		cm-fullbatt-vchkdrop-ms = <30000>;
-		cm-fullbatt-vchkdrop-volt = <150000>;
-		cm-fullbatt-soc = <100>;
+		/*
+		 * Like downstream: full once the charger reaches end of charge
+		 * with the cell at 4.3V or more, then top off for another 30min.
+		 * Charging restarts once the cell drops below 4.3V.
+		 */
+		cm-fullbatt-charger-eoc;
+		cm-fullbatt-topoff-ms = <1800000>;
+		cm-fullbatt-voltage = <4300000>;
 
 		cm-battery-stat = <0>;
 		cm-fuel-gauge = "battery";
 
 		cm-thermal-zone = "tz-battery";
-		cm-battery-cold = <50>;
+		cm-battery-cold = <30>;
 		cm-battery-cold-in-minus;
 		cm-battery-hot = <600>;
 
@@ -201,8 +205,8 @@
 				compatible = "maxim,max77836-charger";
 
 				maxim,constant-uvolt = <4350000>;
-				maxim,fast-charge-uamp = <225000>;
-				maxim,eoc-uamp = <7500>;
+				maxim,fast-charge-uamp = <150000>;
+				maxim,eoc-uamp = <50000>;
 				maxim,ovp-uvolt = <6500000>;
 			};
 
@@ -298,13 +302,6 @@
 			polling-delay = <2000>;
 			polling-delay-passive = <2000>;
 			thermal-sensors = <&thermistor_battery>;
-			trips {
-				battery-crit-hi {
-					temperature = <70000>;
-					hysteresis = <2000>;
-					type = "critical";
-				};
-			};
 		};
 	};
 };
@@ -811,6 +808,12 @@
 		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
 		reg = <0x36>;
 		maxim,double-soc;
+		/*
+		 * Downstream uses 0x62 on R380 and 0x58 on R381, picked at
+		 * runtime from the board revision. The mainline driver cannot
+		 * switch RCOMP by charge state, so hardcode the R380 value.
+		 */
+		maxim,rcomp = /bits/ 8 <0x62>;
 	};
 };
 
