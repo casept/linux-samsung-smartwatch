@@ -572,6 +572,7 @@ static void itf_handle_general(struct fimc_is_interface *itf,
         case IHC_REPORT_ERR:
                 is_blocking = false;
                 dev_err(itf->dev, "IHC_REPORT_ERR has occured");
+		break;
 	default:
 		is_blocking = false;
 		dev_err(itf->dev, "%s: unknown (#%08X) command\n",
