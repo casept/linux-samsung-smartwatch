@@ -848,7 +848,7 @@ static int fimc_lite_streamon(struct file *file, void *priv,
 
 err_p_stop:
 	video_device_pipeline_stop(&fimc->ve.vdev);
-	return 0;
+	return ret;
 }
 
 static int fimc_lite_streamoff(struct file *file, void *priv,
