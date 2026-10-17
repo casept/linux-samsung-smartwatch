@@ -25,13 +25,13 @@
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/irq.h>
-#include <linux/gpio/consumer.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 #include <linux/io.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
@@ -3951,13 +3951,23 @@ static void set_BIAS(
 	}
 
 	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-	if (mc_asoc->ext_micbias_gpio) {
+	if (mc_asoc->mic1_bias) {
 		bool mic1_on;
 
 		mic1_on = (path_info->asAdc0[0].dSrcOnOff & MCDRV_ASRC_MIC1_ON) ||
 			  (path_info->asAdc0[1].dSrcOnOff & MCDRV_ASRC_MIC1_ON) ||
 			  (path_info->asAdc1[0].dSrcOnOff & MCDRV_ASRC_MIC1_ON);
-		gpiod_set_value_cansleep(mc_asoc->ext_micbias_gpio, mic1_on);
+		if (mic1_on != mc_asoc->mic1_bias_enabled) {
+			if (mic1_on)
+				err = regulator_enable(mc_asoc->mic1_bias);
+			else
+				err = regulator_disable(mc_asoc->mic1_bias);
+			if (err)
+				dev_err(mc_asoc_get_dev(),
+					"failed to switch MIC1 bias: %d\n", err);
+			else
+				mc_asoc->mic1_bias_enabled = mic1_on;
+		}
 	}
 }
 
@@ -8107,8 +8117,8 @@ static int mc_asoc_probe(
 
 	/* init hardware */
 	mc_asoc->setup	= mc_asoc_cfg_setup;
-	/* external control of the digital LDO */
-	mc_asoc->setup.init2.bOption[19]	= mc_asoc->ldo_gpio ? 0 : 1;
+	/* external supply for the digital core while its LDO is off */
+	mc_asoc->setup.init2.bOption[19]	= mc_asoc->dvdd ? 0 : 1;
 	err	= _McDrv_Ctrl(MCDRV_INIT, &mc_asoc->setup.init,
 						&mc_asoc->setup.init2, 0);
 	if (err != MCDRV_SUCCESS) {
@@ -8398,6 +8408,11 @@ static void mc_asoc_remove(struct snd_soc_component *codec)
 		}
 	}
 	mc_asoc_enable_clock(0);
+	mc_asoc_set_codec_ldod(0);
+	if (mc_asoc->mic1_bias_enabled) {
+		regulator_disable(mc_asoc->mic1_bias);
+		mc_asoc->mic1_bias_enabled	= false;
+	}
 
 	destroy_workqueue(workq_mb4);
 	destroy_workqueue(workq_mkdeten);
@@ -8825,17 +8840,30 @@ void mc_asoc_read_data(UINT8 bSlaveAdr, UINT32 dAddress, UINT8 *pbData,
 		dev_err(mc_asoc_get_dev(), "register read failed: %d\n", err);
 }
 
+/*
+ * Called by the core to supply the digital core externally while the
+ * codec's own digital LDO is off.
+ */
 void mc_asoc_set_codec_ldod(int status)
 {
-	struct mc_asoc_data	*mc_asoc	= NULL;
+	struct mc_asoc_data	*mc_asoc;
+	int	err;
 
 	mc_asoc	= mc_asoc_get_mc_asoc(mc_asoc_codec);
-	if (!mc_asoc->ldo_gpio)
+	if (!mc_asoc || !mc_asoc->dvdd || mc_asoc->dvdd_enabled == !!status)
 		return;
 
-	gpiod_set_value_cansleep(mc_asoc->ldo_gpio, status);
-	if (status == 1)
-		usleep_range(500, 600);
+	if (status) {
+		err = regulator_enable(mc_asoc->dvdd);
+		if (err) {
+			dev_err(mc_asoc_get_dev(), "failed to enable DVDD: %d\n",
+				err);
+			return;
+		}
+	} else {
+		regulator_disable(mc_asoc->dvdd);
+	}
+	mc_asoc->dvdd_enabled	= !!status;
 }
 
 static int mc_asoc_spi_probe(
@@ -8857,19 +8885,22 @@ static int mc_asoc_spi_probe(
 	mc_asoc	= &mc_asoc_priv->data;
 	mc_asoc->irq	= spi->irq;
 
-	mc_asoc->ldo_gpio = devm_gpiod_get_optional(&spi->dev, "codec-en",
-						    GPIOD_OUT_HIGH);
-	if (IS_ERR(mc_asoc->ldo_gpio))
-		return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->ldo_gpio),
-				     "failed to get codec-en GPIO\n");
+	mc_asoc->dvdd = devm_regulator_get_optional(&spi->dev, "dvdd");
+	if (IS_ERR(mc_asoc->dvdd)) {
+		if (PTR_ERR(mc_asoc->dvdd) != -ENODEV)
+			return dev_err_probe(&spi->dev, PTR_ERR(mc_asoc->dvdd),
+					     "failed to get DVDD supply\n");
+		mc_asoc->dvdd = NULL;
+	}
 
-	mc_asoc->ext_micbias_gpio = devm_gpiod_get_optional(&spi->dev,
-							    "ext-micbias",
-							    GPIOD_OUT_LOW);
-	if (IS_ERR(mc_asoc->ext_micbias_gpio))
-		return dev_err_probe(&spi->dev,
-				     PTR_ERR(mc_asoc->ext_micbias_gpio),
-				     "failed to get ext-micbias GPIO\n");
+	mc_asoc->mic1_bias = devm_regulator_get_optional(&spi->dev, "mic1-bias");
+	if (IS_ERR(mc_asoc->mic1_bias)) {
+		if (PTR_ERR(mc_asoc->mic1_bias) != -ENODEV)
+			return dev_err_probe(&spi->dev,
+					     PTR_ERR(mc_asoc->mic1_bias),
+					     "failed to get MIC1 bias supply\n");
+		mc_asoc->mic1_bias = NULL;
+	}
 
 	/* gated by the core, see mc_asoc_enable_clock() */
 	mc_asoc->mclk = devm_clk_get_optional(&spi->dev, "mclk");

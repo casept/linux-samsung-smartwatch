@@ -284,8 +284,10 @@ struct mc_asoc_data {
 	struct regmap			*regmap;
 	struct clk			*mclk;
 	bool				mclk_enabled;
-	struct gpio_desc		*ldo_gpio;
-	struct gpio_desc		*ext_micbias_gpio;
+	struct regulator		*dvdd;
+	bool				dvdd_enabled;
+	struct regulator		*mic1_bias;
+	bool				mic1_bias_enabled;
 	int				irq;
 };
 
