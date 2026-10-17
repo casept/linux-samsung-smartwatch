@@ -123,6 +123,7 @@ static void s5k8b1_try_format(struct v4l2_mbus_framefmt *mf)
 			      S5K8B1_SENSOR_MAX_WIDTH, 0,
 			      &mf->height, S5K8B1_SENSOR_MIN_HEIGHT,
 			      S5K8B1_SENSOR_MAX_HEIGHT, 0, 0);
+	mf->field = V4L2_FIELD_NONE;
 }
 
 static struct v4l2_mbus_framefmt *__s5k8b1_get_format(
@@ -147,8 +148,7 @@ static int s5k8b1_set_fmt(struct v4l2_subdev *sd,
 	mf = __s5k8b1_get_format(sensor, sd_state, fmt->pad, fmt->which);
 	if (mf) {
 		mutex_lock(&sensor->lock);
-		if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-			*mf = fmt->format;
+		*mf = fmt->format;
 		mutex_unlock(&sensor->lock);
 	}
 	return 0;
