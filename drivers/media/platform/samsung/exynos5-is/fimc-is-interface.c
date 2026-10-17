@@ -79,7 +79,7 @@ static inline void setup_cmd(struct fimc_is_msg *msg,
          * | REG_1 | -> | sesnor ID (instance)|
          * | REG_2 | -> | commads params      |
          */
-        memset(msg, 0, sizeof(msg));
+        memset(msg, 0, sizeof(*msg));
         msg->command  = read_shared_reg(base_reg, offset);
         msg->instance = read_shared_reg(base_reg, offset + MCUCTL_SREG_SIZE);
         memcpy(msg->param, base_reg + offset + 2*MCUCTL_SREG_SIZE,
