@@ -30,7 +30,6 @@
 
 static void itf_busy_wakeup(struct fimc_is_interface *itf);
 
-struct workqueue_struct *fimc_is_workqueue;
 
 #ifdef FIMC_IS_DEBUG
 #define read_shared_reg(__r, __offset) ({			\
@@ -434,12 +433,6 @@ static int fimc_is_itf_set_cmd_shot(struct fimc_is_interface *itf,
 	return 0;
 }
 
-static int itf_init_workqueue(void)
-{
-	fimc_is_workqueue = alloc_workqueue("fimc-is", WQ_FREEZABLE, 0);
-	return fimc_is_workqueue ? 0 : -ENOMEM;
-}
-
 static void shot_done_work_fn(struct work_struct *work)
 {
 	struct fimc_is_interface *itf = container_of(work,
@@ -672,7 +665,7 @@ static void itf_handle_shot_done(struct fimc_is_interface *itf,
 	/* Clear state & call shot again */
 	clear_bit(PIPELINE_RUN, &pipeline->state);
 	clear_bit(COMP_RUN, &pipeline->subip_state[IS_ISP]);
-	queue_work(fimc_is_workqueue, &itf->shot_done_work);
+	queue_work(system_freezable_wq, &itf->shot_done_work);
 	if (status != ISR_DONE) {
 		fimc_is_pipeline_reset(pipeline);
 		dev_err(itf->dev, "Shot failure (0x%08X : 0x%08X)\n",
@@ -1118,8 +1111,6 @@ int fimc_is_interface_init(struct fimc_is_interface *itf,
 	spin_lock_init(&itf->slock_state);
 	spin_lock_init(&itf->slock);
 
-	/* Init the work queue */
-	itf_init_workqueue();
 	INIT_WORK(&itf->shot_done_work, shot_done_work_fn);
 	/* Register interrupt handler */
 	ret = devm_request_irq(dev, irq, itf_irq_handler,
@@ -1128,6 +1119,7 @@ int fimc_is_interface_init(struct fimc_is_interface *itf,
 		dev_err(dev, "Failed to install irq (%d)\n", ret);
 		return ret;
 	}
+	itf->irq = irq;
 
 	/* Initialize context vars */
 	itf->streaming = IS_IF_STREAMING_INIT;
@@ -1140,4 +1132,10 @@ int fimc_is_interface_init(struct fimc_is_interface *itf,
 	fimc_is_debugfs_create(itf);
 
 	return 0;
+}
+
+void fimc_is_interface_destroy(struct fimc_is_interface *itf)
+{
+	disable_irq(itf->irq);
+	cancel_work_sync(&itf->shot_done_work);
 }

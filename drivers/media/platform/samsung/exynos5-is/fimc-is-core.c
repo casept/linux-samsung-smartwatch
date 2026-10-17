@@ -563,7 +563,7 @@ static int fimc_is_probe(struct platform_device *pdev)
 	/* Probe the peripheral devices  */
 	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
 	if (ret < 0)
-		goto err_sd;
+		goto err_itf;
 
 	if (is->drvdata->master_node) {
 		ret = exynos_camera_register(dev, &is->md);
@@ -579,6 +579,8 @@ static int fimc_is_probe(struct platform_device *pdev)
 	return 0;
 err_cam:
 	exynos_camera_unregister(is->md);
+err_itf:
+	fimc_is_interface_destroy(&is->interface);
 err_sd:
 	fimc_is_pipelines_destroy(is);
 err_clk:
@@ -600,6 +602,7 @@ static void fimc_is_remove(struct platform_device *pdev)
 
 	pm_runtime_disable(dev);
 	pm_runtime_set_suspended(dev);
+	fimc_is_interface_destroy(&is->interface);
 	fimc_is_pipelines_destroy(is);
 	fimc_is_put_clocks(is);
 	fimc_is_free_fw_mem(is);

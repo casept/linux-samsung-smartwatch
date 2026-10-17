@@ -52,6 +52,7 @@ struct fimc_is_interface {
 
 	void __iomem			*regs;
 	void __iomem			*shared_regs;
+	int				irq;
 	struct fimc_is_fw_data		*fw_data;
 	/* Lock for writing into MCUCTL registers */
 	spinlock_t			slock;
@@ -76,6 +77,7 @@ struct fimc_is_interface {
 
 int fimc_is_interface_init(struct fimc_is_interface *itf,
 		void __iomem *regs, int irq);
+void fimc_is_interface_destroy(struct fimc_is_interface *itf);
 int fimc_is_itf_wait_init_state(struct fimc_is_interface *itf);
 int fimc_is_itf_open_sensor(struct fimc_is_interface *itf,
 		unsigned int instance,

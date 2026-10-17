@@ -363,7 +363,6 @@ static const struct fd_param init_fd_param = {
 	},
 };
 
-struct workqueue_struct *fimc_is_pipeline_workqueue;
 
 #define NSEC_PER_MSEC   1000000L
 #define FIMC_IS_MIN_FRAME_DURATION (5 * (NSEC_PER_MSEC))
@@ -428,12 +427,6 @@ static void fimc_is_pipeline_notify(struct fimc_is_event_listener *listener,
 static void fimc_is_pipeline_work_fn(struct work_struct *);
 static void fimc_is_pipeline_wdg_work_fn(struct work_struct *);
 
-static int fimc_is_pipelien_init_workqueue(void)
-{
-	fimc_is_pipeline_workqueue = alloc_workqueue("fimc-is", WQ_FREEZABLE, 0);
-	return fimc_is_pipeline_workqueue ? 0 : -ENOMEM;
-}
-
 int fimc_is_pipeline_init(struct fimc_is_pipeline *pipeline,
 			unsigned int instance,
 			void *is_ctx)
@@ -461,11 +454,6 @@ int fimc_is_pipeline_init(struct fimc_is_pipeline *pipeline,
 	mutex_init(&pipeline->pipe_lock);
 	mutex_init(&pipeline->pipe_scl_lock);
 
-	ret = fimc_is_pipelien_init_workqueue();
-	if (ret) {
-		dev_err(pipeline->dev, "Failed to initialize workqueue\n");
-		return -EINVAL;
-	}
 
 	ret = fimc_is_pipeline_create_subdevs(pipeline);
 	if (ret) {
@@ -491,6 +479,10 @@ int fimc_is_pipeline_destroy(struct fimc_is_pipeline *pipeline)
 
 	if (!test_bit(PIPELINE_INIT, &pipeline->state))
 		return -EINVAL;
+
+	cancel_work_sync(&pipeline->work);
+	cancel_delayed_work_sync(&pipeline->wdg_work);
+
 	return fimc_is_pipeline_unregister_subdevs(pipeline);
 }
 
@@ -1796,7 +1788,7 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 		dev_err(pipeline->dev, "Shot command failed\n");
 		goto err_exit;
 	}
-	queue_delayed_work(fimc_is_pipeline_workqueue, &pipeline->wdg_work,
+	queue_delayed_work(system_freezable_wq, &pipeline->wdg_work,
 			   nsecs_to_jiffies(pipeline->frame_duration)*2);
 	return 0;
 
@@ -2251,7 +2243,7 @@ void fimc_is_pipeline_reset(struct fimc_is_pipeline *pipeline)
 	cancel_delayed_work(&pipeline->wdg_work);
 	if (!test_bit(PIPELINE_RESET, &pipeline->state)) {
 		set_bit(PIPELINE_RESET, &pipeline->state);
-		queue_work(fimc_is_pipeline_workqueue, &pipeline->work);
+		queue_work(system_freezable_wq, &pipeline->work);
 	}
 
 }
