@@ -57,6 +57,7 @@
 struct ice40_ir {
 	struct i2c_client *client;
 	struct regulator *supply;
+	struct clk *clk;
 	struct gpio_desc *reset;
 	struct gpio_desc *ss;
 	struct gpio_desc *cdone;
@@ -196,9 +197,15 @@ static int ice40_ir_tx(struct rc_dev *rc, unsigned int *txbuf,
 	*p++ = 0;
 	*p++ = 0;
 
-	ret = regulator_enable(ir->supply);
+	ret = clk_prepare_enable(ir->clk);
 	if (ret)
 		return ret;
+
+	ret = regulator_enable(ir->supply);
+	if (ret) {
+		clk_disable_unprepare(ir->clk);
+		return ret;
+	}
 
 	usleep_range(2500, 3000);
 	start = ktime_get();
@@ -222,6 +229,7 @@ out:
 	if (ret < 0)
 		ir->tx_errors++;
 	regulator_disable(ir->supply);
+	clk_disable_unprepare(ir->clk);
 
 	return ret;
 }
@@ -261,7 +269,11 @@ static int ice40_ir_device_info_show(struct seq_file *s, void *unused)
 	u8 info[8];
 	int ret;
 
+	ret = clk_prepare_enable(ir->clk);
+	if (ret)
+		return ret;
 	ret = i2c_master_recv(ir->client, info, sizeof(info));
+	clk_disable_unprepare(ir->clk);
 	if (ret < 0)
 		return ret;
 
@@ -301,7 +313,6 @@ static int ice40_ir_probe(struct i2c_client *client)
 	const struct firmware *fw;
 	struct ice40_ir *ir;
 	struct rc_dev *rc;
-	struct clk *clk;
 	int ret;
 
 	if (client->adapter->algo != &i2c_bit_algo)
@@ -326,10 +337,14 @@ static int ice40_ir_probe(struct i2c_client *client)
 		return dev_err_probe(dev, PTR_ERR(ir->supply),
 				     "failed to get power supply\n");
 
-	clk = devm_clk_get_enabled(dev, NULL);
-	if (IS_ERR(clk))
-		return dev_err_probe(dev, PTR_ERR(clk),
-				     "failed to enable clock\n");
+	/*
+	 * The clock runs the configured design, which only has to run while
+	 * it is talked to or transmits; it keeps its state while stopped.
+	 */
+	ir->clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(ir->clk))
+		return dev_err_probe(dev, PTR_ERR(ir->clk),
+				     "failed to get clock\n");
 
 	ir->reset = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(ir->reset))
@@ -356,7 +371,13 @@ static int ice40_ir_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to load %s\n", fw_name);
 
+	ret = clk_prepare_enable(ir->clk);
+	if (ret) {
+		release_firmware(fw);
+		return dev_err_probe(dev, ret, "failed to enable clock\n");
+	}
 	ret = ice40_ir_configure(ir, fw);
+	clk_disable_unprepare(ir->clk);
 	release_firmware(fw);
 	if (ret)
 		return dev_err_probe(dev, ret, "FPGA configuration failed\n");
