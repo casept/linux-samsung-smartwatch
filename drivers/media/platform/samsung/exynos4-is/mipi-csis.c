@@ -132,15 +132,11 @@ MODULE_PARM_DESC(debug, "Debug level (0-2)");
 enum {
 	CSIS_CLK_GATE,
 	CSIS_CLK_BUS,
-	CSIS_CLK_MUX,
-	CSIS_CLK_PARENT,
 };
 
 static char *csi_clock_name[] = {
 	[CSIS_CLK_GATE] = "csis",
 	[CSIS_CLK_BUS]  = "sclk_csis",
-	[CSIS_CLK_MUX] = "mux",
-	[CSIS_CLK_PARENT] = "parent",
 };
 #define NUM_CSIS_CLOCKS	ARRAY_SIZE(csi_clock_name)
 #define DEFAULT_SCLK_CSIS_FREQ	166000000UL
@@ -491,16 +487,6 @@ static int s5pcsis_setup_clocks(struct csis_state *state)
 {
 	int ret = 0;
 
-	if (!IS_ERR(state->clock[CSIS_CLK_PARENT])) {
-		ret = clk_set_parent(state->clock[CSIS_CLK_MUX],
-			state->clock[CSIS_CLK_PARENT]);
-		if (ret < 0) {
-			dev_err(&state->pdev->dev,
-				"%s(): failed to set parent: %d\n",
-				__func__, ret);
-			return ret;
-		}
-	}
 	if (state->drv_data->sclk_csis) {
 		ret = clk_set_rate(state->clock[CSIS_CLK_BUS],
 			state->clk_frequency);
