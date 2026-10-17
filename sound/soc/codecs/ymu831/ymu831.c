@@ -9623,11 +9623,24 @@ static void mc_asoc_spi_remove(struct spi_device *spi)
 	}
 }
 
+static const struct of_device_id mc_asoc_of_match[] = {
+	{ .compatible = "yamaha,ymu831" },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, mc_asoc_of_match);
+
+static const struct spi_device_id mc_asoc_spi_ids[] = {
+	{ "ymu831" },
+	{ }
+};
+MODULE_DEVICE_TABLE(spi, mc_asoc_spi_ids);
+
 static struct spi_driver	mc_asoc_spi_driver = {
 	.driver = {
 		.name	= MC_ASOC_HWDEP_ID,
-		.owner	= THIS_MODULE,
+		.of_match_table = mc_asoc_of_match,
 	},
+	.id_table = mc_asoc_spi_ids,
 	.probe	= mc_asoc_spi_probe,
 	.remove	= mc_asoc_spi_remove,
 };
