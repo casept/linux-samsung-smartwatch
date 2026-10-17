@@ -263,12 +263,15 @@
 		startup-delay-us = <500>;
 	};
 
+	/* PCM interface of the Bluetooth controller, wired to the CODEC */
+	bt_sco: bt-sco {
+		compatible = "linux,bt-sco";
+		#sound-dai-cells = <1>;
+	};
+
 	sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "Rinato";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,bitclock-master = <&codec_dai>;
-		simple-audio-card,frame-master = <&codec_dai>;
 		simple-audio-card,widgets =
 			"Microphone", "Mic",
 			"Speaker", "Speaker";
@@ -277,13 +280,38 @@
 			"Mic", "MICBIAS2",
 			"Speaker", "SPL",
 			"Speaker", "SPR";
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		simple-audio-card,cpu {
-			sound-dai = <&i2s2 0>;
+		simple-audio-card,dai-link@0 {
+			reg = <0>;
+			format = "i2s";
+			bitclock-master = <&codec_dai>;
+			frame-master = <&codec_dai>;
+
+			cpu {
+				sound-dai = <&i2s2 0>;
+			};
+
+			codec_dai: codec {
+				sound-dai = <&audio_codec 0>;
+			};
 		};
 
-		codec_dai: simple-audio-card,codec {
-			sound-dai = <&audio_codec 0>;
+		/* Bluetooth call audio, narrowband, on the CODEC's ext port */
+		simple-audio-card,dai-link@1 {
+			reg = <1>;
+			format = "dsp_a";
+			bitclock-master = <&bt_codec_dai>;
+			frame-master = <&bt_codec_dai>;
+
+			cpu {
+				sound-dai = <&bt_sco 0>;
+			};
+
+			bt_codec_dai: codec {
+				sound-dai = <&audio_codec 1>;
+			};
 		};
 	};
 
