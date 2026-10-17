@@ -579,6 +579,7 @@ static void fimc_is_pipeline_freemem(struct fimc_is_pipeline *pipeline)
 		dma_free_coherent(pipeline->dev, minfo->shot.size,
 				minfo->shot.vaddr,
 				minfo->shot.paddr);
+	minfo->shot.vaddr = NULL;
 }
 
 static int fimc_is_pipeline_load_firmware(struct fimc_is_pipeline *pipeline)
@@ -2081,7 +2082,7 @@ int fimc_is_pipeline_open(struct fimc_is_pipeline *pipeline,
 		ret = fimc_is_itf_wait_init_state(&is->interface);
 		if (ret) {
 			dev_err(pipeline->dev, "FW init failed\n");
-			goto err_fw;
+			goto err_power;
 		}
 	}
 
@@ -2105,19 +2106,19 @@ int fimc_is_pipeline_open(struct fimc_is_pipeline *pipeline,
 
 	if (ret) {
 		dev_err(pipeline->dev, "Open sensor failed\n");
-		fimc_is_pipeline_power(pipeline, 0);
-		goto err_fw;
+		goto err_fw_down;
 	}
 
 	if (region->shared[MAX_SHARED_COUNT - 1] != MAGIC_NUMBER) {
 		dev_err(pipeline->dev, "Invalid magic number\n");
-		goto err_fw;
+		ret = -EINVAL;
+		goto err_fw_down;
 	}
 
 	/* Load setfile */
 	ret = fimc_is_pipeline_setfile(pipeline);
 	if (ret)
-		goto err_exit;
+		goto err_fw_down;
 
 	if (is->num_pipelines == 0) {
 		/* Copy init params to FW region */
@@ -2141,7 +2142,7 @@ int fimc_is_pipeline_open(struct fimc_is_pipeline *pipeline,
 				ISS_PREVIEW_STILL, FIMC_IS_PARAMS_MASK_ALL, FIMC_IS_PARAMS_MASK_ALL);
 		if (ret) {
 			dev_err(pipeline->dev, "%s failed\n", __func__);
-			return -EINVAL;
+			goto err_fw_down;
 		}
 	}
 
@@ -2154,8 +2155,20 @@ int fimc_is_pipeline_open(struct fimc_is_pipeline *pipeline,
 	mutex_unlock(&pipeline->pipe_lock);
 	return 0;
 
+err_fw_down:
+	/*
+	 * Have the running firmware power down first like when closing, cutting
+	 * the power of the A5 while it's busy can hang the bus.
+	 */
+	if (is->num_pipelines == 0 &&
+	    fimc_is_itf_power_down(&is->interface, pipeline->instance))
+		dev_err(pipeline->dev, "FW power down error\n");
+err_power:
+	if (is->num_pipelines == 0)
+		fimc_is_pipeline_power(pipeline, 0);
 err_fw:
-	fimc_is_pipeline_freemem(pipeline);
+	if (is->num_pipelines == 0)
+		fimc_is_pipeline_freemem(pipeline);
 err_exit:
 	mutex_unlock(&pipeline->pipe_lock);
 	return ret;
