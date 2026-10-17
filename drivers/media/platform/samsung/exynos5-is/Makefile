@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-ccflags-y += -Idrivers/media/platform/samsung/exynos4-is
+ccflags-y += -I$(srctree)/drivers/media/platform/samsung/exynos4-is
 
 exynos-iss-objs := exynos5-mdev.o
 
