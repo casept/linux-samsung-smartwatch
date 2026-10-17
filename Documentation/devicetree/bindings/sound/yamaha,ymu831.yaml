@@ -49,7 +49,12 @@ properties:
       in use.
 
   "#sound-dai-cells":
-    const: 0
+    const: 1
+    description: |
+      The digital audio interfaces:
+        0: music port
+        1: ext port
+        2: voice port
 
 required:
   - compatible
@@ -75,6 +80,6 @@ examples:
             clocks = <&pmu_system_controller 0>;
             clock-names = "mclk";
             dvdd-supply = <&codec_dvdd>;
-            #sound-dai-cells = <0>;
+            #sound-dai-cells = <1>;
         };
     };
