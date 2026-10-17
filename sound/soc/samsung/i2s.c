@@ -1141,14 +1141,31 @@ static const struct snd_soc_dapm_widget samsung_i2s_widgets[] = {
 
 static const struct snd_soc_dapm_route samsung_i2s_dapm_routes[] = {
 	{ "Playback Mixer", NULL, "Primary Playback" },
-	{ "Playback Mixer", NULL, "Secondary Playback" },
 
 	{ "Mixer DAI TX", NULL, "Playback Mixer" },
 	{ "Primary Capture", NULL, "Mixer DAI RX" },
 };
 
+static const struct snd_soc_dapm_route samsung_i2s_sec_dapm_routes[] = {
+	{ "Playback Mixer", NULL, "Secondary Playback" },
+};
+
+static int samsung_i2s_component_probe(struct snd_soc_component *component)
+{
+	struct samsung_i2s_priv *priv = snd_soc_component_get_drvdata(component);
+
+	if (!(priv->quirks & QUIRK_SEC_DAI))
+		return 0;
+
+	return snd_soc_dapm_add_routes(snd_soc_component_get_dapm(component),
+				       samsung_i2s_sec_dapm_routes,
+				       ARRAY_SIZE(samsung_i2s_sec_dapm_routes));
+}
+
 static const struct snd_soc_component_driver samsung_i2s_component = {
 	.name = "samsung-i2s",
+
+	.probe = samsung_i2s_component_probe,
 
 	.dapm_widgets = samsung_i2s_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(samsung_i2s_widgets),
