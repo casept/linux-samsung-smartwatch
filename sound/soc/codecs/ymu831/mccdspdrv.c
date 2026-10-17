@@ -1858,7 +1858,6 @@ static UINT32 GetFifoId(UINT32 dCoderId)
 static void NotifyOutFormatOs2Host(UINT32 dCoderId)
 {
 	UINT32 dFlagOtherFifo;
-	SINT32 sdRet;
 	UINT32 dFifoId;
 	struct DEC_INFO *psDecInfo;
 	struct DEC_INFO *psOtherDecInfo;
@@ -1918,7 +1917,7 @@ static void NotifyOutFormatOs2Host(UINT32 dCoderId)
 					| (UINT32)MCB_RFIFO_FLG_REMP),
 					0);
 
-			sdRet = McDevIf_ExecutePacket();
+			McDevIf_ExecutePacket();
 
 			if ((dFifoId & FIFO_OFIFO_MASK) != 0)
 				/* Clear OFIFO_EMPTY */
@@ -1945,7 +1944,7 @@ static void NotifyOutFormatOs2Host(UINT32 dCoderId)
 		psOtherDecInfo->bPreInputDataEnd = INPUT_DATAEND_RELEASE;
 
 		/* InputDataEnd command */
-		sdRet = CommandInputDataEnd(psOtherDecInfo->dCoderId);
+		CommandInputDataEnd(psOtherDecInfo->dCoderId);
 
 		/* FormatPropagate state - set */
 		psOtherDecInfo->bFmtPropagate = FORMAT_PROPAGATE_ON;
@@ -2408,14 +2407,11 @@ static void InterruptProcDecErr(UINT32 dCoderId)
 {
 	UINT8 bAdd;
 	UINT8 bData;
-	SINT32 sdRet;
 	UINT32 dPos;
 	struct DEC_INFO *psDecInfo;
-	struct DEC_INFO *psOtherDecInfo;
 	struct MC_CODER_PARAMS sParam;
 
 	psDecInfo = GetDecInfo(dCoderId);
-	psOtherDecInfo = GetOtherDecInfo(dCoderId);
 
 	/* Read ERR data */
 	if (CODER_DEC == dCoderId)
@@ -2433,11 +2429,11 @@ static void InterruptProcDecErr(UINT32 dCoderId)
 	if (DEC_ERR_PROG_SPECIFIC_MAX < psDecInfo->wErrorCode) {
 		/* Stop */
 		FifoStop(dCoderId);
-		sdRet = DecStop(dCoderId, MADEVCDSP_VERIFY_COMP_OFF);
+		DecStop(dCoderId, MADEVCDSP_VERIFY_COMP_OFF);
 
 		/* Reset command */
 		sParam.bCommandId = (UINT8)CDSP_CMD_HOST2OS_CMN_RESET;
-		sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+		CommandWriteHost2Os(dCoderId, &sParam);
 
 		/* Command register Initialize */
 		CommandInitialize(dCoderId);
@@ -2585,7 +2581,6 @@ static void InterruptProcDecEnd(UINT32 dCoderId)
 {
 	UINT8 bData;
 	UINT32 dInputPos;
-	SINT32 sdRet;
 	struct DEC_INFO *psDecInfo;
 	struct DEC_INFO *psOtherDecInfo;
 	struct MC_CODER_PARAMS sParam;
@@ -2612,11 +2607,11 @@ static void InterruptProcDecEnd(UINT32 dCoderId)
 		/* VerifyStopCompletion command */
 		sParam.bCommandId =
 				(UINT8)CDSP_CMD_HOST2OS_SYS_VERIFY_STOP_COMP;
-		sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+		CommandWriteHost2Os(dCoderId, &sParam);
 
 		/* GetInputPos command */
 		sParam.bCommandId = (UINT8)CDSP_CMD_HOST2OS_SYS_GET_INPUT_POS;
-		sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+		CommandWriteHost2Os(dCoderId, &sParam);
 
 		/* InputPos */
 		dInputPos = CreateUINT32(
@@ -2629,7 +2624,7 @@ static void InterruptProcDecEnd(UINT32 dCoderId)
 
 		/* Clear command */
 		sParam.bCommandId = (UINT8)CDSP_CMD_HOST2OS_CMN_CLEAR;
-		sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+		CommandWriteHost2Os(dCoderId, &sParam);
 
 		/* DEC/ENC Start */
 		McDevIf_ReadDirect((MCDRV_PACKET_REGTYPE_C
@@ -2677,7 +2672,7 @@ static void InterruptProcDecEnd(UINT32 dCoderId)
 		/* ClearInputDataEnd command */
 		sParam.bCommandId =
 			(UINT8)CDSP_CMD_HOST2OS_SYS_CLEAR_INPUT_DATA_END;
-		sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+		CommandWriteHost2Os(dCoderId, &sParam);
 
 		/* Input data end flag - release */
 		psDecInfo->bInputDataEnd = INPUT_DATAEND_RELEASE;
@@ -3796,11 +3791,9 @@ static SINT32 CheckProgram(UINT32 dCoderId,
 	UINT16 wProgType;
 	UINT32 dTotalSize;
 	SINT32 sdRet;
-	struct DEC_INFO *psDecInfo;
 	struct DEC_INFO *psOtherDecInfo;
 	struct PROGRAM_INFO *psOtherProgInfo;
 
-	psDecInfo = GetDecInfo(dCoderId);
 	psOtherDecInfo = GetOtherDecInfo(dCoderId);
 
 
@@ -4120,6 +4113,7 @@ static SINT32 CheckInOutPath(const struct CONNECTION_INFO *psDecConnect,
 		default:
 			return MCDRV_ERROR_RESOURCEOVER;
 		}
+		break;
 
 	default:
 		return MCDRV_ERROR;
@@ -4543,7 +4537,6 @@ static void DecClose(UINT32 dCoderId)
 	UINT8 bAddCtl;
 	UINT8 bIntData;
 	UINT8 bCtlData;
-	SINT32 sdRet;
 	struct DEC_INFO *psDecInfo;
 	struct MC_CODER_PARAMS sParam;
 
@@ -4554,7 +4547,7 @@ static void DecClose(UINT32 dCoderId)
 
 	/* Reset command */
 	sParam.bCommandId = (UINT8)CDSP_CMD_HOST2OS_CMN_RESET;
-	sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+	CommandWriteHost2Os(dCoderId, &sParam);
 
 	/* Command register Initialize */
 	CommandInitialize(psDecInfo->dCoderId);
@@ -5503,7 +5496,6 @@ static void ClearInputPosition(UINT32 dCoderId)
  ****************************************************************************/
 static void ResetInputPos(UINT32 dCoderId)
 {
-	SINT32 sdRet;
 	struct DEC_INFO *psDecInfo;
 	struct MC_CODER_PARAMS sParam;
 
@@ -5514,7 +5506,7 @@ static void ResetInputPos(UINT32 dCoderId)
 
 	/* ResetInputPos command */
 	sParam.bCommandId = CDSP_CMD_HOST2OS_SYS_RESET_INPUT_POS;
-	sdRet = CommandWriteHost2Os(dCoderId, &sParam);
+	CommandWriteHost2Os(dCoderId, &sParam);
 
 	psDecInfo->dInPosSup = 0;
 }
@@ -5998,6 +5990,7 @@ static void TermFunction(UINT32 dCoderId)
 	case STATE_PLAYING:
 		DecStop(dCoderId, MADEVCDSP_VERIFY_COMP_ON);
 		FifoStop(dCoderId);
+		fallthrough;
 
 	case STATE_READY_SETUP:
 	case STATE_READY:
@@ -7717,7 +7710,7 @@ static SINT32 GetInputPosition(UINT32 *pdPos)
  *			< 0		error code
  *
  ****************************************************************************/
-SINT32 GetHwErrorCode(UINT16 *pwErrorCode)
+static SINT32 GetHwErrorCode(UINT16 *pwErrorCode)
 {
 	*pwErrorCode = gsCdspInfo.wHwErrorCode;
 
@@ -7739,7 +7732,7 @@ SINT32 GetHwErrorCode(UINT16 *pwErrorCode)
  *			< 0		error code
  *
  ****************************************************************************/
-SINT32 GetErrorCode(UINT32 dCoderId, UINT16 *pwErrorCode)
+static SINT32 GetErrorCode(UINT32 dCoderId, UINT16 *pwErrorCode)
 {
 	struct DEC_INFO *psDecInfo;
 
@@ -7762,7 +7755,7 @@ SINT32 GetErrorCode(UINT32 dCoderId, UINT16 *pwErrorCode)
  *			< 0		error code
  *
  ****************************************************************************/
-SINT32 GetVersion(UINT32 dCoderId, struct MC_CODER_VERSION *psVersion)
+static SINT32 GetVersion(UINT32 dCoderId, struct MC_CODER_VERSION *psVersion)
 {
 	struct DEC_INFO *psDecInfo;
 

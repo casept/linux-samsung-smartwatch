@@ -3166,7 +3166,6 @@ static void	AddSource(
 {
 	UINT8	bReg;
 	UINT8	bDsf0PreInput, bDsf1PreInput, bDsf2PreInput;
-	UINT32	dHifiSrc;
 	UINT32	dSrc;
 	struct MCDRV_AEC_INFO	sAecInfo;
 
@@ -3214,9 +3213,6 @@ static void	AddSource(
 						MCI_DSF1_PRE_INPUT);
 	bDsf2PreInput	= McResCtrl_GetRegVal(MCDRV_PACKET_REGTYPE_E,
 						MCI_DSF2_PRE_INPUT);
-
-	dHifiSrc	=
-		McResCtrl_GetSource(eMCDRV_DST_HIFIOUT, eMCDRV_DST_CH0);
 
 	if ((McResCtrl_HasSrc(eMCDRV_DST_ADIF0, eMCDRV_DST_CH0) != 0)
 	|| (McResCtrl_HasSrc(eMCDRV_DST_ADIF0, eMCDRV_DST_CH1) != 0)) {

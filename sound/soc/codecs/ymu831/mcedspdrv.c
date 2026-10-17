@@ -584,7 +584,7 @@ static void DisableIrq(void)
  *			MCDRV_SUCCESS
  *
  ****************************************************************************/
-SINT32 E1Download1Band(UINT8 *pbSysEq0, UINT8 *pbSysEq1, UINT8 bSysEqEnbReg)
+static SINT32 E1Download1Band(UINT8 *pbSysEq0, UINT8 *pbSysEq1, UINT8 bSysEqEnbReg)
 {
 	UINT8 bOrgSysEqEnbReg;
 	UINT32 i;
@@ -685,7 +685,7 @@ SINT32 E1Download1Band(UINT8 *pbSysEq0, UINT8 *pbSysEq1, UINT8 bSysEqEnbReg)
  *			MCDRV_SUCCESS
  *
  ****************************************************************************/
-SINT32 E1Download3Band(UINT8 *pbSysEq0, UINT8 *pbSysEq1, UINT8 bSysEqEnbReg)
+static SINT32 E1Download3Band(UINT8 *pbSysEq0, UINT8 *pbSysEq1, UINT8 bSysEqEnbReg)
 {
 	UINT8 bOrgSysEqEnbReg;
 	UINT8 bSysEq0Modify;
