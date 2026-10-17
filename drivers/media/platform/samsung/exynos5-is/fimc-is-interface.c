@@ -1077,18 +1077,11 @@ static void fimc_is_debugfs_remove(struct fimc_is_interface *itf)
 	itf->debugfs_entry = NULL;
 }
 
-static int fimc_is_debugfs_create(struct fimc_is_interface *itf)
+static void fimc_is_debugfs_create(struct fimc_is_interface *itf)
 {
-	struct dentry *dentry;
-
 	itf->debugfs_entry = debugfs_create_dir("fimc_is", NULL);
-
-	dentry = debugfs_create_file("fw_log", 0444, itf->debugfs_entry,
-					itf, &fimc_is_debugfs_fops);
-	if (!dentry)
-		fimc_is_debugfs_remove(itf);
-
-	return itf->debugfs_entry == NULL ? -EIO : 0;
+	debugfs_create_file("fw_log", 0444, itf->debugfs_entry, itf,
+			    &fimc_is_debugfs_fops);
 }
 
 int fimc_is_interface_init(struct fimc_is_interface *itf,
@@ -1136,6 +1129,7 @@ int fimc_is_interface_init(struct fimc_is_interface *itf,
 
 void fimc_is_interface_destroy(struct fimc_is_interface *itf)
 {
+	fimc_is_debugfs_remove(itf);
 	disable_irq(itf->irq);
 	cancel_work_sync(&itf->shot_done_work);
 }
