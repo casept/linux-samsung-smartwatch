@@ -2299,6 +2299,7 @@ static int vidioc_s_parm(struct file *file, void *priv,
 					a->parm.output.timeperframe.denominator;
 		ctx->enc_params.rc_framerate_denom =
 					a->parm.output.timeperframe.numerator;
+		a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
 	} else {
 		mfc_err("Setting FPS is only possible for the output queue\n");
 		return -EINVAL;
@@ -2311,11 +2312,12 @@ static int vidioc_g_parm(struct file *file, void *priv,
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 
-	if (a->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+	if (a->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		a->parm.output.timeperframe.denominator =
 					ctx->enc_params.rc_framerate_num;
 		a->parm.output.timeperframe.numerator =
 					ctx->enc_params.rc_framerate_denom;
+		a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
 	} else {
 		mfc_err("Setting FPS is only possible for the output queue\n");
 		return -EINVAL;
