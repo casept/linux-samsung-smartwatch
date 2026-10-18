@@ -534,17 +534,19 @@ static int fimc_is_probe(struct platform_device *pdev)
 	spin_lock_init(&is->events_lock);
 
 	platform_set_drvdata(pdev, is);
-	pm_runtime_enable(dev);
-	if (!pm_runtime_enabled(dev)) {
-		ret = fimc_is_runtime_resume(dev);
-		if (ret) {
-			dev_err(dev, "Runtime resume failed\n");
-			goto err_clk;
-		}
-
-	}
-
 	fimc_is_reset_cmu_isp(is);
+
+	/*
+	 * Start out powered up and active: the child devices kept around
+	 * when probing got deferred before can be active already, which their
+	 * parent has to be as well.
+	 */
+	ret = fimc_is_pm_resume(dev);
+	if (ret)
+		goto err_clk;
+	pm_runtime_set_active(dev);
+	pm_runtime_get_noresume(dev);
+	pm_runtime_enable(dev);
 
 	/* Get IS-sensor contexts */
 	ret = fimc_is_parse_sensor(is);
@@ -574,6 +576,7 @@ static int fimc_is_probe(struct platform_device *pdev)
 			goto err_depopulate;
 	}
 
+	pm_runtime_put(dev);
 	dev_dbg(dev, "FIMC-IS registered successfully\n");
 
 	return 0;
@@ -590,6 +593,9 @@ err_sd:
 	fimc_is_pipelines_destroy(is);
 err_rpm:
 	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
+	pm_runtime_put_noidle(dev);
+	fimc_is_pm_suspend(dev);
 err_clk:
 	fimc_is_put_clocks(is);
 err_fw_mem:
