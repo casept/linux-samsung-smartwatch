@@ -289,6 +289,15 @@
 		startup-delay-us = <500>;
 	};
 
+	/* The battery, feeding the system */
+	vbat_reg: regulator-vbat {
+		compatible = "regulator-fixed";
+		regulator-name = "VBAT";
+		regulator-min-microvolt = <3800000>;
+		regulator-max-microvolt = <3800000>;
+		regulator-always-on;
+	};
+
 	/* PCM interface of the Bluetooth controller, wired to the CODEC */
 	bt_sco: bt-sco {
 		compatible = "linux,bt-sco";
@@ -1097,7 +1106,13 @@
 		/* SCO over PCM, as the clock slave of the CODEC's ext port */
 		brcm,bt-pcm-int-params = [00 00 00 00 00];
 
-		/* TODO: Figure out which regulators are used and add them here to silence dummy regulator warning */
+		/*
+		 * Going by the BCM4334W page of the schematics, which shows
+		 * the SDIO pull-ups on VCC_AP_1.8V, but leaves the supply nets
+		 * of the chip itself unnamed.
+		 */
+		vbat-supply = <&vbat_reg>;
+		vddio-supply = <&ldo3_reg>;
 	};
 };
 
