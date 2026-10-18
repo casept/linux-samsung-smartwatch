@@ -1122,8 +1122,12 @@ static int fimc_lite_link_setup(struct media_entity *entity,
 		break;
 
 	case FLITE_SD_PAD_SOURCE_ISP:
+		/*
+		 * The link to the capture node is immutable, so it goes back
+		 * to being the output when the one to the ISP goes away.
+		 */
 		if (!(flags & MEDIA_LNK_FL_ENABLED))
-			atomic_set(&fimc->out_path, FIMC_IO_NONE);
+			atomic_set(&fimc->out_path, FIMC_IO_DMA);
 		else
 			atomic_set(&fimc->out_path, FIMC_IO_ISP);
 		break;
