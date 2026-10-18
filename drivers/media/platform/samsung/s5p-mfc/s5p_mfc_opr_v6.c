@@ -494,6 +494,12 @@ static void s5p_mfc_dec_calc_dpb_size_v6(struct s5p_mfc_ctx *ctx)
 			ctx->img_height, ctx->buf_width, ctx->buf_height);
 
 	switch (ctx->dst_fmt->fourcc) {
+	case V4L2_PIX_FMT_NV12MT_16X16:
+		ctx->stride[0] = ctx->buf_width;
+		ctx->stride[1] = ctx->buf_width;
+		ctx->luma_size = calc_plane(ctx->img_width, ctx->img_height);
+		ctx->chroma_size = calc_plane(ctx->img_width, (ctx->img_height / 2));
+		break;
 	case V4L2_PIX_FMT_NV12M:
 	case V4L2_PIX_FMT_NV21M:
 		ctx->stride[0] = ALIGN(ctx->img_width, S5P_FIMV_NV12MT_HALIGN_V6);
