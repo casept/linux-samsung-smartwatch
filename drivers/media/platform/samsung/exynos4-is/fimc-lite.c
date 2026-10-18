@@ -1315,8 +1315,16 @@ static int fimc_lite_subdev_s_stream(struct v4l2_subdev *sd, int on)
 static int fimc_lite_log_status(struct v4l2_subdev *sd)
 {
 	struct fimc_lite *fimc = v4l2_get_subdevdata(sd);
+	struct device *dev = &fimc->pdev->dev;
+
+	/* The registers can't be accessed while suspended, it hangs the bus */
+	if (pm_runtime_get_if_in_use(dev) <= 0) {
+		v4l2_info(sd, "Not in use\n");
+		return 0;
+	}
 
 	flite_hw_dump_regs(fimc, __func__);
+	pm_runtime_put(dev);
 	return 0;
 }
 
