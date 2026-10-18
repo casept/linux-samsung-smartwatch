@@ -1557,10 +1557,13 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 		if (reqbufs->count == 0) {
 			mfc_debug(2, "Freeing buffers\n");
 			ret = vb2_reqbufs(&ctx->vq_dst, reqbufs);
+			if (ret)
+				return ret;
+			s5p_mfc_wait_for_ctx_idle(ctx);
 			s5p_mfc_hw_call(dev->mfc_ops, release_codec_buffers,
 					ctx);
 			ctx->capture_state = QUEUE_FREE;
-			return ret;
+			return 0;
 		}
 		if (ctx->capture_state != QUEUE_FREE) {
 			mfc_err("invalid capture state: %d\n",
@@ -1578,10 +1581,13 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 		if (reqbufs->count == 0) {
 			mfc_debug(2, "Freeing buffers\n");
 			ret = vb2_reqbufs(&ctx->vq_src, reqbufs);
+			if (ret)
+				return ret;
+			s5p_mfc_wait_for_ctx_idle(ctx);
 			s5p_mfc_hw_call(dev->mfc_ops, release_codec_buffers,
 					ctx);
 			ctx->output_state = QUEUE_FREE;
-			return ret;
+			return 0;
 		}
 		if (ctx->output_state != QUEUE_FREE) {
 			mfc_err("invalid output state: %d\n",
