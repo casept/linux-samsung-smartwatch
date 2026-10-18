@@ -1109,6 +1109,12 @@ static int s5p_mfc_ctx_ready(struct s5p_mfc_ctx *ctx)
 {
 	mfc_debug(2, "src=%d, dst=%d, state=%d\n",
 		  ctx->src_queue_cnt, ctx->dst_queue_cnt, ctx->state);
+	/*
+	 * Leave the stream buffers alone until start_streaming() has
+	 * accepted them, it can still refuse and hand them back.
+	 */
+	if (!vb2_start_streaming_called(&ctx->vq_dst))
+		return 0;
 	/* context is ready to make header */
 	if (ctx->state == MFCINST_GOT_INST && ctx->dst_queue_cnt >= 1)
 		return 1;
@@ -2565,6 +2571,22 @@ static int s5p_mfc_buf_prepare(struct vb2_buffer *vb)
 	return 0;
 }
 
+static void s5p_mfc_return_dst_buffers(struct s5p_mfc_ctx *ctx)
+{
+	struct s5p_mfc_dev *dev = ctx->dev;
+	struct s5p_mfc_buf *mb, *tmp;
+	unsigned long flags;
+
+	clear_work_bit_irqsave(ctx);
+	spin_lock_irqsave(&dev->irqlock, flags);
+	list_for_each_entry_safe(mb, tmp, &ctx->dst_queue, list) {
+		list_del(&mb->list);
+		vb2_buffer_done(&mb->b->vb2_buf, VB2_BUF_STATE_QUEUED);
+	}
+	ctx->dst_queue_cnt = 0;
+	spin_unlock_irqrestore(&dev->irqlock, flags);
+}
+
 static int s5p_mfc_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct s5p_mfc_ctx *ctx = vb2_get_drv_priv(q);
@@ -2572,18 +2594,20 @@ static int s5p_mfc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	if (IS_MFCV6_PLUS(dev) &&
 			(q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-
-		if ((ctx->state == MFCINST_GOT_INST) &&
-			(dev->curr_ctx == ctx->num) && dev->hw_lock) {
-			s5p_mfc_wait_for_done_ctx(ctx,
-						S5P_MFC_R2H_CMD_SEQ_DONE_RET,
-						0);
-		}
 		if (q->memory != V4L2_MEMORY_DMABUF) {
 			if (ctx->src_bufs_cnt < ctx->pb_count) {
 				mfc_err("Need minimum %d OUTPUT buffers\n", ctx->pb_count);
+				s5p_mfc_return_dst_buffers(ctx);
 				return -ENOBUFS;
 			}
+		}
+		/* Encoding frames needs what the header tells, make it first */
+		if (ctx->state == MFCINST_GOT_INST && s5p_mfc_ctx_ready(ctx)) {
+			set_work_bit_irqsave(ctx);
+			s5p_mfc_hw_call(dev->mfc_ops, try_run, dev);
+			s5p_mfc_wait_for_done_ctx(ctx,
+						S5P_MFC_R2H_CMD_SEQ_DONE_RET,
+						0);
 		}
 	}
 
