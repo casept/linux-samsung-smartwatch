@@ -311,6 +311,7 @@ static const unsigned long metadata2_ctrl[] = {
 	/* FIMC_IS_CID_ISO_MODE		*/ 0x3818,
 	/* FIMC_IS_CID_SCENE		*/ 0x0424,
 	/* FIMC_IS_CID_COLOR_MODE	*/ 0x0078,
+	/* FIMC_IS_CID_AE_MODE		*/ 0x042c,
 };
 
 /**

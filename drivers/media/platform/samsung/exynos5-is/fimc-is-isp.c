@@ -663,9 +663,14 @@ static int isp_video_s_ctrl(struct v4l2_ctrl *ctrl)
 		isp_video_set_awb_ctrl(isp, FIMC_IS_CID_AWB,
 					     ctrl->val);
 		break;
-	case V4L2_CID_EXPOSURE_ABSOLUTE:
-		isp_video_set_sensor_ctrl(isp, FIMC_IS_CID_EXPOSURE,
-						ctrl->val);
+	case V4L2_CID_EXPOSURE_AUTO:
+		fimc_is_pipeline_update_shot_ctrl(isp->pipeline,
+				FIMC_IS_CID_AE_MODE,
+				ctrl->val == V4L2_EXPOSURE_AUTO ?
+				AA_AEMODE_ON : AA_AEMODE_OFF);
+		if (ctrl->val == V4L2_EXPOSURE_MANUAL)
+			isp_video_set_sensor_ctrl(isp, FIMC_IS_CID_EXPOSURE,
+						  isp->ctrls.exposure->val);
 		break;
 	case V4L2_CID_FOCUS_AUTO:
 		isp_video_set_focus_ctrl(isp, FIMC_IS_CID_FOCUS_MODE,
@@ -726,9 +731,19 @@ static int isp_video_create_controls(struct fimc_is_isp *isp)
 	/* White balance control cluster: state */
 	ctrls->awb = v4l2_ctrl_new_std(handler, ops,
 			V4L2_CID_AUTO_WHITE_BALANCE, 0, 1, 1, 1);
-	/* Exposure absolute time control */
+	/*
+	 * Exposure controls cluster. The firmware's auto exposure doesn't
+	 * settle when it's fed the frames from memory, leave it off by default.
+	 */
+	ctrls->exposure_auto = v4l2_ctrl_new_std_menu(handler, ops,
+				V4L2_CID_EXPOSURE_AUTO, V4L2_EXPOSURE_MANUAL,
+				~(1 << V4L2_EXPOSURE_AUTO |
+				  1 << V4L2_EXPOSURE_MANUAL),
+				V4L2_EXPOSURE_MANUAL);
 	ctrls->exposure = v4l2_ctrl_new_std(handler, ops,
 				V4L2_CID_EXPOSURE_ABSOLUTE, 4, 1800, 1, 200);
+	v4l2_ctrl_auto_cluster(2, &ctrls->exposure_auto,
+			       V4L2_EXPOSURE_MANUAL, false);
 	/* Focus controls cluster: focus mode */
 	ctrls->focus = v4l2_ctrl_new_std(handler, ops,
 				V4L2_CID_FOCUS_AUTO, 0, 1, 1, 0);

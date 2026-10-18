@@ -44,7 +44,8 @@ struct fimc_is_isp_ctrls {
 	/* Sensitivity controls cluster */
 	struct v4l2_ctrl *iso;
 	struct v4l2_ctrl *iso_mode;
-	/* Exposure time control */
+	/* Exposure controls cluster */
+	struct v4l2_ctrl *exposure_auto;
 	struct v4l2_ctrl *exposure;
 	/* Focus control */
 	struct v4l2_ctrl *focus;

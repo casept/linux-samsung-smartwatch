@@ -57,6 +57,7 @@ enum {
 	FIMC_IS_CID_ISO_MODE,	/* [AUTO/MANUAL */
 	FIMC_IS_CID_SCENE,	/* @see: V4L2_CID_SCENE_MODE */
 	FIMC_IS_CID_COLOR_MODE,
+	FIMC_IS_CID_AE_MODE,	/* enum aa_aemode */
 	FIMC_IS_CID_MAX
 };
 
