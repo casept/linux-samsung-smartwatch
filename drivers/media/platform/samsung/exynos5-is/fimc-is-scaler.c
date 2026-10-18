@@ -37,7 +37,7 @@ static const struct fimc_is_fmt formats[] = {
 		.num_planes     = 2,
 	},
 	{
-		.fourcc         = V4L2_PIX_FMT_NV16,
+		.fourcc         = V4L2_PIX_FMT_YUYV,
 		.depth		= {16},
 		.num_planes     = 1,
 	},

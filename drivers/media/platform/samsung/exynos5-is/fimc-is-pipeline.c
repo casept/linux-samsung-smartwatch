@@ -1466,7 +1466,8 @@ int fimc_is_pipeline_scaler_start(struct fimc_is_pipeline *pipeline,
 	if (num_planes < fmt->num_planes) {
 		v4l2_warn(&scaler->subdev,
 			  "Insufficient number of planes!\n");
-		goto exit;
+		ret = -EINVAL;
+		goto restart;
 	}
 
 	dma_output->cmd           = DMA_OUTPUT_COMMAND_ENABLE;
@@ -1476,20 +1477,24 @@ int fimc_is_pipeline_scaler_start(struct fimc_is_pipeline *pipeline,
 	dma_output->width         = scaler_reg.width;
 	dma_output->height        = scaler_reg.height;
 
+	/* The chroma orders are what the downstream driver uses */
 	switch (fmt->fourcc) {
 	case V4L2_PIX_FMT_YUV420M:
+		dma_output->format = DMA_OUTPUT_FORMAT_YUV420;
+		dma_output->order  = DMA_OUTPUT_ORDER_NONE;
+		break;
 	case V4L2_PIX_FMT_NV12M:
 		dma_output->format = DMA_OUTPUT_FORMAT_YUV420;
 		dma_output->order  = DMA_OUTPUT_ORDER_CRCB;
 		break;
-	case V4L2_PIX_FMT_NV16:
+	case V4L2_PIX_FMT_YUYV:
 		dma_output->format = DMA_OUTPUT_FORMAT_YUV422;
 		dma_output->order  = DMA_OUTPUT_ORDER_CRYCBY;
 		break;
 	default:
-		v4l2_info(&scaler->subdev,
-			 "Unsupported format.\n");
-		break;
+		v4l2_err(&scaler->subdev, "Unsupported format\n");
+		ret = -EINVAL;
+		goto restart;
 	}
 
 	dma_output->buffer_address = pipeline->minfo->shared.paddr +
@@ -1501,8 +1506,6 @@ int fimc_is_pipeline_scaler_start(struct fimc_is_pipeline *pipeline,
 	else
 		dma_output->reserved[0] = SCALER_DMA_OUT_UNSCALED;
 
-	__set_bit(PARAM_SCALERC_DMA_OUTPUT, index);
-
 	otf_output->cmd = OTF_OUTPUT_COMMAND_DISABLE;
 	otf_output->width = scaler_reg.width;
 	otf_output->height = scaler_reg.height;
@@ -1513,11 +1516,15 @@ int fimc_is_pipeline_scaler_start(struct fimc_is_pipeline *pipeline,
 		dev_err(pipeline->dev, "fimc_is_itf_set_param is fail\n");
 	else
 		set_bit(COMP_START, subip_state);
+restart:
 	if (pipe_start_flag) {
-		ret = fimc_is_pipeline_start(pipeline, 0);
-		if (ret)
+		int err = fimc_is_pipeline_start(pipeline, 0);
+
+		if (err) {
 			dev_err(pipeline->dev,
 				"Not able to start pipeline back\n");
+			ret = ret ?: err;
+		}
 	}
 exit:
 	mutex_unlock(&pipeline->pipe_scl_lock);
