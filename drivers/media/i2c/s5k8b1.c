@@ -12,6 +12,7 @@
 #include <linux/errno.h>
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
+#include <linux/ktime.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
@@ -33,6 +34,11 @@
 #define S5K8B1_DRV_NAME			"S5K8B1"
 #define S5K8B1_CLK_NAME			"extclk"
 #define S5K8B1_DEFAULT_CLK_FREQ		24000000U
+/*
+ * Powered on again too quickly, the sensor occasionally stalls in its first
+ * frame after starting to stream.
+ */
+#define S5K8B1_MIN_OFF_TIME_MS		1000
 /* 760 Mbps on one lane with 10 bits per pixel, as the FIMC-IS firmware sets up */
 #define S5K8B1_PIXEL_RATE		76000000
 
@@ -69,6 +75,7 @@ struct s5k8b1 {
 	struct clk *clock;
 	u32 clock_frequency;
 	int power_count;
+	ktime_t off_time;
 };
 
 static const char * const s5k8b1_supply_names[] = {
@@ -195,7 +202,14 @@ static const struct v4l2_subdev_internal_ops s5k8b1_sd_internal_ops = {
 
 static int __s5k8b1_power_on(struct s5k8b1 *sensor)
 {
+	s64 wait_us;
 	int ret;
+
+	wait_us = ktime_us_delta(ktime_add_ms(sensor->off_time,
+					      S5K8B1_MIN_OFF_TIME_MS),
+				 ktime_get());
+	if (wait_us > 0)
+		fsleep(wait_us);
 
 	ret = clk_set_rate(sensor->clock, sensor->clock_frequency);
 	if (ret < 0)
@@ -241,6 +255,7 @@ static int __s5k8b1_power_off(struct s5k8b1 *sensor)
 
 	clk_disable_unprepare(sensor->clock);
 	pm_runtime_put(sensor->dev);
+	sensor->off_time = ktime_get();
 	return 0;
 }
 
