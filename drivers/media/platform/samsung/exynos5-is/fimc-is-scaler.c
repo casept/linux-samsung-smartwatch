@@ -55,6 +55,25 @@ static const struct fimc_is_fmt *find_format(struct v4l2_format *f)
 	return NULL;
 }
 
+static void scaler_return_buffers(struct fimc_is_scaler *ctx,
+				  enum vb2_buffer_state state)
+{
+	struct fimc_is_buf *buf;
+
+	fimc_is_pipeline_buf_lock(ctx->pipeline);
+	while (!list_empty(&ctx->wait_queue)) {
+		buf = fimc_is_scaler_wait_queue_get(ctx);
+		buf->state = FIMC_IS_BUF_INVALID;
+		vb2_buffer_done(&buf->vb.vb2_buf, state);
+	}
+	while (!list_empty(&ctx->run_queue)) {
+		buf = fimc_is_scaler_run_queue_get(ctx);
+		buf->state = FIMC_IS_BUF_INVALID;
+		vb2_buffer_done(&buf->vb.vb2_buf, state);
+	}
+	fimc_is_pipeline_buf_unlock(ctx->pipeline);
+}
+
 static int scaler_video_capture_start_streaming(struct vb2_queue *vq,
 					unsigned int count)
 {
@@ -67,23 +86,28 @@ static int scaler_video_capture_start_streaming(struct vb2_queue *vq,
 			ctx->fmt->num_planes);
 	if (ret) {
 		v4l2_err(&ctx->subdev, "Scaler start failed.\n");
-		return -EINVAL;
+		goto err_return;
 	}
 
 	ret = v4l2_ctrl_handler_setup(&ctx->ctrls.handler);
 	if (ret) {
 		v4l2_err(&ctx->subdev, "Failed to setup scaler controls.\n");
-		return -EINVAL;
+		fimc_is_pipeline_scaler_stop(ctx->pipeline, ctx->scaler_id);
+		goto err_return;
 	}
 
 	set_bit(STATE_RUNNING, &ctx->capture_state);
 	return 0;
+
+err_return:
+	/* vb2 wants the queued buffers back when failing to start */
+	scaler_return_buffers(ctx, VB2_BUF_STATE_QUEUED);
+	return ret;
 }
 
 static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 {
 	struct fimc_is_scaler *ctx = vb2_get_drv_priv(vq);
-	struct fimc_is_buf *buf;
 	int ret;
 
 	if (!test_bit(STATE_RUNNING, &ctx->capture_state))
@@ -94,18 +118,7 @@ static void scaler_video_capture_stop_streaming(struct vb2_queue *vq)
 		v4l2_info(&ctx->subdev, "Scaler already stopped.\n");
 
 	/* Release un-used buffers */
-	fimc_is_pipeline_buf_lock(ctx->pipeline);
-	while (!list_empty(&ctx->wait_queue)) {
-		buf = fimc_is_scaler_wait_queue_get(ctx);
-		buf->state = FIMC_IS_BUF_INVALID;
-		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
-	}
-	while (!list_empty(&ctx->run_queue)) {
-		buf = fimc_is_scaler_run_queue_get(ctx);
-		buf->state = FIMC_IS_BUF_INVALID;
-		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
-	}
-	fimc_is_pipeline_buf_unlock(ctx->pipeline);
+	scaler_return_buffers(ctx, VB2_BUF_STATE_ERROR);
 
 	clear_bit(STATE_RUNNING, &ctx->capture_state);
 }
