@@ -545,7 +545,12 @@ static void s5p_mfc_handle_error(struct s5p_mfc_dev *dev,
 			break;
 		}
 	}
-	WARN_ON(test_and_clear_bit(0, &dev->hw_lock) == 0);
+	/*
+	 * Commands for the whole device, like booting the firmware, don't take
+	 * the hardware lock, and can fail as well.
+	 */
+	if (!test_and_clear_bit(0, &dev->hw_lock))
+		dev_dbg(&dev->plat_dev->dev, "Error outside of a context\n");
 	s5p_mfc_hw_call(dev->mfc_ops, clear_int_flags, dev);
 	s5p_mfc_clock_off(dev);
 	wake_up_dev(dev, reason, err);
