@@ -454,6 +454,12 @@ static int max14577_muic_chg_handler(struct max14577_muic_info *info)
 					attached);
 		break;
 	case MAX14577_CHARGER_TYPE_DOWNSTREAM_PORT:
+		/* A charging downstream port carries data as well */
+		ret = max14577_muic_set_path(info, info->path_usb, attached);
+		if (ret < 0)
+			return ret;
+
+		extcon_set_state_sync(info->edev, EXTCON_USB, attached);
 		extcon_set_state_sync(info->edev, EXTCON_CHG_USB_CDP,
 					attached);
 		break;
