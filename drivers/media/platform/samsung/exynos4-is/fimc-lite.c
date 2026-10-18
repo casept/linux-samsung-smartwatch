@@ -693,7 +693,7 @@ static const struct fimc_fmt *fimc_lite_subdev_try_fmt(struct fimc_lite *fimc,
 	if (format->pad == FLITE_SD_PAD_SINK) {
 		v4l_bound_align_image(&mf->width, 8, dd->max_width,
 				ffs(dd->out_width_align) - 1,
-				&mf->height, 0, dd->max_height, 0, 0);
+				&mf->height, 1, dd->max_height, 0, 0);
 
 		fmt = fimc_lite_find_format(NULL, &mf->code, 0, 0);
 		if (WARN_ON(!fmt))
@@ -738,8 +738,8 @@ static void fimc_lite_try_crop(struct fimc_lite *fimc, struct v4l2_rect *r)
 {
 	struct flite_frame *frame = &fimc->inp_frame;
 
-	v4l_bound_align_image(&r->width, 0, frame->f_width, 0,
-			      &r->height, 0, frame->f_height, 0, 0);
+	v4l_bound_align_image(&r->width, 8, frame->f_width, 0,
+			      &r->height, 1, frame->f_height, 0, 0);
 
 	/* Adjust left/top if cropping rectangle got out of bounds */
 	r->left = clamp_t(u32, r->left, 0, frame->f_width - r->width);
@@ -845,7 +845,7 @@ static int fimc_lite_try_fmt(struct fimc_lite *fimc,
 		*ffmt = fmt;
 	v4l_bound_align_image(&pixm->width, 8, dd->max_width,
 			      ffs(dd->out_width_align) - 1,
-			      &pixm->height, 0, dd->max_height, 0, 0);
+			      &pixm->height, 1, dd->max_height, 0, 0);
 
 	if ((bpl == 0 || ((bpl * 8) / fmt->depth[0]) < pixm->width))
 		pixm->plane_fmt[0].bytesperline = (pixm->width *
