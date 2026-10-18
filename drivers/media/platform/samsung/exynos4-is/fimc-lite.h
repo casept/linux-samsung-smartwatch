@@ -139,6 +139,7 @@ struct flite_buffer {
  * @reqbufs_count: the number of buffers requested with REQBUFS ioctl
  * @events: event info
  * @debugfs: debugfs directory
+ * @icc_path: interconnect path to memory
  * @regset: register set exposed through debugfs
  * @streaming: is streaming in progress?
  */
@@ -177,6 +178,7 @@ struct fimc_lite {
 
 	struct fimc_lite_events	events;
 	struct dentry		*debugfs;
+	struct icc_path		*icc_path;
 	struct debugfs_regset32	regset;
 	bool			streaming;
 };

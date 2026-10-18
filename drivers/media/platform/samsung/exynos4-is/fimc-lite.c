@@ -10,6 +10,8 @@
 #include <linux/bug.h>
 #include <linux/clk.h>
 #include <linux/debugfs.h>
+#include <linux/interconnect.h>
+#include <linux/math64.h>
 #include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/interrupt.h>
@@ -381,6 +383,28 @@ static unsigned long fimc_lite_plane_size(const struct flite_frame *frame,
 	return frame->f_width * frame->f_height * frame->fmt->depth[plane] / 8;
 }
 
+/*
+ * The output DMA writes the pixels as fast as the source delivers them, request
+ * the memory bandwidth for that so that the output FIFO doesn't overflow.
+ */
+static void fimc_lite_set_bandwidth(struct fimc_lite *fimc, bool on)
+{
+	const struct fimc_fmt *fmt = fimc->out_frame.fmt;
+	struct v4l2_ctrl *ctrl = NULL;
+	u64 bw = 0;
+
+	if (on && fimc->sensor)
+		ctrl = v4l2_ctrl_find(fimc->sensor->ctrl_handler,
+				      V4L2_CID_PIXEL_RATE);
+	if (on && ctrl)
+		bw = v4l2_ctrl_g_ctrl_int64(ctrl) * fmt->depth[0] / 8;
+	else if (on) /* assume 30 fps */
+		bw = (u64)fimc_lite_plane_size(&fimc->out_frame, 0) * 30;
+
+	bw = div_u64(bw, 1000);
+	icc_set_bw(fimc->icc_path, kBps_to_icc(bw), kBps_to_icc(bw));
+}
+
 static int start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct fimc_lite *fimc = q->drv_priv;
@@ -399,6 +423,8 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 		fimc_lite_reinit(fimc, false);
 		return ret;
 	}
+
+	fimc_lite_set_bandwidth(fimc, true);
 
 	/* Initializing the hardware disabled the queued buffers' slots */
 	spin_lock_irqsave(&fimc->slock, flags);
@@ -425,10 +451,11 @@ static void stop_streaming(struct vb2_queue *q)
 {
 	struct fimc_lite *fimc = q->drv_priv;
 
-	if (!fimc_lite_active(fimc))
-		return;
+	/* Closing a streaming file already stopped the capture */
+	if (fimc_lite_active(fimc))
+		fimc_lite_stop_capture(fimc, false);
 
-	fimc_lite_stop_capture(fimc, false);
+	fimc_lite_set_bandwidth(fimc, false);
 }
 
 static int queue_setup(struct vb2_queue *vq,
@@ -1625,6 +1652,11 @@ static int fimc_lite_probe(struct platform_device *pdev)
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
 		return irq;
+
+	fimc->icc_path = devm_of_icc_get(dev, NULL);
+	if (IS_ERR(fimc->icc_path))
+		return dev_err_probe(dev, PTR_ERR(fimc->icc_path),
+				     "failed to get the interconnect path\n");
 
 	ret = fimc_lite_clk_get(fimc);
 	if (ret)
