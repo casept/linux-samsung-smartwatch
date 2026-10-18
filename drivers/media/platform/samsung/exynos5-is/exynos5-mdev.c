@@ -1200,9 +1200,53 @@ static int subdev_notifier_bound(struct v4l2_async_notifier *notifier,
 	si->subdev = subdev;
 
 	v4l2_info(&fmd->v4l2_dev, "Registered sensor subdevice: %s (%d)\n",
-		  subdev->name, fmd->num_sensors);
+		  subdev->name, (int)(si - fmd->sensor));
 
-	fmd->num_sensors++;
+	return 0;
+}
+
+static void subdev_notifier_unbind(struct v4l2_async_notifier *notifier,
+				   struct v4l2_subdev *subdev,
+				   struct v4l2_async_connection *asd)
+{
+	struct fimc_md *fmd = notifier_to_fimc_md(notifier);
+	int i;
+
+	for (i = 0; i < fmd->num_sensors; i++) {
+		if (fmd->sensor[i].subdev == subdev)
+			fmd->sensor[i].subdev = NULL;
+	}
+}
+
+/* Link up a MIPI CSI-2 sensor that is bound again */
+static int fimc_md_relink_sensors(struct fimc_md *fmd)
+{
+	struct fimc_source_info *pdata;
+	struct v4l2_subdev *sensor, *csis;
+	int i, ret;
+
+	for (i = 0; i < fmd->num_sensors; i++) {
+		sensor = fmd->sensor[i].subdev;
+		if (!sensor || sensor->entity.num_links)
+			continue;
+
+		pdata = v4l2_get_subdev_hostdata(sensor);
+		if (!pdata || pdata->sensor_bus_type != FIMC_BUS_TYPE_MIPI_CSI2 ||
+		    pdata->mux_id >= CSIS_MAX_ENTITIES)
+			continue;
+
+		csis = fmd->csis[pdata->mux_id].sd;
+		if (!csis)
+			continue;
+
+		ret = media_create_pad_link(&sensor->entity,
+					    sensor->entity.num_pads - 1,
+					    &csis->entity, CSIS_PAD_SINK,
+					    MEDIA_LNK_FL_IMMUTABLE |
+					    MEDIA_LNK_FL_ENABLED);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
@@ -1210,16 +1254,24 @@ static int subdev_notifier_bound(struct v4l2_async_notifier *notifier,
 static int subdev_notifier_complete(struct v4l2_async_notifier *notifier)
 {
 	struct fimc_md *fmd = notifier_to_fimc_md(notifier);
+	bool registered = media_devnode_is_registered(fmd->media_dev.devnode);
 	int ret;
 
+	/*
+	 * When a sensor comes back after being unbound, everything else is
+	 * still linked up and registered, only link up the sensor again.
+	 */
 	mutex_lock(&fmd->media_dev.graph_mutex);
-	ret = fimc_md_create_links(fmd);
+	if (registered)
+		ret = fimc_md_relink_sensors(fmd);
+	else
+		ret = fimc_md_create_links(fmd);
 	mutex_unlock(&fmd->media_dev.graph_mutex);
 	if (ret < 0)
 		return ret;
 
 	ret = v4l2_device_register_subdev_nodes(&fmd->v4l2_dev);
-	if (ret < 0)
+	if (ret < 0 || registered)
 		return ret;
 
 	return media_device_register(&fmd->media_dev);
@@ -1227,6 +1279,7 @@ static int subdev_notifier_complete(struct v4l2_async_notifier *notifier)
 
 static const struct v4l2_async_notifier_operations subdev_notifier_ops = {
 	.bound = subdev_notifier_bound,
+	.unbind = subdev_notifier_unbind,
 	.complete = subdev_notifier_complete,
 };
 
@@ -1284,7 +1337,6 @@ int exynos_camera_register(struct device *dev, struct fimc_md **md)
 		goto err_unregister;
 
 	fmd->subdev_notifier.ops = &subdev_notifier_ops;
-	fmd->num_sensors = 0;
 
 	ret = v4l2_async_nf_register(&fmd->subdev_notifier);
 	if (ret)
