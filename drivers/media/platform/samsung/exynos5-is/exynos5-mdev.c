@@ -225,10 +225,23 @@ static int __fimc_pipeline_open(struct exynos_media_pipeline *ep,
 	if (sd == NULL)
 		return -EINVAL;
 
+	/*
+	 * The pipeline is used through the video node of a FIMC-LITE, which
+	 * doesn't keep this module loaded. The FIMC-IS has to stay around
+	 * until the pipeline is closed, it would leak its memory otherwise.
+	 */
+	if (!try_module_get(THIS_MODULE))
+		return -ENODEV;
+
 	ret = fimc_pipeline_s_power(p, 1);
-	if (ret)
+	if (ret) {
 		fimc_pipeline_cleanup(p);
-	return ret;
+		module_put(THIS_MODULE);
+		return ret;
+	}
+
+	p->module_ref = true;
+	return 0;
 }
 
 /**
@@ -254,6 +267,10 @@ static int __fimc_pipeline_close(struct exynos_media_pipeline *ep)
 
 	fimc_pipeline_cleanup(p);
 leave:
+	if (p->module_ref) {
+		p->module_ref = false;
+		module_put(THIS_MODULE);
+	}
 	return ret == -ENXIO ? 0 : ret;
 }
 

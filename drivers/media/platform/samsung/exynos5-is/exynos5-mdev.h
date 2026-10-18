@@ -42,6 +42,7 @@ struct fimc_pipeline {
 	struct media_entity *vdev_entity;
 	struct v4l2_subdev *subdevs[IDX_MAX];
 	struct list_head *isp_pipelines;
+	bool module_ref;
 };
 
 struct fimc_pipeline_isp {
