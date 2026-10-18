@@ -33,7 +33,7 @@ int s5p_mfc_init_pm(struct s5p_mfc_dev *dev)
 				pm->clocks[i] = NULL;
 				continue;
 			}
-			mfc_err("Failed to get clock: %s\n",
+			dev_err(&dev->plat_dev->dev, "Failed to get clock: %s\n",
 				pm->clk_names[i]);
 			return PTR_ERR(pm->clocks[i]);
 		}
@@ -73,7 +73,7 @@ int s5p_mfc_power_on(struct s5p_mfc_dev *dev)
 	for (i = 0; i < dev->pm.num_clocks; i++) {
 		ret = clk_prepare_enable(dev->pm.clocks[i]);
 		if (ret < 0) {
-			mfc_err("clock prepare failed for clock: %s\n",
+			dev_err(&dev->plat_dev->dev, "clock prepare failed for clock: %s\n",
 				dev->pm.clk_names[i]);
 			goto err;
 		}

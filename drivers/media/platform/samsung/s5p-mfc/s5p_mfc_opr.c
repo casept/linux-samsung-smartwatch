@@ -59,7 +59,8 @@ int s5p_mfc_alloc_priv_buf(struct s5p_mfc_dev *dev, unsigned int mem_ctx,
 		if (!b->virt)
 			goto no_mem;
 		if (b->dma < base) {
-			mfc_err("Invalid memory configuration - buffer (%pad) is below base memory address(%pad)\n",
+			dev_err(&dev->plat_dev->dev,
+				"Invalid memory configuration - buffer (%pad) is below base memory address(%pad)\n",
 				&b->dma, &base);
 			dma_free_coherent(mem_dev, b->size, b->virt, b->dma);
 			return -ENOMEM;
@@ -69,7 +70,7 @@ int s5p_mfc_alloc_priv_buf(struct s5p_mfc_dev *dev, unsigned int mem_ctx,
 	mfc_debug(3, "Allocated addr %p %pad\n", b->virt, &b->dma);
 	return 0;
 no_mem:
-	mfc_err("Allocating private buffer of size %zu failed\n", b->size);
+	dev_err(&dev->plat_dev->dev, "Allocating private buffer of size %zu failed\n", b->size);
 	return -ENOMEM;
 }
 
@@ -88,7 +89,7 @@ int s5p_mfc_alloc_generic_buf(struct s5p_mfc_dev *dev, unsigned int mem_ctx,
 	mfc_debug(3, "Allocated addr %p %pad\n", b->virt, &b->dma);
 	return 0;
 no_mem:
-	mfc_err("Allocating generic buffer of size %zu failed\n", b->size);
+	dev_err(&dev->plat_dev->dev, "Allocating generic buffer of size %zu failed\n", b->size);
 	return -ENOMEM;
 }
 

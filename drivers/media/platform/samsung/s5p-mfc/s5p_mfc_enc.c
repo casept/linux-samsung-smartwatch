@@ -1431,7 +1431,7 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 			pix_fmt_mp->plane_fmt[2].sizeimage = ctx->chroma_size_1;
 		}
 	} else {
-		mfc_err("invalid buf type\n");
+		dev_err(&ctx->dev->plat_dev->dev, "invalid buf type\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -1446,11 +1446,11 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		fmt = find_format(f, MFC_FMT_ENC);
 		if (!fmt) {
-			mfc_err("failed to try output format\n");
+			dev_err(&dev->plat_dev->dev, "failed to try output format\n");
 			return -EINVAL;
 		}
 		if ((dev->variant->version_bit & fmt->versions) == 0) {
-			mfc_err("Unsupported format by this MFC version.\n");
+			dev_err(&dev->plat_dev->dev, "Unsupported format by this MFC version.\n");
 			return -EINVAL;
 		}
 
@@ -1464,11 +1464,11 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	} else if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		fmt = find_format(f, MFC_FMT_RAW);
 		if (!fmt) {
-			mfc_err("failed to try output format\n");
+			dev_err(&dev->plat_dev->dev, "failed to try output format\n");
 			return -EINVAL;
 		}
 		if ((dev->variant->version_bit & fmt->versions) == 0) {
-			mfc_err("Unsupported format by this MFC version.\n");
+			dev_err(&dev->plat_dev->dev, "Unsupported format by this MFC version.\n");
 			return -EINVAL;
 		}
 		if (IS_MFCV12(dev))
@@ -1478,7 +1478,7 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 			v4l_bound_align_image(&pix_fmt_mp->width, 8, 1920, 1, &pix_fmt_mp
 					->height, 4, 1080, 1, 0);
 	} else {
-		mfc_err("invalid buf type\n");
+		dev_err(&dev->plat_dev->dev, "invalid buf type\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -1533,7 +1533,7 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 		ctx->src_bufs_cnt = 0;
 		ctx->output_state = QUEUE_FREE;
 	} else {
-		mfc_err("invalid buf type\n");
+		dev_err(&dev->plat_dev->dev, "invalid buf type\n");
 		ret = -EINVAL;
 	}
 out:
@@ -1566,13 +1566,13 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 			return 0;
 		}
 		if (ctx->capture_state != QUEUE_FREE) {
-			mfc_err("invalid capture state: %d\n",
+			dev_err(&dev->plat_dev->dev, "invalid capture state: %d\n",
 							ctx->capture_state);
 			return -EINVAL;
 		}
 		ret = vb2_reqbufs(&ctx->vq_dst, reqbufs);
 		if (ret != 0) {
-			mfc_err("error in vb2_reqbufs() for E(D)\n");
+			dev_err(&dev->plat_dev->dev, "error in vb2_reqbufs() for E(D)\n");
 			return ret;
 		}
 		ctx->capture_state = QUEUE_BUFS_REQUESTED;
@@ -1590,7 +1590,7 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 			return 0;
 		}
 		if (ctx->output_state != QUEUE_FREE) {
-			mfc_err("invalid output state: %d\n",
+			dev_err(&dev->plat_dev->dev, "invalid output state: %d\n",
 							ctx->output_state);
 			return -EINVAL;
 		}
@@ -1607,12 +1607,12 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 
 		ret = vb2_reqbufs(&ctx->vq_src, reqbufs);
 		if (ret != 0) {
-			mfc_err("error in vb2_reqbufs() for E(S)\n");
+			dev_err(&dev->plat_dev->dev, "error in vb2_reqbufs() for E(S)\n");
 			return ret;
 		}
 		ctx->output_state = QUEUE_BUFS_REQUESTED;
 	} else {
-		mfc_err("invalid buf type\n");
+		dev_err(&dev->plat_dev->dev, "invalid buf type\n");
 		return -EINVAL;
 	}
 	return ret;
@@ -1631,23 +1631,24 @@ static int vidioc_querybuf(struct file *file, void *priv,
 		return -EINVAL;
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		if (ctx->state != MFCINST_GOT_INST) {
-			mfc_err("invalid context state: %d\n", ctx->state);
+			dev_err(&ctx->dev->plat_dev->dev,
+				"invalid context state: %d\n", ctx->state);
 			return -EINVAL;
 		}
 		ret = vb2_querybuf(&ctx->vq_dst, buf);
 		if (ret != 0) {
-			mfc_err("error in vb2_querybuf() for E(D)\n");
+			dev_err(&ctx->dev->plat_dev->dev, "error in vb2_querybuf() for E(D)\n");
 			return ret;
 		}
 		buf->m.planes[0].m.mem_offset += DST_QUEUE_OFF_BASE;
 	} else if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		ret = vb2_querybuf(&ctx->vq_src, buf);
 		if (ret != 0) {
-			mfc_err("error in vb2_querybuf() for E(S)\n");
+			dev_err(&ctx->dev->plat_dev->dev, "error in vb2_querybuf() for E(S)\n");
 			return ret;
 		}
 	} else {
-		mfc_err("invalid buf type\n");
+		dev_err(&ctx->dev->plat_dev->dev, "invalid buf type\n");
 		return -EINVAL;
 	}
 	return ret;
@@ -1659,12 +1660,12 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 
 	if (ctx->state == MFCINST_ERROR) {
-		mfc_err("Call on QBUF after unrecoverable error\n");
+		dev_err(&ctx->dev->plat_dev->dev, "Call on QBUF after unrecoverable error\n");
 		return -EIO;
 	}
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		if (ctx->state == MFCINST_FINISHING) {
-			mfc_err("Call on QBUF after EOS command\n");
+			dev_err(&ctx->dev->plat_dev->dev, "Call on QBUF after EOS command\n");
 			return -EIO;
 		}
 		return vb2_qbuf(&ctx->vq_src, NULL, buf);
@@ -1684,7 +1685,8 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	int ret;
 
 	if (ctx->state == MFCINST_ERROR) {
-		mfc_err_limited("Call on DQBUF after unrecoverable error\n");
+		dev_err_ratelimited(&ctx->dev->plat_dev->dev,
+				    "Call on DQBUF after unrecoverable error\n");
 		return -EIO;
 	}
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
@@ -1959,7 +1961,7 @@ static int s5p_mfc_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->codec.h264.level_v4l2 = ctrl->val;
 		p->codec.h264.level = h264_level(ctrl->val);
 		if (p->codec.h264.level < 0) {
-			mfc_err("Level number is wrong\n");
+			dev_err(&dev->plat_dev->dev, "Level number is wrong\n");
 			ret = p->codec.h264.level;
 		}
 		break;
@@ -1967,7 +1969,7 @@ static int s5p_mfc_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->codec.mpeg4.level_v4l2 = ctrl->val;
 		p->codec.mpeg4.level = mpeg4_level(ctrl->val);
 		if (p->codec.mpeg4.level < 0) {
-			mfc_err("Level number is wrong\n");
+			dev_err(&dev->plat_dev->dev, "Level number is wrong\n");
 			ret = p->codec.mpeg4.level;
 		}
 		break;
@@ -2316,7 +2318,8 @@ static int vidioc_s_parm(struct file *file, void *priv,
 					a->parm.output.timeperframe.numerator;
 		a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
 	} else {
-		mfc_err("Setting FPS is only possible for the output queue\n");
+		dev_err(&ctx->dev->plat_dev->dev,
+			"Setting FPS is only possible for the output queue\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -2334,7 +2337,8 @@ static int vidioc_g_parm(struct file *file, void *priv,
 					ctx->enc_params.rc_framerate_denom;
 		a->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
 	} else {
-		mfc_err("Setting FPS is only possible for the output queue\n");
+		dev_err(&ctx->dev->plat_dev->dev,
+			"Setting FPS is only possible for the output queue\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -2419,18 +2423,19 @@ static const struct v4l2_ioctl_ops s5p_mfc_enc_ioctl_ops = {
 
 static int check_vb_with_fmt(const struct s5p_mfc_fmt *fmt, struct vb2_buffer *vb)
 {
+	struct s5p_mfc_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	int i;
 
 	if (!fmt)
 		return -EINVAL;
 	if (fmt->num_planes != vb->num_planes) {
-		mfc_err("invalid plane number for the format\n");
+		dev_err(&ctx->dev->plat_dev->dev, "invalid plane number for the format\n");
 		return -EINVAL;
 	}
 	for (i = 0; i < fmt->num_planes; i++) {
 		dma_addr_t dma = vb2_dma_contig_plane_dma_addr(vb, i);
 		if (!dma) {
-			mfc_err("failed to get plane cookie\n");
+			dev_err(&ctx->dev->plat_dev->dev, "failed to get plane cookie\n");
 			return -EINVAL;
 		}
 		mfc_debug(2, "index: %d, plane[%d] cookie: %pad\n",
@@ -2448,7 +2453,7 @@ static int s5p_mfc_queue_setup(struct vb2_queue *vq,
 
 	if (vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		if (ctx->state != MFCINST_GOT_INST) {
-			mfc_err("invalid state: %d\n", ctx->state);
+			dev_err(&dev->plat_dev->dev, "invalid state: %d\n", ctx->state);
 			return -EINVAL;
 		}
 
@@ -2492,7 +2497,7 @@ static int s5p_mfc_queue_setup(struct vb2_queue *vq,
 			alloc_devs[1] = ctx->dev->mem_dev[BANK_R_CTX];
 		}
 	} else {
-		mfc_err("invalid queue type: %d\n", vq->type);
+		dev_err(&dev->plat_dev->dev, "invalid queue type: %d\n", vq->type);
 		return -EINVAL;
 	}
 	return 0;
@@ -2532,7 +2537,7 @@ static int s5p_mfc_buf_init(struct vb2_buffer *vb)
 					vb2_dma_contig_plane_dma_addr(vb, 2);
 		ctx->src_bufs_cnt++;
 	} else {
-		mfc_err("invalid queue type: %d\n", vq->type);
+		dev_err(&ctx->dev->plat_dev->dev, "invalid queue type: %d\n", vq->type);
 		return -EINVAL;
 	}
 	return 0;
@@ -2551,7 +2556,7 @@ static int s5p_mfc_buf_prepare(struct vb2_buffer *vb)
 		mfc_debug(2, "plane size: %ld, dst size: %zu\n",
 			vb2_plane_size(vb, 0), ctx->enc_dst_buf_size);
 		if (vb2_plane_size(vb, 0) < ctx->enc_dst_buf_size) {
-			mfc_err("plane size is too small for capture\n");
+			dev_err(&ctx->dev->plat_dev->dev, "plane size is too small for capture\n");
 			return -EINVAL;
 		}
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
@@ -2564,17 +2569,17 @@ static int s5p_mfc_buf_prepare(struct vb2_buffer *vb)
 			vb2_plane_size(vb, 1), ctx->chroma_size);
 		if (vb2_plane_size(vb, 0) < ctx->luma_size ||
 		    vb2_plane_size(vb, 1) < ctx->chroma_size) {
-			mfc_err("plane size is too small for output\n");
+			dev_err(&ctx->dev->plat_dev->dev, "plane size is too small for output\n");
 			return -EINVAL;
 		}
 		if ((ctx->src_fmt->fourcc == V4L2_PIX_FMT_YUV420M ||
 		     ctx->src_fmt->fourcc == V4L2_PIX_FMT_YVU420M) &&
 		    (vb2_plane_size(vb, 2) < ctx->chroma_size_1)) {
-			mfc_err("plane size is too small for output\n");
+			dev_err(&ctx->dev->plat_dev->dev, "plane size is too small for output\n");
 			return -EINVAL;
 		}
 	} else {
-		mfc_err("invalid queue type: %d\n", vq->type);
+		dev_err(&ctx->dev->plat_dev->dev, "invalid queue type: %d\n", vq->type);
 		return -EINVAL;
 	}
 	return 0;
@@ -2616,7 +2621,7 @@ static void s5p_mfc_enc_prepare(struct s5p_mfc_ctx *ctx)
 
 	if (ctx->state == MFCINST_HEAD_PRODUCED && !ctx->bank1.virt &&
 	    s5p_mfc_hw_call(dev->mfc_ops, alloc_codec_buffers, ctx)) {
-		mfc_err("Failed to allocate encoding buffers\n");
+		dev_err(&dev->plat_dev->dev, "Failed to allocate encoding buffers\n");
 		ctx->state = MFCINST_ERROR;
 	}
 }
@@ -2630,7 +2635,8 @@ static int s5p_mfc_start_streaming(struct vb2_queue *q, unsigned int count)
 			(q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
 		if (q->memory != V4L2_MEMORY_DMABUF) {
 			if (ctx->src_bufs_cnt < ctx->pb_count) {
-				mfc_err("Need minimum %d OUTPUT buffers\n", ctx->pb_count);
+				dev_err(&dev->plat_dev->dev,
+					"Need minimum %d OUTPUT buffers\n", ctx->pb_count);
 				s5p_mfc_return_dst_buffers(ctx);
 				return -ENOBUFS;
 			}
@@ -2709,7 +2715,7 @@ static void s5p_mfc_buf_queue(struct vb2_buffer *vb)
 		ctx->src_queue_cnt++;
 		spin_unlock_irqrestore(&dev->irqlock, flags);
 	} else {
-		mfc_err("unsupported buffer type (%d)\n", vq->type);
+		dev_err(&dev->plat_dev->dev, "unsupported buffer type (%d)\n", vq->type);
 	}
 	if (vb2_start_streaming_called(&ctx->vq_dst))
 		s5p_mfc_enc_prepare(ctx);
@@ -2752,7 +2758,7 @@ int s5p_mfc_enc_ctrls_setup(struct s5p_mfc_ctx *ctx)
 
 	v4l2_ctrl_handler_init(&ctx->ctrl_handler, NUM_CTRLS);
 	if (ctx->ctrl_handler.error) {
-		mfc_err("v4l2_ctrl_handler_init failed\n");
+		dev_err(&ctx->dev->plat_dev->dev, "v4l2_ctrl_handler_init failed\n");
 		return ctx->ctrl_handler.error;
 	}
 	for (i = 0; i < NUM_CTRLS; i++) {
@@ -2796,7 +2802,7 @@ int s5p_mfc_enc_ctrls_setup(struct s5p_mfc_ctx *ctx)
 			}
 		}
 		if (ctx->ctrl_handler.error) {
-			mfc_err("Adding control (%d) failed\n", i);
+			dev_err(&ctx->dev->plat_dev->dev, "Adding control (%d) failed\n", i);
 			return ctx->ctrl_handler.error;
 		}
 		if (controls[i].is_volatile && ctx->ctrls[i])

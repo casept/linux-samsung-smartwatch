@@ -27,11 +27,11 @@ int s5p_mfc_wait_for_done_dev(struct s5p_mfc_dev *dev, int command)
 		|| dev->int_type == S5P_MFC_R2H_CMD_ERR_RET)),
 		msecs_to_jiffies(MFC_INT_TIMEOUT));
 	if (ret == 0) {
-		mfc_err("Interrupt (dev->int_type:%d, command:%d) timed out\n",
+		dev_err(&dev->plat_dev->dev, "Interrupt (dev->int_type:%d, command:%d) timed out\n",
 							dev->int_type, command);
 		return 1;
 	} else if (ret == -ERESTARTSYS) {
-		mfc_err("Interrupted by a signal\n");
+		dev_err(&dev->plat_dev->dev, "Interrupted by a signal\n");
 		return 1;
 	}
 	mfc_debug(1, "Finished waiting (dev->int_type:%d, command: %d)\n",
@@ -65,11 +65,12 @@ int s5p_mfc_wait_for_done_ctx(struct s5p_mfc_ctx *ctx,
 					msecs_to_jiffies(MFC_INT_TIMEOUT));
 	}
 	if (ret == 0) {
-		mfc_err("Interrupt (ctx->int_type:%d, command:%d) timed out\n",
+		dev_err(&ctx->dev->plat_dev->dev,
+			"Interrupt (ctx->int_type:%d, command:%d) timed out\n",
 							ctx->int_type, command);
 		return 1;
 	} else if (ret == -ERESTARTSYS) {
-		mfc_err("Interrupted by a signal\n");
+		dev_err(&ctx->dev->plat_dev->dev, "Interrupted by a signal\n");
 		return 1;
 	}
 	mfc_debug(1, "Finished waiting (ctx->int_type:%d, command: %d)\n",

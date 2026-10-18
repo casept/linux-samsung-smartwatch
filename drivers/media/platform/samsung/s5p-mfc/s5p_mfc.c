@@ -145,7 +145,7 @@ void s5p_mfc_wait_for_ctx_idle(struct s5p_mfc_ctx *ctx)
 
 	if (read_poll_timeout(s5p_mfc_ctx_busy, busy, !busy, 1000,
 			      MFC_INT_TIMEOUT * USEC_PER_MSEC, false, ctx))
-		mfc_err("Context %d is still running\n", ctx->num);
+		dev_err(&ctx->dev->plat_dev->dev, "Context %d is still running\n", ctx->num);
 }
 
 void s5p_mfc_cleanup_queue(struct list_head *lh, struct vb2_queue *vq)
@@ -176,7 +176,7 @@ static void s5p_mfc_watchdog(struct timer_list *t)
 		 * error. Now it is time to kill all instances and
 		 * reset the MFC.
 		 */
-		mfc_err("Time out during waiting for HW\n");
+		dev_err(&dev->plat_dev->dev, "Time out during waiting for HW\n");
 		schedule_work(&dev->watchdog_work);
 	}
 	dev->watchdog_timer.expires = jiffies +
@@ -194,14 +194,14 @@ static void s5p_mfc_watchdog_worker(struct work_struct *work)
 
 	dev = container_of(work, struct s5p_mfc_dev, watchdog_work);
 
-	mfc_err("Driver timeout error handling\n");
+	dev_err(&dev->plat_dev->dev, "Driver timeout error handling\n");
 	/*
 	 * Lock the mutex that protects open and release.
 	 * This is necessary as they may load and unload firmware.
 	 */
 	mutex_locked = mutex_trylock(&dev->mfc_mutex);
 	if (!mutex_locked)
-		mfc_err("Error: some instance may be closing/opening\n");
+		dev_err(&dev->plat_dev->dev, "Error: some instance may be closing/opening\n");
 	spin_lock_irqsave(&dev->irqlock, flags);
 
 	s5p_mfc_clock_off(dev);
@@ -229,14 +229,14 @@ static void s5p_mfc_watchdog_worker(struct work_struct *work)
 	if (dev->num_inst > 0) {
 		ret = s5p_mfc_load_firmware(dev);
 		if (ret) {
-			mfc_err("Failed to reload FW\n");
+			dev_err(&dev->plat_dev->dev, "Failed to reload FW\n");
 			goto unlock;
 		}
 		s5p_mfc_clock_on(dev);
 		ret = s5p_mfc_init_hw(dev);
 		s5p_mfc_clock_off(dev);
 		if (ret)
-			mfc_err("Failed to reinit FW\n");
+			dev_err(&dev->plat_dev->dev, "Failed to reinit FW\n");
 	}
 unlock:
 	if (mutex_locked)
@@ -498,7 +498,7 @@ leave_handle_frame:
 static void s5p_mfc_handle_error(struct s5p_mfc_dev *dev,
 		struct s5p_mfc_ctx *ctx, unsigned int reason, unsigned int err)
 {
-	mfc_err("Interrupt Error: %08x\n", err);
+	dev_err(&dev->plat_dev->dev, "Interrupt Error: %08x\n", err);
 
 	if (ctx) {
 		/* Error recovery is dependent on the state of context */
@@ -545,7 +545,7 @@ static void s5p_mfc_handle_seq_done(struct s5p_mfc_ctx *ctx,
 	dev = ctx->dev;
 	if (ctx->c_ops->post_seq_start) {
 		if (ctx->c_ops->post_seq_start(ctx))
-			mfc_err("post_seq_start() failed\n");
+			dev_err(&dev->plat_dev->dev, "post_seq_start() failed\n");
 	} else {
 		ctx->img_width = s5p_mfc_hw_call(dev->mfc_ops, get_img_width,
 				dev);
@@ -701,7 +701,7 @@ static irqreturn_t s5p_mfc_irq(int irq, void *priv)
 	case S5P_MFC_R2H_CMD_FRAME_DONE_RET:
 		if (ctx->c_ops->post_frame_start) {
 			if (ctx->c_ops->post_frame_start(ctx))
-				mfc_err("post_frame_start() failed\n");
+				dev_err(&dev->plat_dev->dev, "post_frame_start() failed\n");
 
 			if (ctx->state == MFCINST_FINISHING &&
 						list_empty(&ctx->ref_queue)) {
@@ -787,7 +787,7 @@ irq_cleanup_hw:
 	ctx->int_err = err;
 	ctx->int_cond = 1;
 	if (test_and_clear_bit(0, &dev->hw_lock) == 0)
-		mfc_err("Failed to unlock hw\n");
+		dev_err(&dev->plat_dev->dev, "Failed to unlock hw\n");
 
 	s5p_mfc_clock_off(dev);
 	clear_work_bit(ctx);
@@ -850,7 +850,7 @@ static int s5p_mfc_open(struct file *file)
 		/* Setup ctrl handler */
 		ret = s5p_mfc_dec_ctrls_setup(ctx);
 		if (ret) {
-			mfc_err("Failed to setup mfc controls\n");
+			dev_err(&dev->plat_dev->dev, "Failed to setup mfc controls\n");
 			goto err_ctrls_setup;
 		}
 	} else if (vdev == dev->vfd_enc) {
@@ -863,7 +863,7 @@ static int s5p_mfc_open(struct file *file)
 		/* Setup ctrl handler */
 		ret = s5p_mfc_enc_ctrls_setup(ctx);
 		if (ret) {
-			mfc_err("Failed to setup mfc controls\n");
+			dev_err(&dev->plat_dev->dev, "Failed to setup mfc controls\n");
 			goto err_ctrls_setup;
 		}
 	} else {
@@ -879,7 +879,7 @@ static int s5p_mfc_open(struct file *file)
 		add_timer(&dev->watchdog_timer);
 		ret = s5p_mfc_power_on(dev);
 		if (ret < 0) {
-			mfc_err("power on failed\n");
+			dev_err(&dev->plat_dev->dev, "power on failed\n");
 			goto err_pwr_enable;
 		}
 		s5p_mfc_clock_on(dev);
@@ -918,7 +918,7 @@ static int s5p_mfc_open(struct file *file)
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ret = vb2_queue_init(q);
 	if (ret) {
-		mfc_err("Failed to initialize videobuf2 queue(capture)\n");
+		dev_err(&dev->plat_dev->dev, "Failed to initialize videobuf2 queue(capture)\n");
 		goto err_queue_init;
 	}
 	/* Init videobuf2 queue for OUTPUT */
@@ -953,7 +953,7 @@ static int s5p_mfc_open(struct file *file)
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ret = vb2_queue_init(q);
 	if (ret) {
-		mfc_err("Failed to initialize videobuf2 queue(output)\n");
+		dev_err(&dev->plat_dev->dev, "Failed to initialize videobuf2 queue(output)\n");
 		goto err_queue_init;
 	}
 	mutex_unlock(&dev->mfc_mutex);
@@ -968,7 +968,7 @@ err_load_fw:
 err_pwr_enable:
 	if (dev->num_inst == 1) {
 		if (s5p_mfc_power_off(dev) < 0)
-			mfc_err("power off failed\n");
+			dev_err(&dev->plat_dev->dev, "power off failed\n");
 		timer_delete_sync(&dev->watchdog_timer);
 	}
 err_ctrls_setup:
@@ -1025,7 +1025,7 @@ static int s5p_mfc_release(struct file *file)
 			timer_delete_sync(&dev->watchdog_timer);
 			s5p_mfc_clock_off(dev);
 			if (s5p_mfc_power_off(dev) < 0)
-				mfc_err("Power off failed\n");
+				dev_err(&dev->plat_dev->dev, "Power off failed\n");
 		} else {
 			mfc_debug(2, "Shutting down clock\n");
 			s5p_mfc_clock_off(dev);
@@ -1337,7 +1337,7 @@ static int s5p_mfc_probe(struct platform_device *pdev)
 	spin_lock_init(&dev->condlock);
 	dev->plat_dev = pdev;
 	if (!dev->plat_dev) {
-		mfc_err("No platform data specified\n");
+		dev_err(&pdev->dev, "No platform data specified\n");
 		return -ENODEV;
 	}
 
@@ -1520,7 +1520,7 @@ static int s5p_mfc_suspend(struct device *dev)
 		return 0;
 
 	if (test_and_set_bit(0, &m_dev->enter_suspend) != 0) {
-		mfc_err("Error: going to suspend for a second time\n");
+		dev_err(dev, "Error: going to suspend for a second time\n");
 		return -EIO;
 	}
 
@@ -1531,7 +1531,7 @@ static int s5p_mfc_suspend(struct device *dev)
 		ret = wait_event_interruptible_timeout(m_dev->queue,
 			m_dev->int_cond, msecs_to_jiffies(MFC_INT_TIMEOUT));
 		if (ret == 0) {
-			mfc_err("Waiting for hardware to finish timed out\n");
+			dev_err(dev, "Waiting for hardware to finish timed out\n");
 			clear_bit(0, &m_dev->enter_suspend);
 			return -EIO;
 		}

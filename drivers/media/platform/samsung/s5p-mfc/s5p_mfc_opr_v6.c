@@ -365,7 +365,7 @@ static int s5p_mfc_alloc_codec_buffers_v6(struct s5p_mfc_ctx *ctx)
 	if (ctx->bank1.size > 0) {
 		ret = s5p_mfc_alloc_generic_buf(dev, BANK_L_CTX, &ctx->bank1);
 		if (ret) {
-			mfc_err("Failed to allocate Bank1 memory\n");
+			dev_err(&dev->plat_dev->dev, "Failed to allocate Bank1 memory\n");
 			return ret;
 		}
 		BUG_ON(ctx->bank1.dma & ((1 << MFC_BANK1_ALIGN_ORDER) - 1));
@@ -416,13 +416,14 @@ static int s5p_mfc_alloc_instance_buffer_v6(struct s5p_mfc_ctx *ctx)
 		break;
 	default:
 		ctx->ctx.size = 0;
-		mfc_err("Codec type(%d) should be checked!\n", ctx->codec_mode);
+		dev_err(&dev->plat_dev->dev,
+			"Codec type(%d) should be checked!\n", ctx->codec_mode);
 		break;
 	}
 
 	ret = s5p_mfc_alloc_priv_buf(dev, BANK_L_CTX, &ctx->ctx);
 	if (ret) {
-		mfc_err("Failed to allocate instance buffer\n");
+		dev_err(&dev->plat_dev->dev, "Failed to allocate instance buffer\n");
 		return ret;
 	}
 
@@ -451,7 +452,7 @@ static int s5p_mfc_alloc_dev_context_buffer_v6(struct s5p_mfc_dev *dev)
 	dev->ctx_buf.size = buf_size->dev_ctx;
 	ret = s5p_mfc_alloc_priv_buf(dev, BANK_L_CTX, &dev->ctx_buf);
 	if (ret) {
-		mfc_err("Failed to allocate device context buffer\n");
+		dev_err(&dev->plat_dev->dev, "Failed to allocate device context buffer\n");
 		return ret;
 	}
 
@@ -1332,7 +1333,7 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 			mfc_regs->e_h264_fmo_slice_grp_change_rate_minus1);
 			break;
 		default:
-			mfc_err("Unsupported map type for FMO: %d\n",
+			dev_err(&dev->plat_dev->dev, "Unsupported map type for FMO: %d\n",
 					p_h264->fmo_map_type);
 			p_h264->fmo_map_type = 0;
 			p_h264->fmo_slice_grp = 1;
@@ -1855,7 +1856,7 @@ static int s5p_mfc_decode_one_frame_v6(struct s5p_mfc_ctx *ctx,
 				S5P_FIMV_CH_LAST_FRAME_V6, NULL);
 		break;
 	default:
-		mfc_err("Unsupported last frame arg.\n");
+		dev_err(&dev->plat_dev->dev, "Unsupported last frame arg.\n");
 		return -EINVAL;
 	}
 
@@ -1879,7 +1880,7 @@ static int s5p_mfc_init_encode_v6(struct s5p_mfc_ctx *ctx)
 	else if (ctx->codec_mode == S5P_FIMV_CODEC_HEVC_ENC)
 		s5p_mfc_set_enc_params_hevc(ctx);
 	else {
-		mfc_err("Unknown codec for encoding (%x).\n",
+		dev_err(&dev->plat_dev->dev, "Unknown codec for encoding (%x).\n",
 			ctx->codec_mode);
 		return -EINVAL;
 	}
@@ -2097,7 +2098,7 @@ static inline int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 	 * s5p_mfc_alloc_dec_buffers(ctx); */
 
 	if (ctx->capture_state != QUEUE_BUFS_MMAPED) {
-		mfc_err("It seems that not all destination buffers were\n"
+		dev_err(&dev->plat_dev->dev, "It seems that not all destination buffers were\n"
 			"mmapped.MFC requires that all destination are mmapped\n"
 			"before starting processing.\n");
 		return -EAGAIN;
@@ -2106,7 +2107,7 @@ static inline int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 	dev->curr_ctx = ctx->num;
 	ret = s5p_mfc_set_dec_frame_buffer_v6(ctx);
 	if (ret) {
-		mfc_err("Failed to alloc frame mem.\n");
+		dev_err(&dev->plat_dev->dev, "Failed to alloc frame mem.\n");
 		ctx->state = MFCINST_ERROR;
 	}
 	return ret;
@@ -2120,7 +2121,7 @@ static inline int s5p_mfc_run_init_enc_buffers(struct s5p_mfc_ctx *ctx)
 	dev->curr_ctx = ctx->num;
 	ret = s5p_mfc_set_enc_ref_buffer_v6(ctx);
 	if (ret) {
-		mfc_err("Failed to alloc frame mem.\n");
+		dev_err(&dev->plat_dev->dev, "Failed to alloc frame mem.\n");
 		ctx->state = MFCINST_ERROR;
 	}
 	return ret;
@@ -2147,7 +2148,7 @@ static void s5p_mfc_try_run_v6(struct s5p_mfc_dev *dev)
 	if (new_ctx < 0) {
 		/* No contexts to run */
 		if (test_and_clear_bit(0, &dev->hw_lock) == 0) {
-			mfc_err("Failed to unlock hardware.\n");
+			dev_err(&dev->plat_dev->dev, "Failed to unlock hardware.\n");
 			return;
 		}
 
@@ -2237,14 +2238,14 @@ static void s5p_mfc_try_run_v6(struct s5p_mfc_dev *dev)
 			ret = -EAGAIN;
 		}
 	} else {
-		mfc_err("invalid context type: %d\n", ctx->type);
+		dev_err(&dev->plat_dev->dev, "invalid context type: %d\n", ctx->type);
 		ret = -EAGAIN;
 	}
 
 	if (ret) {
 		/* Free hardware lock */
 		if (test_and_clear_bit(0, &dev->hw_lock) == 0)
-			mfc_err("Failed to unlock hardware.\n");
+			dev_err(&dev->plat_dev->dev, "Failed to unlock hardware.\n");
 
 		/* This is in deed imporant, as no operation has been
 		 * scheduled, reduce the clock count as no one will

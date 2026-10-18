@@ -40,7 +40,7 @@ static int s5p_mfc_alloc_dec_temp_buffers_v5(struct s5p_mfc_ctx *ctx)
 	ctx->dsc.size = buf_size->dsc;
 	ret =  s5p_mfc_alloc_priv_buf(dev, BANK_L_CTX, &ctx->dsc);
 	if (ret) {
-		mfc_err("Failed to allocate temporary buffer\n");
+		dev_err(&dev->plat_dev->dev, "Failed to allocate temporary buffer\n");
 		return ret;
 	}
 
@@ -171,7 +171,7 @@ static int s5p_mfc_alloc_codec_buffers_v5(struct s5p_mfc_ctx *ctx)
 
 		ret = s5p_mfc_alloc_priv_buf(dev, BANK_L_CTX, &ctx->bank1);
 		if (ret) {
-			mfc_err("Failed to allocate Bank1 temporary buffer\n");
+			dev_err(&dev->plat_dev->dev, "Failed to allocate Bank1 temporary buffer\n");
 			return ret;
 		}
 		BUG_ON(ctx->bank1.dma & ((1 << MFC_BANK1_ALIGN_ORDER) - 1));
@@ -180,7 +180,7 @@ static int s5p_mfc_alloc_codec_buffers_v5(struct s5p_mfc_ctx *ctx)
 	if (ctx->bank2.size > 0) {
 		ret = s5p_mfc_alloc_priv_buf(dev, BANK_R_CTX, &ctx->bank2);
 		if (ret) {
-			mfc_err("Failed to allocate Bank2 temporary buffer\n");
+			dev_err(&dev->plat_dev->dev, "Failed to allocate Bank2 temporary buffer\n");
 			s5p_mfc_release_priv_buf(ctx->dev, &ctx->bank1);
 			return ret;
 		}
@@ -211,7 +211,7 @@ static int s5p_mfc_alloc_instance_buffer_v5(struct s5p_mfc_ctx *ctx)
 
 	ret = s5p_mfc_alloc_priv_buf(dev, BANK_L_CTX, &ctx->ctx);
 	if (ret) {
-		mfc_err("Failed to allocate instance buffer\n");
+		dev_err(&dev->plat_dev->dev, "Failed to allocate instance buffer\n");
 		return ret;
 	}
 	ctx->ctx.ofs = OFFSETA(ctx->ctx.dma);
@@ -224,7 +224,7 @@ static int s5p_mfc_alloc_instance_buffer_v5(struct s5p_mfc_ctx *ctx)
 	ctx->shm.size = buf_size->shm;
 	ret = s5p_mfc_alloc_priv_buf(dev, BANK_L_CTX, &ctx->shm);
 	if (ret) {
-		mfc_err("Failed to allocate shared memory buffer\n");
+		dev_err(&dev->plat_dev->dev, "Failed to allocate shared memory buffer\n");
 		s5p_mfc_release_priv_buf(dev, &ctx->ctx);
 		return ret;
 	}
@@ -459,7 +459,7 @@ static int s5p_mfc_set_dec_frame_buffer_v5(struct s5p_mfc_ctx *ctx)
 	case S5P_MFC_CODEC_MPEG2_DEC:
 		break;
 	default:
-		mfc_err("Unknown codec for decoding (%x)\n",
+		dev_err(&dev->plat_dev->dev, "Unknown codec for decoding (%x)\n",
 			ctx->codec_mode);
 		return -EINVAL;
 	}
@@ -666,7 +666,7 @@ static int s5p_mfc_set_enc_ref_buffer_v5(struct s5p_mfc_ctx *ctx)
 			buf_size1, buf_size2);
 		break;
 	default:
-		mfc_err("Unknown codec set for encoding: %d\n",
+		dev_err(&dev->plat_dev->dev, "Unknown codec set for encoding: %d\n",
 			ctx->codec_mode);
 		return -EINVAL;
 	}
@@ -1118,7 +1118,7 @@ static int s5p_mfc_init_encode_v5(struct s5p_mfc_ctx *ctx)
 	else if (ctx->codec_mode == S5P_MFC_CODEC_H263_ENC)
 		s5p_mfc_set_enc_params_h263(ctx);
 	else {
-		mfc_err("Unknown codec for encoding (%x)\n",
+		dev_err(&dev->plat_dev->dev, "Unknown codec for encoding (%x)\n",
 			ctx->codec_mode);
 		return -EINVAL;
 	}
@@ -1292,11 +1292,13 @@ static int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 	 * First set the output frame buffers
 	 */
 	if (ctx->capture_state != QUEUE_BUFS_MMAPED) {
-		mfc_err("It seems that not all destination buffers were mmapped\nMFC requires that all destination are mmapped before starting processing\n");
+		dev_err(&dev->plat_dev->dev,
+			"It seems that not all destination buffers were mmapped\nMFC requires that all destination are mmapped before starting processing\n");
 		return -EAGAIN;
 	}
 	if (list_empty(&ctx->src_queue)) {
-		mfc_err("Header has been deallocated in the middle of initialization\n");
+		dev_err(&dev->plat_dev->dev,
+			"Header has been deallocated in the middle of initialization\n");
 		return -EIO;
 	}
 	temp_vb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
@@ -1308,7 +1310,7 @@ static int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 	dev->curr_ctx = ctx->num;
 	ret = s5p_mfc_set_dec_frame_buffer_v5(ctx);
 	if (ret) {
-		mfc_err("Failed to alloc frame mem\n");
+		dev_err(&dev->plat_dev->dev, "Failed to alloc frame mem\n");
 		ctx->state = MFCINST_ERROR;
 	}
 	return ret;
@@ -1336,7 +1338,7 @@ static void s5p_mfc_try_run_v5(struct s5p_mfc_dev *dev)
 	if (new_ctx < 0) {
 		/* No contexts to run */
 		if (test_and_clear_bit(0, &dev->hw_lock) == 0) {
-			mfc_err("Failed to unlock hardware\n");
+			dev_err(&dev->plat_dev->dev, "Failed to unlock hardware\n");
 			return;
 		}
 		mfc_debug(1, "No ctx is scheduled to be run\n");
@@ -1411,14 +1413,14 @@ static void s5p_mfc_try_run_v5(struct s5p_mfc_dev *dev)
 			ret = -EAGAIN;
 		}
 	} else {
-		mfc_err("Invalid context type: %d\n", ctx->type);
+		dev_err(&dev->plat_dev->dev, "Invalid context type: %d\n", ctx->type);
 		ret = -EAGAIN;
 	}
 
 	if (ret) {
 		/* Free hardware lock */
 		if (test_and_clear_bit(0, &dev->hw_lock) == 0)
-			mfc_err("Failed to unlock hardware\n");
+			dev_err(&dev->plat_dev->dev, "Failed to unlock hardware\n");
 
 		/* This is indeed important, as no operation has been
 		 * scheduled, reduce the clock count as no one will

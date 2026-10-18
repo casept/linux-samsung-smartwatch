@@ -23,7 +23,7 @@ static int s5p_mfc_cmd_host2risc_v5(struct s5p_mfc_dev *dev, int cmd,
 	/* wait until host to risc command register becomes 'H2R_CMD_EMPTY' */
 	do {
 		if (time_after(jiffies, timeout)) {
-			mfc_err("Timeout while waiting for hardware\n");
+			dev_err(&dev->plat_dev->dev, "Timeout while waiting for hardware\n");
 			return -EIO;
 		}
 		cur_cmd = mfc_read(dev, S5P_FIMV_HOST2RISC_CMD);
@@ -115,7 +115,7 @@ static int s5p_mfc_open_inst_cmd_v5(struct s5p_mfc_ctx *ctx)
 	ret = s5p_mfc_cmd_host2risc_v5(dev, S5P_FIMV_H2R_CMD_OPEN_INSTANCE,
 								&h2r_args);
 	if (ret) {
-		mfc_err("Failed to create a new instance\n");
+		dev_err(&dev->plat_dev->dev, "Failed to create a new instance\n");
 		ctx->state = MFCINST_ERROR;
 	}
 	return ret;
@@ -128,7 +128,7 @@ static int s5p_mfc_close_inst_cmd_v5(struct s5p_mfc_ctx *ctx)
 	int ret;
 
 	if (ctx->state == MFCINST_FREE) {
-		mfc_err("Instance already returned\n");
+		dev_err(&dev->plat_dev->dev, "Instance already returned\n");
 		ctx->state = MFCINST_ERROR;
 		return -EINVAL;
 	}
@@ -140,7 +140,7 @@ static int s5p_mfc_close_inst_cmd_v5(struct s5p_mfc_ctx *ctx)
 	ret = s5p_mfc_cmd_host2risc_v5(dev, S5P_FIMV_H2R_CMD_CLOSE_INSTANCE,
 								&h2r_args);
 	if (ret) {
-		mfc_err("Failed to return an instance\n");
+		dev_err(&dev->plat_dev->dev, "Failed to return an instance\n");
 		ctx->state = MFCINST_ERROR;
 		return -EINVAL;
 	}
