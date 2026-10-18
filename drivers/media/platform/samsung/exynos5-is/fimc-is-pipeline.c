@@ -1720,10 +1720,10 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 	fimc_is_isp_run_queue_add(&pipeline->isp, bayer_buf);
 
 	shared_reg = (unsigned int *)(pipeline->minfo->shared.vaddr);
-	memset(shared_reg + FIMC_IS_SCC_REGION_INDEX * sizeof(unsigned int),
-		0, sizeof(unsigned int) * FIMC_IS_MAX_PLANES);
-	memset(shared_reg + FIMC_IS_SCP_REGION_INDEX * sizeof(unsigned int),
-		0, sizeof(unsigned int) * FIMC_IS_MAX_PLANES);
+	memset(shared_reg + FIMC_IS_SCC_REGION_INDEX, 0,
+	       sizeof(unsigned int) * FIMC_IS_MAX_PLANES);
+	memset(shared_reg + FIMC_IS_SCP_REGION_INDEX, 0,
+	       sizeof(unsigned int) * FIMC_IS_MAX_PLANES);
 
 	scaler_ud = pipeline->config.metadata_mode == CAMERA2_SHOT_BASE_MODE
 		  ? &((struct camera2_shot_base *)shot)->uctl.scaler_ud
@@ -1769,7 +1769,7 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 					"Invalid number of planes!");
 			shared_reg = (unsigned int *)(pipeline->minfo->shared.vaddr
 				+ FIMC_IS_SCP_REGION_INDEX * sizeof(unsigned int));
-			for (i = 0; i < FIMC_IS_MAX_PLANES; i++) {
+			for (i = 0; i < scp_buf->vb.vb2_buf.num_planes; i++) {
 				scaler_ud->scp_target_address[i] =
 							scp_buf->paddr[i];
 				shared_reg[i] = scp_buf->paddr[i];
