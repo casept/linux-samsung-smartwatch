@@ -155,8 +155,14 @@ static int __subdev_set_power(struct v4l2_subdev *sd, int on)
 	else if (!on && (*use_count == 0 || --(*use_count) > 0))
 		return 0;
 	ret = v4l2_subdev_call(sd, core, s_power, on);
+	if (ret == -ENOIOCTLCMD)
+		return 0;
 
-	return ret != -ENOIOCTLCMD ? ret : 0;
+	/* A subdev that failed to power on stays off */
+	if (ret < 0 && on)
+		(*use_count)--;
+
+	return ret;
 }
 
 /**
@@ -193,10 +199,9 @@ static int fimc_pipeline_s_power(struct fimc_pipeline *p, bool state)
 	}
 	return 0;
 rollback:
-	for (; state && i >= 0; --i) {
-		unsigned int idx = state ? i : (IDX_MAX - 1) - i;
-		 __subdev_set_power(p->subdevs[idx], !state);
-	}
+	/* Power off what has been powered on, the failed subdev is off */
+	while (state && --i >= 0)
+		__subdev_set_power(p->subdevs[i], false);
 	return ret;
 }
 
