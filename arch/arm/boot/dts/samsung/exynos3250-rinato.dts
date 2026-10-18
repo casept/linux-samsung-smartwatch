@@ -1031,7 +1031,6 @@
 	broken-cd;
 	non-removable;
 	cap-mmc-highspeed;
-	mmc-hs200-1_8v;
 	card-detect-delay = <200>;
 	/*
 	 * The eMMC core runs from LDO12 and its I/O from LDO11, both switched
