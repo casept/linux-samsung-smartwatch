@@ -1660,7 +1660,7 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 
 	if (ctx->state == MFCINST_ERROR) {
-		dev_err(&ctx->dev->plat_dev->dev, "Call on QBUF after unrecoverable error\n");
+		dev_dbg(&ctx->dev->plat_dev->dev, "Call on QBUF after unrecoverable error\n");
 		return -EIO;
 	}
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
@@ -1685,8 +1685,8 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	int ret;
 
 	if (ctx->state == MFCINST_ERROR) {
-		dev_err_ratelimited(&ctx->dev->plat_dev->dev,
-				    "Call on DQBUF after unrecoverable error\n");
+		dev_dbg(&ctx->dev->plat_dev->dev,
+			"Call on DQBUF after unrecoverable error\n");
 		return -EIO;
 	}
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
