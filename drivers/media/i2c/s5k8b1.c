@@ -197,7 +197,7 @@ static int __s5k8b1_power_on(struct s5k8b1 *sensor)
 	if (ret < 0)
 		return ret;
 
-	ret = pm_runtime_get(sensor->dev);
+	ret = pm_runtime_resume_and_get(sensor->dev);
 	if (ret < 0)
 		return ret;
 
