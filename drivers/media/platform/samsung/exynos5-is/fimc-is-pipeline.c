@@ -687,15 +687,19 @@ static int fimc_is_pipeline_power(struct fimc_is_pipeline *pipeline, int on)
 		if (pipeline->force_down)
 			fimc_is_pipeline_forcedown(pipeline, false);
 
-		if (is->drvdata->variant == FIMC_IS_EXYNOS3250)
-			ret = fimc_is_pipeline_setup_gic(pipeline);
+		/* FIMC-IS local power enable */
+		ret = pm_runtime_resume_and_get(dev);
 		if (ret < 0)
 			return ret;
 
-		/* FIMC-IS local power enable */
-		ret = pm_runtime_get_sync(dev);
-		if (ret < 0)
-			return ret;
+		/* The IS GIC loses its configuration while powered down */
+		if (is->drvdata->variant == FIMC_IS_EXYNOS3250) {
+			ret = fimc_is_pipeline_setup_gic(pipeline);
+			if (ret < 0) {
+				pm_runtime_put_sync(dev);
+				return ret;
+			}
+		}
 
 		/* A5 start address setting */
 		writel(pipeline->minfo->fw.paddr, is->interface.regs + BBOAR);
