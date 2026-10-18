@@ -169,9 +169,9 @@ static int scaler_video_capture_buffer_prepare(struct vb2_buffer *vb)
 					ctx->fmt->depth[i]) / 8;
 
 		if (vb2_plane_size(vb, i) < size) {
-			v4l2_err(&ctx->subdev,
-				 "User buffer too small (%ld < %ld)\n",
-				 vb2_plane_size(vb, i), size);
+			dev_dbg(&ctx->vfd.dev,
+				"User buffer too small (%ld < %ld)\n",
+				vb2_plane_size(vb, i), size);
 			return -EINVAL;
 		}
 		vb2_set_plane_payload(vb, i, size);

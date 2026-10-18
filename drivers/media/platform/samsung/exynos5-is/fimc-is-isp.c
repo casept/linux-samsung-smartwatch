@@ -112,8 +112,8 @@ static int isp_video_output_buffer_prepare(struct vb2_buffer *vb)
 
 	size = (isp->width * isp->height * isp->fmt->depth[0]) / 8;
 	if (vb2_plane_size(vb, 0) < size) {
-		v4l2_err(&isp->subdev, "User buffer too small (%ld < %ld)\n",
-			 vb2_plane_size(vb, 0), size);
+		dev_dbg(&isp->vfd.dev, "User buffer too small (%ld < %ld)\n",
+			vb2_plane_size(vb, 0), size);
 		return -EINVAL;
 	}
 	vb2_set_plane_payload(vb, 0, size);
