@@ -53,6 +53,7 @@ struct fimc_pipeline_isp {
 
 struct fimc_csis_info {
 	struct v4l2_subdev *sd;
+	struct module *owner;
 	struct device_node *of_node;
 	int id;
 };
@@ -79,6 +80,7 @@ struct fimc_sensor_info {
  * @sensor: array of registered sensor subdevs
  * @num_sensors: actual number of registered sensors
  * @fimc_lite: array of registered fimc-lite devices
+ * @fimc_lite_owner: the modules of the registered fimc-lite devices' drivers
  * @is: fimc-is data structure
  * @media_dev: top level media device
  * @v4l2_dev: top level v4l2_device holding up the subdevs
@@ -94,6 +96,7 @@ struct fimc_md {
 	struct fimc_sensor_info sensor[FIMC_MAX_SENSORS];
 	int num_sensors;
 	struct fimc_lite *fimc_lite[FIMC_LITE_MAX_DEVS];
+	struct module *fimc_lite_owner[FIMC_LITE_MAX_DEVS];
 	struct fimc_is *is;
 	struct media_device media_dev;
 	struct v4l2_device v4l2_dev;

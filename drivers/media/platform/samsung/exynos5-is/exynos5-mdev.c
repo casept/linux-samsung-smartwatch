@@ -488,7 +488,8 @@ static int __of_get_csis_id(struct device_node *np)
  */
 
 static int register_fimc_lite_entity(struct fimc_md *fmd,
-				     struct fimc_lite *fimc_lite)
+				     struct fimc_lite *fimc_lite,
+				     struct module *owner)
 {
 	struct v4l2_subdev *sd;
 	struct exynos_media_pipeline *ep;
@@ -508,17 +509,20 @@ static int register_fimc_lite_entity(struct fimc_md *fmd,
 	v4l2_set_subdev_hostdata(sd, ep);
 
 	ret = v4l2_device_register_subdev(&fmd->v4l2_dev, sd);
-	if (!ret)
-		fmd->fimc_lite[fimc_lite->index] = fimc_lite;
-	else
+	if (ret < 0) {
 		v4l2_err(&fmd->v4l2_dev, "Failed to register FIMC.LITE%d\n",
 			 fimc_lite->index);
-	return ret;
+		return ret;
+	}
+
+	fmd->fimc_lite[fimc_lite->index] = fimc_lite;
+	fmd->fimc_lite_owner[fimc_lite->index] = owner;
+	return 0;
 }
 
 static int register_csis_entity(struct fimc_md *fmd,
 				struct platform_device *pdev,
-				struct v4l2_subdev *sd)
+				struct v4l2_subdev *sd, struct module *owner)
 {
 	struct device_node *node = pdev->dev.of_node;
 	int id, ret;
@@ -540,6 +544,7 @@ static int register_csis_entity(struct fimc_md *fmd,
 	}
 
 	fmd->csis[id].sd = sd;
+	fmd->csis[id].owner = owner;
 	fmd->csis[id].of_node = node;
 	return ret;
 }
@@ -672,10 +677,12 @@ static int fimc_md_register_platform_entity(struct fimc_md *fmd,
 	if (drvdata) {
 		switch (plat_entity) {
 		case IDX_FLITE:
-			ret = register_fimc_lite_entity(fmd, drvdata);
+			ret = register_fimc_lite_entity(fmd, drvdata,
+							dev->driver->owner);
 			break;
 		case IDX_CSIS:
-			ret = register_csis_entity(fmd, pdev, drvdata);
+			ret = register_csis_entity(fmd, pdev, drvdata,
+						   dev->driver->owner);
 			break;
 		case IDX_FIMC_IS:
 			ret = register_fimc_is_entity(fmd, drvdata);
@@ -685,7 +692,12 @@ static int fimc_md_register_platform_entity(struct fimc_md *fmd,
 		}
 	}
 
-	module_put(dev->driver->owner);
+	/*
+	 * The subdevs are registered on behalf of the CSIS and FIMC-LITE
+	 * drivers, keep them loaded until the subdevs get unregistered.
+	 */
+	if (ret || plat_entity == IDX_FIMC_IS)
+		module_put(dev->driver->owner);
 dev_unlock:
 	device_unlock(dev);
 	if (ret == -EPROBE_DEFER)
@@ -791,13 +803,17 @@ static void fimc_md_unregister_entities(struct fimc_md *fmd)
 		if (fmd->fimc_lite[i] == NULL)
 			continue;
 		v4l2_device_unregister_subdev(&fmd->fimc_lite[i]->subdev);
+		module_put(fmd->fimc_lite_owner[i]);
 		fmd->fimc_lite[i] = NULL;
+		fmd->fimc_lite_owner[i] = NULL;
 	}
 	for (i = 0; i < CSIS_MAX_ENTITIES; i++) {
 		if (fmd->csis[i].sd == NULL)
 			continue;
 		v4l2_device_unregister_subdev(fmd->csis[i].sd);
+		module_put(fmd->csis[i].owner);
 		fmd->csis[i].sd = NULL;
+		fmd->csis[i].owner = NULL;
 	}
 	for (i = 0; i < fmd->num_sensors; i++)
 		fmd->sensor[i].subdev = NULL;
