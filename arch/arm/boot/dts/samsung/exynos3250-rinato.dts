@@ -147,6 +147,22 @@
 				cm-cable-name = "TA";
 				cm-cable-extcon = "max77836-muic";
 			};
+			cable-cdp {
+				cm-cable-name = "CDP";
+				cm-cable-extcon = "max77836-muic";
+			};
+			cable-dcp {
+				cm-cable-name = "DCP";
+				cm-cable-extcon = "max77836-muic";
+			};
+			cable-fast {
+				cm-cable-name = "FAST-CHARGER";
+				cm-cable-extcon = "max77836-muic";
+			};
+			cable-slow {
+				cm-cable-name = "SLOW-CHARGER";
+				cm-cable-extcon = "max77836-muic";
+			};
 		};
 	};
 
