@@ -6,6 +6,7 @@
 #ifndef FIMC_LITE_H_
 #define FIMC_LITE_H_
 
+#include <linux/debugfs.h>
 #include <linux/sizes.h>
 #include <linux/io.h>
 #include <linux/irqreturn.h>
@@ -138,6 +139,8 @@ struct flite_buffer {
  * @frame_count: the captured frames counter
  * @reqbufs_count: the number of buffers requested with REQBUFS ioctl
  * @events: event info
+ * @debugfs: debugfs directory
+ * @regset: register set exposed through debugfs
  * @streaming: is streaming in progress?
  */
 struct fimc_lite {
@@ -175,6 +178,8 @@ struct fimc_lite {
 	unsigned int		reqbufs_count;
 
 	struct fimc_lite_events	events;
+	struct dentry		*debugfs;
+	struct debugfs_regset32	regset;
 	bool			streaming;
 };
 

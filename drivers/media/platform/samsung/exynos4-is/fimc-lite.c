@@ -9,6 +9,7 @@
 
 #include <linux/bug.h>
 #include <linux/clk.h>
+#include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/interrupt.h>
@@ -1527,6 +1528,42 @@ static int fimc_lite_clk_get(struct fimc_lite *fimc)
 
 static const struct of_device_id flite_of_match[];
 
+static const struct debugfs_reg32 fimc_lite_regs[] = {
+	{ "CISRCSIZE",	FLITE_REG_CISRCSIZE },
+	{ "CIGCTRL",	FLITE_REG_CIGCTRL },
+	{ "CIIMGCPT",	FLITE_REG_CIIMGCPT },
+	{ "CICPTSEQ",	FLITE_REG_CICPTSEQ },
+	{ "CIWDOFST",	FLITE_REG_CIWDOFST },
+	{ "CIWDOFST2",	FLITE_REG_CIWDOFST2 },
+	{ "CIODMAFMT",	FLITE_REG_CIODMAFMT },
+	{ "CIOCAN",	FLITE_REG_CIOCAN },
+	{ "CIOOFF",	FLITE_REG_CIOOFF },
+	{ "CIOSA",	FLITE_REG_CIOSA },
+	{ "CISTATUS",	FLITE_REG_CISTATUS },
+	{ "CISTATUS2",	FLITE_REG_CISTATUS2 },
+	{ "CITHOLD",	FLITE_REG_CITHOLD },
+	{ "CIGENERAL",	FLITE_REG_CIGENERAL },
+	/* Only with several output DMA buffer slots */
+	{ "CISTATUS3",	FLITE_REG_CISTATUS3 },
+	{ "CIFCNTSEQ",	FLITE_REG_CIFCNTSEQ },
+};
+
+static void fimc_lite_debugfs_init(struct fimc_lite *fimc)
+{
+	struct device *dev = &fimc->pdev->dev;
+
+	fimc->regset.regs = fimc_lite_regs;
+	fimc->regset.nregs = ARRAY_SIZE(fimc_lite_regs);
+	if (fimc->dd->max_dma_bufs == 1)
+		fimc->regset.nregs -= 2;
+	fimc->regset.base = fimc->regs;
+	/* Keeps the device resumed while reading */
+	fimc->regset.dev = dev;
+
+	fimc->debugfs = debugfs_create_dir(dev_name(dev), NULL);
+	debugfs_create_regset32("regs", 0400, fimc->debugfs, &fimc->regset);
+}
+
 static int fimc_lite_probe(struct platform_device *pdev)
 {
 	struct flite_drvdata *drv_data = NULL;
@@ -1597,6 +1634,7 @@ static int fimc_lite_probe(struct platform_device *pdev)
 	vb2_dma_contig_set_max_seg_size(dev, DMA_BIT_MASK(32));
 
 	fimc_lite_set_default_config(fimc);
+	fimc_lite_debugfs_init(fimc);
 
 	dev_dbg(dev, "FIMC-LITE.%d registered successfully\n",
 		fimc->index);
@@ -1683,6 +1721,8 @@ static void fimc_lite_remove(struct platform_device *pdev)
 {
 	struct fimc_lite *fimc = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
+
+	debugfs_remove_recursive(fimc->debugfs);
 
 	if (!pm_runtime_enabled(dev))
 		clk_disable_unprepare(fimc->clock);
