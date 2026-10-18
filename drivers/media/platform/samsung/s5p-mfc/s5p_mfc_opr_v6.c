@@ -1078,9 +1078,9 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 			mfc_debug(2, "Set Level 5.1 for UHD\n");
 			p_h264->level = 51;
 		}
-		if (p_h264->profile != 0x2) {
+		if (p_h264->profile != S5P_FIMV_ENC_PROFILE_H264_HIGH_V6) {
 			mfc_debug(2, "Set High profile for UHD\n");
-			p_h264->profile = 0x2;
+			p_h264->profile = S5P_FIMV_ENC_PROFILE_H264_HIGH_V6;
 		}
 	}
 

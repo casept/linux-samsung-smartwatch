@@ -1915,21 +1915,24 @@ static int s5p_mfc_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDEO_H264_PROFILE:
 		switch (ctrl->val) {
 		case V4L2_MPEG_VIDEO_H264_PROFILE_MAIN:
-			p->codec.h264.profile =
+			p->codec.h264.profile = IS_MFCV6_PLUS(dev) ?
+					S5P_FIMV_ENC_PROFILE_H264_MAIN_V6 :
 					S5P_FIMV_ENC_PROFILE_H264_MAIN;
 			break;
 		case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH:
-			p->codec.h264.profile =
+			p->codec.h264.profile = IS_MFCV6_PLUS(dev) ?
+					S5P_FIMV_ENC_PROFILE_H264_HIGH_V6 :
 					S5P_FIMV_ENC_PROFILE_H264_HIGH;
 			break;
 		case V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE:
-			p->codec.h264.profile =
-				S5P_FIMV_ENC_PROFILE_H264_BASELINE;
+			p->codec.h264.profile = IS_MFCV6_PLUS(dev) ?
+					S5P_FIMV_ENC_PROFILE_H264_BASELINE_V6 :
+					S5P_FIMV_ENC_PROFILE_H264_BASELINE;
 			break;
 		case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE:
 			if (IS_MFCV6_PLUS(dev))
 				p->codec.h264.profile =
-				S5P_FIMV_ENC_PROFILE_H264_CONSTRAINED_BASELINE;
+				S5P_FIMV_ENC_PROFILE_H264_CONSTRAINED_BASELINE_V6;
 			else
 				ret = -EINVAL;
 			break;
