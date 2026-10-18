@@ -10,7 +10,10 @@
 #include <linux/err.h>
 #include <linux/firmware.h>
 #include <linux/jiffies.h>
+#include <linux/of.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 #include "s5p_mfc_cmd.h"
 #include "s5p_mfc_common.h"
 #include "s5p_mfc_debug.h"
@@ -42,6 +45,41 @@ int s5p_mfc_alloc_firmware(struct s5p_mfc_dev *dev)
 }
 
 /* Load firmware */
+/*
+ * Firmware builds can be specific to a board, e.g. the MFC v7 of the Exynos3250
+ * needs another one than the generic MFC v7 firmware. Like Broadcom Bluetooth
+ * firmware, a board specific build is looked up as "<name>.<board>.fw", where
+ * the board is the first compatible of the root node.
+ */
+static int s5p_mfc_request_firmware(struct s5p_mfc_dev *dev,
+				    const struct firmware **fw,
+				    const char *name)
+{
+	struct device_node *root __free(device_node) =
+		of_find_node_by_path("/");
+	const char *board;
+	char *board_name;
+	int ret;
+
+	if (root && !of_property_read_string_index(root, "compatible", 0,
+						   &board)) {
+		board_name = kasprintf(GFP_KERNEL, "%.*s.%s.fw",
+				       (int)(strlen(name) - strlen(".fw")),
+				       name, board);
+		if (!board_name)
+			return -ENOMEM;
+		strreplace(board_name, '/', '-');
+
+		ret = firmware_request_nowarn(fw, board_name,
+					      &dev->plat_dev->dev);
+		kfree(board_name);
+		if (!ret)
+			return 0;
+	}
+
+	return request_firmware(fw, name, &dev->plat_dev->dev);
+}
+
 int s5p_mfc_load_firmware(struct s5p_mfc_dev *dev)
 {
 	struct firmware *fw_blob;
@@ -63,8 +101,9 @@ int s5p_mfc_load_firmware(struct s5p_mfc_dev *dev)
 	for (i = MFC_FW_MAX_VERSIONS - 1; i >= 0; i--) {
 		if (!dev->variant->fw_name[i])
 			continue;
-		err = request_firmware((const struct firmware **)&fw_blob,
-				dev->variant->fw_name[i], &dev->plat_dev->dev);
+		err = s5p_mfc_request_firmware(dev,
+				(const struct firmware **)&fw_blob,
+				dev->variant->fw_name[i]);
 		if (!err) {
 			dev->fw_ver = (enum s5p_mfc_fw_ver) i;
 			break;
