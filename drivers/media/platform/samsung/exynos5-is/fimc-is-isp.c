@@ -433,7 +433,8 @@ static int isp_s_power(struct v4l2_subdev *sd, int on)
 
 		ret = fimc_is_pipeline_open(isp->pipeline, sensor);
 		if (ret) {
-			v4l2_err(&isp->subdev, "Pipeline open failed\n");
+			if (ret != -EINTR)
+				v4l2_err(&isp->subdev, "Pipeline open failed\n");
 		} else {
 			ret = v4l2_ctrl_handler_setup(&isp->ctrls.handler);
 			if (ret)

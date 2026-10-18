@@ -593,10 +593,14 @@ static int fimc_is_pipeline_load_firmware(struct fimc_is_pipeline *pipeline)
 	struct fimc_is *is = pipeline->is;
 	int ret;
 
-	ret = request_firmware(&fw_blob, is->drvdata->fw_name, &is->pdev->dev);
+	ret = firmware_request_nowarn(&fw_blob, is->drvdata->fw_name,
+				      &is->pdev->dev);
 	if (ret) {
-		dev_err(pipeline->dev, "Firmware file not found\n");
-		return -EINVAL;
+		/* Interrupted by a signal, the caller gets told */
+		if (ret != -EINTR)
+			dev_err(pipeline->dev, "Failed to load firmware %s: %d\n",
+				is->drvdata->fw_name, ret);
+		return ret;
 	}
 	if (fw_blob->size > pipeline->minfo->fw.size) {
 		dev_err(pipeline->dev, "Firmware file too big\n");
@@ -752,10 +756,21 @@ static int fimc_is_pipeline_load_setfile(struct fimc_is_pipeline *pipeline,
 	const struct firmware *fw_blob;
 	int ret;
 
-	ret = request_firmware(&fw_blob, setfile_name, &is->pdev->dev);
+	ret = firmware_request_nowarn(&fw_blob, setfile_name, &is->pdev->dev);
 	if (ret) {
-		dev_err(pipeline->dev, "Setfile %s not found\n", setfile_name);
+		if (ret != -EINTR)
+			dev_err(pipeline->dev, "Failed to load setfile %s: %d\n",
+				setfile_name, ret);
 		return ret;
+	}
+
+	/* The firmware tells where to put the setfile */
+	if (setfile_addr > pipeline->minfo->fw.size ||
+	    fw_blob->size > pipeline->minfo->fw.size - setfile_addr) {
+		dev_err(pipeline->dev, "Setfile %s doesn't fit at 0x%x\n",
+			setfile_name, setfile_addr);
+		release_firmware(fw_blob);
+		return -ENOMEM;
 	}
 
 	memcpy(pipeline->minfo->fw.vaddr + setfile_addr,
@@ -787,10 +802,8 @@ static int fimc_is_pipeline_setfile(struct fimc_is_pipeline *pipeline)
 	/* Load setfile */
 	ret = fimc_is_pipeline_load_setfile(pipeline, setfile_addr,
 			sensor->drvdata->setfile_name);
-	if (ret) {
-		dev_err(pipeline->dev, "Load setfile failed\n");
+	if (ret)
 		return ret;
-	}
 
 	/* Send HW command */
 	ret = fimc_is_itf_load_setfile(&is->interface, pipeline->instance);
@@ -2088,10 +2101,8 @@ int fimc_is_pipeline_open(struct fimc_is_pipeline *pipeline,
 
 		/* Load firmware */
 		ret = fimc_is_pipeline_load_firmware(pipeline);
-		if (ret) {
-			dev_err(pipeline->dev, "Firmware load failed\n");
+		if (ret)
 			goto err_fw;
-		}
 
 		/* Power ON */
 		ret = fimc_is_pipeline_power(pipeline, 1);
