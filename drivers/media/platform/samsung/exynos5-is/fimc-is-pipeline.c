@@ -366,6 +366,7 @@ static const struct fd_param init_fd_param = {
 
 #define NSEC_PER_MSEC   1000000L
 #define FIMC_IS_MIN_FRAME_DURATION (5 * (NSEC_PER_MSEC))
+#define FIMC_IS_SHOT_TIMEOUT_MS 500
 
 #define __fimc_is_has_subip(p, subip) ((p)->subip_mask & (1 << (subip)))
 
@@ -1837,8 +1838,13 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 		dev_err(pipeline->dev, "Shot command failed\n");
 		goto err_exit;
 	}
+	/*
+	 * Shots can take longer than a frame or two when the system is
+	 * busy, only give up on the firmware after a while.
+	 */
 	queue_delayed_work(system_freezable_wq, &pipeline->wdg_work,
-			   nsecs_to_jiffies(pipeline->frame_duration)*2);
+			   max(nsecs_to_jiffies(pipeline->frame_duration) * 2,
+			       msecs_to_jiffies(FIMC_IS_SHOT_TIMEOUT_MS)));
 	return 0;
 
 err_exit:
@@ -2291,6 +2297,7 @@ static void fimc_is_pipeline_wdg_work_fn(struct work_struct *work)
 
 		if (fimc_is_itf_hw_running(&is->interface))
 			return;
+		dev_err(pipeline->dev, "Shot timed out, resetting the pipeline\n");
 		clear_bit(PIPELINE_RUN, &pipeline->state);
 		fimc_is_pipeline_reset(pipeline);
 		fimc_is_pipeline_shot_cancel(pipeline);
