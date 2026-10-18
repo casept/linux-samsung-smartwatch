@@ -858,6 +858,11 @@ static int fimc_pipeline_validate(struct fimc_lite *fimc)
 			sink_fmt.format.width = ff->f_width;
 			sink_fmt.format.height = ff->f_height;
 			sink_fmt.format.code = fimc->inp_frame.fmt->mbus_code;
+			/* Only YUV can be converted to another format */
+			if (ff->fmt != fimc->inp_frame.fmt &&
+			    !(ff->fmt->flags & fimc->inp_frame.fmt->flags &
+			      FMT_FLAGS_YUV))
+				return -EPIPE;
 		} else {
 			sink_fmt.pad = pad->index;
 			ret = v4l2_subdev_call(sd, pad, get_fmt, NULL,
@@ -1186,6 +1191,7 @@ static int fimc_lite_subdev_set_fmt(struct v4l2_subdev *sd,
 		sink->rect.left = 0;
 		sink->rect.top = 0;
 		/* Reset source format and crop rectangle */
+		source->fmt = ffmt;
 		source->rect = sink->rect;
 		source->f_width = mf->width;
 		source->f_height = mf->height;
