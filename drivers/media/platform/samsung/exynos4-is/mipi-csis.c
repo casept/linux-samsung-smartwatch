@@ -209,6 +209,7 @@ struct csis_pktbuf {
  * @num_virt_channels:   number of available virtual channels
  * @num_dlanes_reg:      register for data lanes configuration
  * @sclk_csis:           IP support for SCLK_CSIS clock
+ * @fw_irq:              the FIMC-IS firmware handles the interrupt
  */
 struct csis_drvdata {
 	u32		interrupt_mask;
@@ -217,6 +218,7 @@ struct csis_drvdata {
 	unsigned short	num_virt_channels;
 	unsigned short	num_dlanes_reg;
 	unsigned int	sclk_csis:1;
+	unsigned int	fw_irq:1;
 };
 
 /**
@@ -882,6 +884,7 @@ static const struct csis_drvdata s5pcsis_drvdata[] = {
 		.num_dlanes_reg     = S5PCSIS_CTRL,
 		.num_virt_channels  = 4,
 		.sclk_csis          = 0,
+		.fw_irq             = 1,
 	},
 	[S5PCSIS_EXYNOS4] = {
 		.interrupt_mask     = EXYNOS4_INTMSK_EN_ALL,
@@ -943,9 +946,17 @@ static int s5pcsis_probe(struct platform_device *pdev)
 	if (IS_ERR(state->regs))
 		return PTR_ERR(state->regs);
 
-	state->irq = platform_get_irq(pdev, 0);
-	if (state->irq < 0)
-		return state->irq;
+	/*
+	 * In Exynos3250, the CSIS is part of the FIMC-IS, whose firmware
+	 * handles its interrupt to keep track of the frames. Handling it here
+	 * as well races with the firmware, which then misses frame ends and
+	 * fails to stop the sensor. Leave it to the firmware.
+	 */
+	if (!state->drv_data->fw_irq) {
+		state->irq = platform_get_irq(pdev, 0);
+		if (state->irq < 0)
+			return state->irq;
+	}
 
 	for (i = 0; i < CSIS_NUM_SUPPLIES; i++)
 		state->supplies[i].supply = csis_supply_name[i];
@@ -963,11 +974,13 @@ static int s5pcsis_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto e_clkput;
 
-	ret = devm_request_irq(dev, state->irq, s5pcsis_irq_handler,
-			       0, dev_name(dev), state);
-	if (ret) {
-		dev_err(dev, "Interrupt request failed\n");
-		goto e_clkdis;
+	if (!state->drv_data->fw_irq) {
+		ret = devm_request_irq(dev, state->irq, s5pcsis_irq_handler,
+				       0, dev_name(dev), state);
+		if (ret) {
+			dev_err(dev, "Interrupt request failed\n");
+			goto e_clkdis;
+		}
 	}
 
 	v4l2_subdev_init(&state->sd, &s5pcsis_subdev_ops);
