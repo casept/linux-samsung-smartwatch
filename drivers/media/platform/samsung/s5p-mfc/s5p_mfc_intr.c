@@ -52,6 +52,18 @@ int s5p_mfc_wait_for_done_ctx(struct s5p_mfc_ctx *ctx,
 {
 	int ret;
 
+	/*
+	 * Don't wait for a command that isn't going to run, that only blocks
+	 * all other contexts until the timeout.
+	 */
+	if (!(ctx->int_cond && ctx->int_type == command) &&
+	    !s5p_mfc_ctx_pending(ctx)) {
+		dev_dbg(&ctx->dev->plat_dev->dev,
+			"Nothing to wait for (ctx->int_type:%d, command:%d)\n",
+			ctx->int_type, command);
+		return 1;
+	}
+
 	if (interrupt) {
 		ret = wait_event_interruptible_timeout(ctx->queue,
 				(ctx->int_cond && (ctx->int_type == command

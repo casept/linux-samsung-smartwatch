@@ -145,6 +145,13 @@ static bool s5p_mfc_ctx_busy(struct s5p_mfc_ctx *ctx)
 	return dev->curr_ctx == ctx->num && test_bit(0, &dev->hw_lock);
 }
 
+/* Whether the context has something to run, or is running it */
+bool s5p_mfc_ctx_pending(struct s5p_mfc_ctx *ctx)
+{
+	return test_bit(ctx->num, &ctx->dev->ctx_work_bits) ||
+	       s5p_mfc_ctx_busy(ctx);
+}
+
 /*
  * Wait for the hardware to be done with what it runs for the context, before
  * the buffers it may be using go away.
