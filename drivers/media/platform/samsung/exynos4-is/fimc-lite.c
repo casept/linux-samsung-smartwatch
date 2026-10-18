@@ -438,13 +438,38 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 	    !test_and_set_bit(ST_FLITE_STREAM, &fimc->state)) {
 		flite_hw_capture_start(fimc);
 
-		if (!test_and_set_bit(ST_SENSOR_STREAM, &fimc->state))
-			fimc_pipeline_call(&fimc->ve, set_stream, 1);
+		if (!test_and_set_bit(ST_SENSOR_STREAM, &fimc->state)) {
+			ret = fimc_pipeline_call(&fimc->ve, set_stream, 1);
+			if (ret) {
+				clear_bit(ST_SENSOR_STREAM, &fimc->state);
+				goto err_stop;
+			}
+		}
 	}
 	if (debug > 0)
 		flite_hw_dump_regs(fimc, __func__);
 
 	return 0;
+
+err_stop:
+	flite_hw_capture_stop(fimc);
+	fimc_lite_set_bandwidth(fimc, false);
+
+	/* vb2 wants the queued buffers back when failing to start */
+	spin_lock_irqsave(&fimc->slock, flags);
+	fimc->state &= ~(1 << ST_FLITE_STREAM | 1 << ST_FLITE_PENDING);
+	while (!list_empty(&fimc->active_buf_q)) {
+		buf = fimc_lite_active_queue_pop(fimc);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_QUEUED);
+	}
+	while (!list_empty(&fimc->pending_buf_q)) {
+		buf = fimc_lite_pending_queue_pop(fimc);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_QUEUED);
+	}
+	spin_unlock_irqrestore(&fimc->slock, flags);
+
+	flite_hw_reset(fimc);
+	return ret;
 }
 
 static void stop_streaming(struct vb2_queue *q)
@@ -1398,6 +1423,8 @@ static int fimc_lite_subdev_registered(struct v4l2_subdev *sd)
 	q->ops = &fimc_lite_qops;
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct flite_buffer);
+	/* Start the source with a buffer queued, to report its errors */
+	q->min_queued_buffers = 1;
 	q->drv_priv = fimc;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	q->lock = &fimc->lock;
