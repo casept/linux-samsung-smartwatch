@@ -19,6 +19,7 @@
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-async.h>
+#include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
 
 #define S5K8B1_SENSOR_MAX_WIDTH		1936
@@ -32,6 +33,8 @@
 #define S5K8B1_DRV_NAME			"S5K8B1"
 #define S5K8B1_CLK_NAME			"extclk"
 #define S5K8B1_DEFAULT_CLK_FREQ		24000000U
+/* 760 Mbps on one lane with 10 bits per pixel, as the FIMC-IS firmware sets up */
+#define S5K8B1_PIXEL_RATE		76000000
 
 enum {
 	S5K8B1_SUPP_VDDA,
@@ -62,6 +65,7 @@ struct s5k8b1 {
 	struct gpio_desc *gpio_reset;
 	struct mutex lock;
 	struct v4l2_mbus_framefmt format;
+	struct v4l2_ctrl_handler ctrls;
 	struct clk *clock;
 	u32 clock_frequency;
 	int power_count;
@@ -319,22 +323,35 @@ static int s5k8b1_probe(struct i2c_client *client)
 	sensor->format.width = S5K8B1_DEFAULT_WIDTH;
 	sensor->format.height = S5K8B1_DEFAULT_HEIGHT;
 
+	v4l2_ctrl_handler_init(&sensor->ctrls, 1);
+	v4l2_ctrl_new_std(&sensor->ctrls, NULL, V4L2_CID_PIXEL_RATE,
+			  S5K8B1_PIXEL_RATE, S5K8B1_PIXEL_RATE, 1,
+			  S5K8B1_PIXEL_RATE);
+	if (sensor->ctrls.error)
+		return dev_err_probe(dev, sensor->ctrls.error,
+				     "failed to create controls\n");
+	sd->ctrl_handler = &sensor->ctrls;
+
 	sd->entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	sensor->pad.flags = MEDIA_PAD_FL_SOURCE;
 	ret = media_entity_pads_init(&sd->entity, 1, &sensor->pad);
 	if (ret < 0)
-		return ret;
+		goto err_ctrls;
 
 	pm_runtime_no_callbacks(dev);
 	pm_runtime_enable(dev);
 
 	ret = v4l2_async_register_subdev(sd);
-
 	if (ret < 0) {
 		pm_runtime_disable(&client->dev);
 		media_entity_cleanup(&sd->entity);
+		goto err_ctrls;
 	}
 
+	return 0;
+
+err_ctrls:
+	v4l2_ctrl_handler_free(&sensor->ctrls);
 	return ret;
 }
 
@@ -351,6 +368,7 @@ static void s5k8b1_remove(struct i2c_client *client)
 
 	pm_runtime_disable(&client->dev);
 	media_entity_cleanup(&sd->entity);
+	v4l2_ctrl_handler_free(&sensor->ctrls);
 }
 
 static const struct i2c_device_id s5k8b1_ids[] = {
