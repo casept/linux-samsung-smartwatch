@@ -487,7 +487,19 @@ int unwind_frame(struct stackframe *frame)
 		 * call_with_stack() is the only place where we permit SP to
 		 * jump from one stack to another, and since we know it is
 		 * guaranteed to happen, set up the SP bounds accordingly.
+		 *
+		 * The new bounds come from FP, so make sure this really is a
+		 * call_with_stack() frame first: an exception taken halfway
+		 * through a function prologue can unwind to a bogus return
+		 * address in here, with garbage in FP. The callee was entered
+		 * with SP at the top of the IRQ stack, and FP holds the SP of
+		 * the stack we switched away from.
 		 */
+		if (!IS_ALIGNED(frame->sp, THREAD_SIZE) ||
+		    !IS_ALIGNED(frame->fp, sizeof(unsigned long)) ||
+		    frame->fp < PAGE_OFFSET)
+			return -URC_FAILURE;
+
 		sp_low = frame->fp;
 		ctrl.sp_high = ALIGN(frame->fp, THREAD_SIZE);
 	}
