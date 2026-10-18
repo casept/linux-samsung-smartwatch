@@ -625,7 +625,7 @@ static void mms_config_set(void *context)
 	struct mms_ts_info *info = context;
 	struct i2c_client *client = info->client;
 	struct mms_config_hdr *conf_hdr;
-	struct mms_config_item **conf_item;
+	struct mms_config_item *conf_item;
 	int offset;
 	int offset_tmp = 0;
 	int i;
@@ -661,108 +661,102 @@ static void mms_config_set(void *context)
 	}
 
 	offset = conf_hdr->data_offset;
-	conf_item =
-		kcalloc(conf_hdr->data_count, sizeof(*conf_item), GFP_KERNEL);
-
 	for (i = 0;; i++, offset += MMS_MFSP_OFFSET) {
-		conf_item[i] =
-			(struct mms_config_item *)(info->config_fw + offset);
+		conf_item = (struct mms_config_item *)(info->config_fw + offset);
 
 		if (i == MMS_GET_CONF_VER)
 			dev_info(&info->client->dev, "Runtime Conf_Ver[%02x]\n",
-				 conf_item[i]->value);
+				 conf_item->value);
 
-		if (conf_item[i]->type == MMS_RUN_TYPE_INFO) {
-			offset_tmp = conf_item[i]->data_blocksize;
+		if (conf_item->type == MMS_RUN_TYPE_INFO) {
+			offset_tmp = conf_item->data_blocksize;
 			offset += offset_tmp;
 		}
 
-		if (conf_item[i]->type == MMS_RUN_TYPE_SINGLE) {
+		if (conf_item->type == MMS_RUN_TYPE_SINGLE) {
 			config_flash_set[0] = MMS_RUN_CONF_POINTER;
-			config_flash_set[1] = conf_item[i]->category;
-			config_flash_set[2] = conf_item[i]->offset;
-			config_flash_set[3] = conf_item[i]->datasize;
+			config_flash_set[1] = conf_item->category;
+			config_flash_set[2] = conf_item->offset;
+			config_flash_set[3] = conf_item->datasize;
 
 			mms_config_flash(info, config_flash_set, 4,
 					 "config-set");
 		}
-		if (conf_item[i]->type == MMS_RUN_TYPE_ARRAY) {
+		if (conf_item->type == MMS_RUN_TYPE_ARRAY) {
 			config_flash_set[0] = MMS_RUN_CONF_POINTER;
-			config_flash_set[1] = conf_item[i]->category;
-			config_flash_set[2] = conf_item[i]->offset;
-			config_flash_set[3] = conf_item[i]->datasize;
+			config_flash_set[1] = conf_item->category;
+			config_flash_set[2] = conf_item->offset;
+			config_flash_set[3] = conf_item->datasize;
 
 			mms_config_flash(info, config_flash_set, 4,
 					 "array-set");
 
-			offset_tmp = conf_item[i]->data_blocksize;
+			offset_tmp = conf_item->data_blocksize;
 			config_array = (u8 *)(info->config_fw +
 					      (offset + MMS_MFSP_OFFSET));
 			offset += offset_tmp;
 
 			flash_array[0] = MMS_SET_RUN_CONF;
 			memcpy(&flash_array[1], config_array,
-			       conf_item[i]->datasize);
+			       conf_item->datasize);
 
 			mms_config_flash(info, flash_array,
-					 conf_item[i]->datasize + 1,
+					 conf_item->datasize + 1,
 					 "array_data");
 			mms_read_config(client, config_flash_set, cmp_data,
-					conf_item[i]->datasize);
+					conf_item->datasize);
 			if (mms_verify_config(info, &flash_array[1], cmp_data,
-					      conf_item[i]->datasize) != 0)
+					      conf_item->datasize) != 0)
 				break;
 		}
 
 		config_flash_data[0] = MMS_SET_RUN_CONF;
-		if (conf_item[i]->datasize == 1) {
-			config_flash_data[1] = (u8)conf_item[i]->value;
+		if (conf_item->datasize == 1) {
+			config_flash_data[1] = (u8)conf_item->value;
 			mms_config_flash(info, config_flash_data, 2,
 					 "config-data1");
 			mms_read_config(client, config_flash_set, cmp_data,
-					conf_item[i]->datasize);
+					conf_item->datasize);
 
 			if (mms_verify_config(info, &config_flash_data[1],
 					      cmp_data, 1) != 0)
 				break;
 
-		} else if (conf_item[i]->datasize == 2) {
+		} else if (conf_item->datasize == 2) {
 			config_flash_data[1] =
-				(u8)((conf_item[i]->value & 0x00FF) >> 0);
+				(u8)((conf_item->value & 0x00FF) >> 0);
 			config_flash_data[2] =
-				(u8)((conf_item[i]->value & 0xFF00) >> 8);
+				(u8)((conf_item->value & 0xFF00) >> 8);
 			mms_config_flash(info, config_flash_data, 3,
 					 "config-data2");
 			mms_read_config(client, config_flash_set, cmp_data,
-					conf_item[i]->datasize);
+					conf_item->datasize);
 			if (mms_verify_config(info, &config_flash_data[1],
 					      cmp_data, 2) != 0)
 				break;
-		} else if (conf_item[i]->datasize == 4) {
+		} else if (conf_item->datasize == 4) {
 			config_flash_data[1] =
-				(u8)((conf_item[i]->value & 0x000000FF) >> 0);
+				(u8)((conf_item->value & 0x000000FF) >> 0);
 			config_flash_data[2] =
-				(u8)((conf_item[i]->value & 0x0000FF00) >> 8);
+				(u8)((conf_item->value & 0x0000FF00) >> 8);
 			config_flash_data[3] =
-				(u8)((conf_item[i]->value & 0x00FF0000) >> 16);
+				(u8)((conf_item->value & 0x00FF0000) >> 16);
 			config_flash_data[4] =
-				(u8)((conf_item[i]->value & 0xFF000000) >> 24);
+				(u8)((conf_item->value & 0xFF000000) >> 24);
 			mms_config_flash(info, config_flash_data, 5,
 					 "config-data4");
 			mms_read_config(client, config_flash_set, cmp_data,
-					conf_item[i]->datasize);
+					conf_item->datasize);
 
 			if (mms_verify_config(info, &config_flash_data[1],
 					      cmp_data, 4) != 0)
 				break;
 		}
-		if (conf_item[i]->type == MMS_RUN_TYPE_END) {
+		if (conf_item->type == MMS_RUN_TYPE_END) {
 			mms_config_finish(info);
 			break;
 		}
 	}
-
-	kfree(conf_item);
 }
 
 static int mms_config_get(struct mms_ts_info *info, u8 mode)
