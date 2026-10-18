@@ -313,7 +313,11 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 		clear_bit(ST_FLITE_RUN, &fimc->state);
 		fimc->events.data_overflow++;
 		flite_hw_mask_overflow_irq(fimc, true);
-		dev_warn_ratelimited(&fimc->pdev->dev, "output FIFO overflow\n");
+		/* Without an enabled buffer slot, the frame is just dropped */
+		if (fimc->dd->max_dma_bufs == 1 ||
+		    readl(fimc->regs + FLITE_REG_CIFCNTSEQ))
+			dev_warn_ratelimited(&fimc->pdev->dev,
+					     "output FIFO overflow\n");
 	}
 
 	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_LASTCAPEND) {
