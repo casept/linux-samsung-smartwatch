@@ -519,6 +519,7 @@ static int reqbufs_output(struct s5p_mfc_dev *dev, struct s5p_mfc_ctx *ctx,
 		if (ret) {
 			reqbufs->count = 0;
 			vb2_reqbufs(&ctx->vq_src, reqbufs);
+			ctx->src_bufs_cnt = 0;
 			goto out;
 		}
 
@@ -564,6 +565,7 @@ static int reqbufs_capture(struct s5p_mfc_dev *dev, struct s5p_mfc_ctx *ctx,
 			dev_err(&dev->plat_dev->dev, "Failed to allocate decoding buffers\n");
 			reqbufs->count = 0;
 			vb2_reqbufs(&ctx->vq_dst, reqbufs);
+			ctx->dst_bufs_cnt = 0;
 			ret = -ENOMEM;
 			ctx->capture_state = QUEUE_FREE;
 			goto out;
