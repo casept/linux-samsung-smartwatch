@@ -133,6 +133,7 @@ static int max14577_get_online(struct max14577_charger *chg, int *val)
 	chg_type = maxim_get_charger_type(chg->max14577->dev_type, reg_data);
 	switch (chg_type) {
 	case MAX14577_CHARGER_TYPE_USB:
+	case MAX14577_CHARGER_TYPE_DOWNSTREAM_PORT:
 	case MAX14577_CHARGER_TYPE_DEDICATED_CHG:
 	case MAX14577_CHARGER_TYPE_SPECIAL_500MA:
 	case MAX14577_CHARGER_TYPE_SPECIAL_1A:
@@ -141,7 +142,6 @@ static int max14577_get_online(struct max14577_charger *chg, int *val)
 		*val = 1;
 		break;
 	case MAX14577_CHARGER_TYPE_NONE:
-	case MAX14577_CHARGER_TYPE_DOWNSTREAM_PORT:
 	case MAX14577_CHARGER_TYPE_RESERVED:
 	case MAX77836_CHARGER_TYPE_RESERVED:
 	default:
