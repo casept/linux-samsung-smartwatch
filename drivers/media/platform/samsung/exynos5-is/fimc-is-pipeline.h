@@ -72,11 +72,16 @@ enum is_components {
 	IS_FD
 };
 
+/*
+ * Bits of the subip_state bitmaps. A sub-IP the FIMC-IS doesn't have has no
+ * bits set, compare with COMP_INVALID to check whether it's there.
+ */
 enum component_state {
 	COMP_INVALID,
 	COMP_ENABLE,
 	COMP_START,
-	COMP_RUN
+	COMP_RUN,
+	COMP_PRESENT,
 };
 
 struct fimc_is_config {

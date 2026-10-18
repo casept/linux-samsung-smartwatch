@@ -447,7 +447,8 @@ int fimc_is_pipeline_init(struct fimc_is_pipeline *pipeline,
 	pipeline->subip_mask = is->drvdata->subip_mask;
 	pipeline->force_down = false;
 	for (i = 0; i < FIMC_IS_NUM_COMPS; i++)
-		pipeline->subip_state[i] = __fimc_is_has_subip(pipeline, i);
+		pipeline->subip_state[i] = __fimc_is_has_subip(pipeline, i) ?
+					   BIT(COMP_PRESENT) : 0;
 
 	spin_lock_init(&pipeline->slock_buf);
 	init_waitqueue_head(&pipeline->wait_q);
