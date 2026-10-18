@@ -15,7 +15,6 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include "s5p_mfc_common.h"
-#include "s5p_mfc_debug.h"
 #include "s5p_mfc_intr.h"
 
 int s5p_mfc_wait_for_done_dev(struct s5p_mfc_dev *dev, int command)
@@ -34,7 +33,7 @@ int s5p_mfc_wait_for_done_dev(struct s5p_mfc_dev *dev, int command)
 		dev_err(&dev->plat_dev->dev, "Interrupted by a signal\n");
 		return 1;
 	}
-	mfc_debug(1, "Finished waiting (dev->int_type:%d, command: %d)\n",
+	dev_dbg(&dev->plat_dev->dev, "Finished waiting (dev->int_type:%d, command: %d)\n",
 							dev->int_type, command);
 	if (dev->int_type == S5P_MFC_R2H_CMD_ERR_RET)
 		return 1;
@@ -73,7 +72,7 @@ int s5p_mfc_wait_for_done_ctx(struct s5p_mfc_ctx *ctx,
 		dev_err(&ctx->dev->plat_dev->dev, "Interrupted by a signal\n");
 		return 1;
 	}
-	mfc_debug(1, "Finished waiting (ctx->int_type:%d, command: %d)\n",
+	dev_dbg(&ctx->dev->plat_dev->dev, "Finished waiting (ctx->int_type:%d, command: %d)\n",
 							ctx->int_type, command);
 	if (ctx->int_type == S5P_MFC_R2H_CMD_ERR_RET)
 		return 1;

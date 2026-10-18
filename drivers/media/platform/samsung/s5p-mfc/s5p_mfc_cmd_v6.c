@@ -9,14 +9,13 @@
 #include "s5p_mfc_common.h"
 
 #include "s5p_mfc_cmd.h"
-#include "s5p_mfc_debug.h"
 #include "s5p_mfc_intr.h"
 #include "s5p_mfc_opr.h"
 #include "s5p_mfc_cmd_v6.h"
 
 static int s5p_mfc_cmd_host2risc_v6(struct s5p_mfc_dev *dev, int cmd)
 {
-	mfc_debug(2, "Issue the command: %d\n", cmd);
+	dev_dbg(&dev->plat_dev->dev, "Issue the command: %d\n", cmd);
 
 	/* Reset RISC2HOST command */
 	mfc_write(dev, 0x0, S5P_FIMV_RISC2HOST_CMD_V6);
@@ -58,7 +57,7 @@ static int s5p_mfc_open_inst_cmd_v6(struct s5p_mfc_ctx *ctx)
 	struct s5p_mfc_dev *dev = ctx->dev;
 	int codec_type;
 
-	mfc_debug(2, "Requested codec mode: %d\n", ctx->codec_mode);
+	dev_dbg(&dev->plat_dev->dev, "Requested codec mode: %d\n", ctx->codec_mode);
 	dev->curr_ctx = ctx->num;
 	switch (ctx->codec_mode) {
 	case S5P_MFC_CODEC_H264_DEC:

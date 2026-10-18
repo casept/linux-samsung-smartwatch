@@ -11,7 +11,6 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include "s5p_mfc_common.h"
-#include "s5p_mfc_debug.h"
 #include "s5p_mfc_pm.h"
 
 int s5p_mfc_init_pm(struct s5p_mfc_dev *dev)

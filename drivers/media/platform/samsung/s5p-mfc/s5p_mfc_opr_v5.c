@@ -12,7 +12,6 @@
 #include "s5p_mfc_common.h"
 #include "s5p_mfc_cmd.h"
 #include "s5p_mfc_ctrl.h"
-#include "s5p_mfc_debug.h"
 #include "s5p_mfc_intr.h"
 #include "s5p_mfc_pm.h"
 #include "s5p_mfc_opr.h"
@@ -67,9 +66,9 @@ static int s5p_mfc_alloc_codec_buffers_v5(struct s5p_mfc_ctx *ctx)
 	int ret;
 
 	if (ctx->type == MFCINST_DECODER) {
-		mfc_debug(2, "Luma size:%d Chroma size:%d MV size:%d\n",
+		dev_dbg(&dev->plat_dev->dev, "Luma size:%d Chroma size:%d MV size:%d\n",
 			  ctx->luma_size, ctx->chroma_size, ctx->mv_size);
-		mfc_debug(2, "Totals bufs: %d\n", ctx->total_dpb_count);
+		dev_dbg(&dev->plat_dev->dev, "Totals bufs: %d\n", ctx->total_dpb_count);
 	} else if (ctx->type == MFCINST_ENCODER) {
 		enc_ref_y_size = ALIGN(ctx->img_width, S5P_FIMV_NV12MT_HALIGN)
 			* ALIGN(ctx->img_height, S5P_FIMV_NV12MT_VALIGN);
@@ -90,7 +89,7 @@ static int s5p_mfc_alloc_codec_buffers_v5(struct s5p_mfc_ctx *ctx)
 			enc_ref_c_size = ALIGN(guard_width * guard_height,
 					       S5P_FIMV_NV12MT_SALIGN);
 		}
-		mfc_debug(2, "recon luma size: %d chroma size: %d\n",
+		dev_dbg(&dev->plat_dev->dev, "recon luma size: %d chroma size: %d\n",
 			  enc_ref_y_size, enc_ref_c_size);
 	} else {
 		return -EINVAL;
@@ -277,7 +276,7 @@ static void s5p_mfc_dec_calc_dpb_size_v5(struct s5p_mfc_ctx *ctx)
 
 	ctx->buf_width = ALIGN(ctx->img_width, S5P_FIMV_NV12MT_HALIGN);
 	ctx->buf_height = ALIGN(ctx->img_height, S5P_FIMV_NV12MT_VALIGN);
-	mfc_debug(2,
+	dev_dbg(&ctx->dev->plat_dev->dev,
 		"SEQ Done: Movie dimensions %dx%d, buffer dimensions: %dx%d\n",
 		ctx->img_width,	ctx->img_height, ctx->buf_width,
 		ctx->buf_height);
@@ -466,20 +465,20 @@ static int s5p_mfc_set_dec_frame_buffer_v5(struct s5p_mfc_ctx *ctx)
 	frame_size_lu = ctx->luma_size;
 	frame_size_ch = ctx->chroma_size;
 	frame_size_mv = ctx->mv_size;
-	mfc_debug(2, "Frm size: %d ch: %d mv: %d\n", frame_size_lu, frame_size_ch,
+	dev_dbg(&dev->plat_dev->dev, "Frm size: %d ch: %d mv: %d\n", frame_size_lu, frame_size_ch,
 								frame_size_mv);
 	for (i = 0; i < ctx->total_dpb_count; i++) {
 		/* Bank2 */
-		mfc_debug(2, "Luma %d: %zx\n", i,
+		dev_dbg(&dev->plat_dev->dev, "Luma %d: %zx\n", i,
 					ctx->dst_bufs[i].cookie.raw.luma);
 		mfc_write(dev, OFFSETB(ctx->dst_bufs[i].cookie.raw.luma),
 						S5P_FIMV_DEC_LUMA_ADR + i * 4);
-		mfc_debug(2, "\tChroma %d: %zx\n", i,
+		dev_dbg(&dev->plat_dev->dev, "\tChroma %d: %zx\n", i,
 					ctx->dst_bufs[i].cookie.raw.chroma);
 		mfc_write(dev, OFFSETA(ctx->dst_bufs[i].cookie.raw.chroma),
 					       S5P_FIMV_DEC_CHROMA_ADR + i * 4);
 		if (ctx->codec_mode == S5P_MFC_CODEC_H264_DEC) {
-			mfc_debug(2, "\tBuf2: %zx, size: %d\n",
+			dev_dbg(&dev->plat_dev->dev, "\tBuf2: %zx, size: %d\n",
 							buf_addr2, buf_size2);
 			mfc_write(dev, OFFSETB(buf_addr2),
 						S5P_FIMV_H264_MV_ADR + i * 4);
@@ -487,11 +486,11 @@ static int s5p_mfc_set_dec_frame_buffer_v5(struct s5p_mfc_ctx *ctx)
 			buf_size2 -= frame_size_mv;
 		}
 	}
-	mfc_debug(2, "Buf1: %zu, buf_size1: %d\n", buf_addr1, buf_size1);
-	mfc_debug(2, "Buf 1/2 size after: %d/%d (frames %d)\n",
+	dev_dbg(&dev->plat_dev->dev, "Buf1: %zu, buf_size1: %d\n", buf_addr1, buf_size1);
+	dev_dbg(&dev->plat_dev->dev, "Buf 1/2 size after: %d/%d (frames %d)\n",
 			buf_size1,  buf_size2, ctx->total_dpb_count);
 	if (buf_size1 < 0 || buf_size2 < 0) {
-		mfc_debug(2, "Not enough memory has been allocated\n");
+		dev_dbg(&dev->plat_dev->dev, "Not enough memory has been allocated\n");
 		return -ENOMEM;
 	}
 	s5p_mfc_write_info_v5(ctx, frame_size_lu, ALLOC_LUMA_DPB_SIZE);
@@ -566,7 +565,7 @@ static int s5p_mfc_set_enc_ref_buffer_v5(struct s5p_mfc_ctx *ctx)
 		enc_ref_c_size = ALIGN(guard_width * guard_height,
 				       S5P_FIMV_NV12MT_SALIGN);
 	}
-	mfc_debug(2, "buf_size1: %zu, buf_size2: %zu\n", buf_size1, buf_size2);
+	dev_dbg(&dev->plat_dev->dev, "buf_size1: %zu, buf_size2: %zu\n", buf_size1, buf_size2);
 	switch (ctx->codec_mode) {
 	case S5P_MFC_CODEC_H264_ENC:
 		for (i = 0; i < 2; i++) {
@@ -605,7 +604,7 @@ static int s5p_mfc_set_enc_ref_buffer_v5(struct s5p_mfc_ctx *ctx)
 					S5P_FIMV_H264_NBOR_INFO_ADR);
 		buf_addr1 += S5P_FIMV_ENC_NBORINFO_SIZE;
 		buf_size1 -= S5P_FIMV_ENC_NBORINFO_SIZE;
-		mfc_debug(2, "buf_size1: %zu, buf_size2: %zu\n",
+		dev_dbg(&dev->plat_dev->dev, "buf_size1: %zu, buf_size2: %zu\n",
 			buf_size1, buf_size2);
 		break;
 	case S5P_MFC_CODEC_MPEG4_ENC:
@@ -636,7 +635,7 @@ static int s5p_mfc_set_enc_ref_buffer_v5(struct s5p_mfc_ctx *ctx)
 						S5P_FIMV_MPEG4_ACDC_COEF_ADR);
 		buf_addr1 += S5P_FIMV_ENC_ACDCCOEF_SIZE;
 		buf_size1 -= S5P_FIMV_ENC_ACDCCOEF_SIZE;
-		mfc_debug(2, "buf_size1: %zu, buf_size2: %zu\n",
+		dev_dbg(&dev->plat_dev->dev, "buf_size1: %zu, buf_size2: %zu\n",
 			buf_size1, buf_size2);
 		break;
 	case S5P_MFC_CODEC_H263_ENC:
@@ -662,7 +661,7 @@ static int s5p_mfc_set_enc_ref_buffer_v5(struct s5p_mfc_ctx *ctx)
 		mfc_write(dev, OFFSETA(buf_addr1), S5P_FIMV_H263_ACDC_COEF_ADR);
 		buf_addr1 += S5P_FIMV_ENC_ACDCCOEF_SIZE;
 		buf_size1 -= S5P_FIMV_ENC_ACDCCOEF_SIZE;
-		mfc_debug(2, "buf_size1: %zu, buf_size2: %zu\n",
+		dev_dbg(&dev->plat_dev->dev, "buf_size1: %zu, buf_size2: %zu\n",
 			buf_size1, buf_size2);
 		break;
 	default:
@@ -1103,7 +1102,7 @@ static int s5p_mfc_decode_one_frame_v5(struct s5p_mfc_ctx *ctx,
 		S5P_FIMV_SI_CH0_INST_ID);
 		break;
 	}
-	mfc_debug(2, "Decoding a usual frame\n");
+	dev_dbg(&dev->plat_dev->dev, "Decoding a usual frame\n");
 	return 0;
 }
 
@@ -1174,7 +1173,7 @@ static int s5p_mfc_run_dec_frame(struct s5p_mfc_ctx *ctx, int last_frame)
 
 	/* Frames are being decoded */
 	if (list_empty(&ctx->src_queue)) {
-		mfc_debug(2, "No src buffers\n");
+		dev_dbg(&dev->plat_dev->dev, "No src buffers\n");
 		return -EAGAIN;
 	}
 	/* Get the next source buffer */
@@ -1186,7 +1185,7 @@ static int s5p_mfc_run_dec_frame(struct s5p_mfc_ctx *ctx, int last_frame)
 	dev->curr_ctx = ctx->num;
 	if (temp_vb->b->vb2_buf.planes[0].bytesused == 0) {
 		last_frame = MFC_DEC_LAST_FRAME;
-		mfc_debug(2, "Setting ctx->state to FINISHING\n");
+		dev_dbg(&dev->plat_dev->dev, "Setting ctx->state to FINISHING\n");
 		ctx->state = MFCINST_FINISHING;
 	}
 	s5p_mfc_decode_one_frame_v5(ctx, last_frame);
@@ -1202,11 +1201,11 @@ static int s5p_mfc_run_enc_frame(struct s5p_mfc_ctx *ctx)
 	unsigned int dst_size;
 
 	if (list_empty(&ctx->src_queue) && ctx->state != MFCINST_FINISHING) {
-		mfc_debug(2, "no src buffers\n");
+		dev_dbg(&dev->plat_dev->dev, "no src buffers\n");
 		return -EAGAIN;
 	}
 	if (list_empty(&ctx->dst_queue)) {
-		mfc_debug(2, "no dst buffers\n");
+		dev_dbg(&dev->plat_dev->dev, "no dst buffers\n");
 		return -EAGAIN;
 	}
 	if (list_empty(&ctx->src_queue)) {
@@ -1241,7 +1240,7 @@ static int s5p_mfc_run_enc_frame(struct s5p_mfc_ctx *ctx)
 	dst_size = vb2_plane_size(&dst_mb->b->vb2_buf, 0);
 	s5p_mfc_set_enc_stream_buffer_v5(ctx, dst_addr, dst_size);
 	dev->curr_ctx = ctx->num;
-	mfc_debug(2, "encoding buffer with index=%d state=%d\n",
+	dev_dbg(&dev->plat_dev->dev, "encoding buffer with index=%d state=%d\n",
 		  src_mb ? src_mb->b->vb2_buf.index : -1, ctx->state);
 	s5p_mfc_encode_one_frame_v5(ctx);
 	return 0;
@@ -1253,10 +1252,10 @@ static void s5p_mfc_run_init_dec(struct s5p_mfc_ctx *ctx)
 	struct s5p_mfc_buf *temp_vb;
 
 	/* Initializing decoding - parsing header */
-	mfc_debug(2, "Preparing to init decoding\n");
+	dev_dbg(&dev->plat_dev->dev, "Preparing to init decoding\n");
 	temp_vb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
 	s5p_mfc_set_dec_desc_buffer(ctx);
-	mfc_debug(2, "Header size: %d\n",
+	dev_dbg(&dev->plat_dev->dev, "Header size: %d\n",
 			temp_vb->b->vb2_buf.planes[0].bytesused);
 	s5p_mfc_set_dec_stream_buffer_v5(ctx,
 			vb2_dma_contig_plane_dma_addr(&temp_vb->b->vb2_buf, 0),
@@ -1302,7 +1301,7 @@ static int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 		return -EIO;
 	}
 	temp_vb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
-	mfc_debug(2, "Header size: %d\n",
+	dev_dbg(&dev->plat_dev->dev, "Header size: %d\n",
 			temp_vb->b->vb2_buf.planes[0].bytesused);
 	s5p_mfc_set_dec_stream_buffer_v5(ctx,
 			vb2_dma_contig_plane_dma_addr(&temp_vb->b->vb2_buf, 0),
@@ -1324,13 +1323,13 @@ static void s5p_mfc_try_run_v5(struct s5p_mfc_dev *dev)
 	unsigned int ret = 0;
 
 	if (test_bit(0, &dev->enter_suspend)) {
-		mfc_debug(1, "Entering suspend so do not schedule any jobs\n");
+		dev_dbg(&dev->plat_dev->dev, "Entering suspend so do not schedule any jobs\n");
 		return;
 	}
 	/* Check whether hardware is not running */
 	if (test_and_set_bit(0, &dev->hw_lock) != 0) {
 		/* This is perfectly ok, the scheduled ctx should wait */
-		mfc_debug(1, "Couldn't lock HW\n");
+		dev_dbg(&dev->plat_dev->dev, "Couldn't lock HW\n");
 		return;
 	}
 	/* Choose the context to run */
@@ -1341,7 +1340,7 @@ static void s5p_mfc_try_run_v5(struct s5p_mfc_dev *dev)
 			dev_err(&dev->plat_dev->dev, "Failed to unlock hardware\n");
 			return;
 		}
-		mfc_debug(1, "No ctx is scheduled to be run\n");
+		dev_dbg(&dev->plat_dev->dev, "No ctx is scheduled to be run\n");
 		return;
 	}
 	ctx = dev->ctx[new_ctx];
@@ -1375,7 +1374,7 @@ static void s5p_mfc_try_run_v5(struct s5p_mfc_dev *dev)
 			break;
 		case MFCINST_HEAD_PARSED:
 			ret = s5p_mfc_run_init_dec_buffers(ctx);
-			mfc_debug(1, "head parsed\n");
+			dev_dbg(&dev->plat_dev->dev, "head parsed\n");
 			break;
 		case MFCINST_RES_CHANGE_INIT:
 			s5p_mfc_run_res_change(ctx);
@@ -1384,9 +1383,9 @@ static void s5p_mfc_try_run_v5(struct s5p_mfc_dev *dev)
 			s5p_mfc_run_dec_frame(ctx, MFC_DEC_FRAME);
 			break;
 		case MFCINST_RES_CHANGE_END:
-			mfc_debug(2, "Finished remaining frames after resolution change\n");
+			dev_dbg(&dev->plat_dev->dev, "Finished remaining frames after resolution change\n");
 			ctx->capture_state = QUEUE_FREE;
-			mfc_debug(2, "Will re-init the codec\n");
+			dev_dbg(&dev->plat_dev->dev, "Will re-init the codec\n");
 			s5p_mfc_run_init_dec(ctx);
 			break;
 		default:
