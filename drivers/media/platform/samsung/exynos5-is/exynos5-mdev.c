@@ -217,6 +217,7 @@ static int __fimc_pipeline_open(struct exynos_media_pipeline *ep,
 				struct media_entity *me, bool prepare)
 {
 	struct fimc_pipeline *p = to_fimc_pipeline(ep);
+	struct i2c_client *client;
 	struct v4l2_subdev *sd;
 	int ret;
 
@@ -238,15 +239,33 @@ static int __fimc_pipeline_open(struct exynos_media_pipeline *ep,
 	if (!try_module_get(THIS_MODULE))
 		return -ENODEV;
 
+	/*
+	 * Neither does anything keep the driver of the sensor's I2C bus
+	 * loaded, which unregisters the sensor when going away.
+	 */
+	client = i2c_verify_client(sd->dev);
+	if (client) {
+		p->sensor_adap = i2c_get_adapter(i2c_adapter_id(client->adapter));
+		if (!p->sensor_adap) {
+			ret = -ENODEV;
+			goto err_put;
+		}
+	}
+
 	ret = fimc_pipeline_s_power(p, 1);
 	if (ret) {
 		fimc_pipeline_cleanup(p);
-		module_put(THIS_MODULE);
-		return ret;
+		goto err_put;
 	}
 
 	p->module_ref = true;
 	return 0;
+
+err_put:
+	i2c_put_adapter(p->sensor_adap);
+	p->sensor_adap = NULL;
+	module_put(THIS_MODULE);
+	return ret;
 }
 
 /**
@@ -274,6 +293,8 @@ static int __fimc_pipeline_close(struct exynos_media_pipeline *ep)
 leave:
 	if (p->module_ref) {
 		p->module_ref = false;
+		i2c_put_adapter(p->sensor_adap);
+		p->sensor_adap = NULL;
 		module_put(THIS_MODULE);
 	}
 	return ret == -ENXIO ? 0 : ret;
