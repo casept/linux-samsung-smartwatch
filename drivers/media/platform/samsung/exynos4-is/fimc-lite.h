@@ -127,7 +127,6 @@ struct flite_buffer {
  * @clock: FIMC-LITE gate clock
  * @regs: memory mapped io registers
  * @irq_queue: interrupt handler waitqueue
- * @payload: image size in bytes (w x h x bpp)
  * @inp_frame: camera input frame structure
  * @out_frame: DMA output frame structure
  * @out_path: output data path (DMA or FIFO)
@@ -164,7 +163,6 @@ struct fimc_lite {
 	void __iomem		*regs;
 	wait_queue_head_t	irq_queue;
 
-	unsigned long		payload[FLITE_MAX_PLANES];
 	struct flite_frame	inp_frame;
 	struct flite_frame	out_frame;
 	atomic_t		out_path;

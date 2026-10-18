@@ -375,6 +375,12 @@ done:
 	return IRQ_HANDLED;
 }
 
+static unsigned long fimc_lite_plane_size(const struct flite_frame *frame,
+					  unsigned int plane)
+{
+	return frame->f_width * frame->f_height * frame->fmt->depth[plane] / 8;
+}
+
 static int start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct fimc_lite *fimc = q->drv_priv;
@@ -465,7 +471,7 @@ static int buffer_prepare(struct vb2_buffer *vb)
 		return -EINVAL;
 
 	for (i = 0; i < fimc->out_frame.fmt->memplanes; i++) {
-		unsigned long size = fimc->payload[i];
+		unsigned long size = fimc_lite_plane_size(&fimc->out_frame, i);
 
 		if (vb2_plane_size(vb, i) < size) {
 			v4l2_err(&fimc->ve.vdev,
@@ -827,8 +833,6 @@ static int fimc_lite_s_fmt_mplane(struct file *file, void *priv,
 		return ret;
 
 	frame->fmt = fmt;
-	fimc->payload[0] = max((pixm->width * pixm->height * fmt->depth[0]) / 8,
-			       pixm->plane_fmt[0].sizeimage);
 	frame->f_width = pixm->width;
 	frame->f_height = pixm->height;
 
