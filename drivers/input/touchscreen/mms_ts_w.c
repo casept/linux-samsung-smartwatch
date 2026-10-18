@@ -2790,17 +2790,13 @@ static int mms_ts_probe(struct i2c_client *client)
 		return -EIO;
 	}
 
-	info = kzalloc(sizeof(struct mms_ts_info), GFP_KERNEL);
-	if (!info) {
-		ret = -ENOMEM;
-		goto err_alloc;
-	}
+	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
+	if (!info)
+		return -ENOMEM;
 
-	input_dev = input_allocate_device();
-	if (!input_dev) {
-		ret = -ENOMEM;
-		goto err_input_alloc;
-	}
+	input_dev = devm_input_allocate_device(&client->dev);
+	if (!input_dev)
+		return -ENOMEM;
 
 	info->client = client;
 	info->input_dev = input_dev;
@@ -2809,10 +2805,8 @@ static int mms_ts_probe(struct i2c_client *client)
 		info->pdata = devm_kzalloc(
 			&client->dev, sizeof(struct melfas_tsi_platform_data),
 			GFP_KERNEL);
-		if (!info->pdata) {
-			dev_err(&client->dev, "Failed to allocate memory\n");
+		if (!info->pdata)
 			return -ENOMEM;
-		}
 		ret = melfas_parse_dt(&client->dev, info->pdata);
 		if (ret) {
 			dev_err(&client->dev, "Error parsing dt %d\n", ret);
@@ -2824,7 +2818,7 @@ static int mms_ts_probe(struct i2c_client *client)
 
 	if (info->pdata == NULL) {
 		dev_err(&client->dev, "failed to get platform data\n");
-		goto err_config;
+		return -EINVAL;
 	}
 
 	info->irq = -1;
@@ -2856,7 +2850,7 @@ static int mms_ts_probe(struct i2c_client *client)
 
 	if (ret) {
 		dev_err(&client->dev, "failed to initialize (%d)\n", ret);
-		goto err_fw_init;
+		goto err_power_off;
 	}
 
 	info->enabled = true;
@@ -2899,7 +2893,7 @@ static int mms_ts_probe(struct i2c_client *client)
 	if (ret) {
 		dev_err(&client->dev, "failed to register input dev (%d)\n",
 			ret);
-		goto err_reg_input_dev;
+		goto err_power_off;
 	}
 
 #if !TSP_ENABLE_SW_RESET
@@ -2924,12 +2918,14 @@ static int mms_ts_probe(struct i2c_client *client)
 	if (info->register_cb)
 		info->register_cb(&info->callbacks);
 
-	ret = request_threaded_irq(client->irq, NULL, mms_ts_interrupt,
-				   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
-				   MELFAS_TS_NAME, info);
+	ret = devm_request_threaded_irq(&client->dev, client->irq, NULL,
+					mms_ts_interrupt,
+					IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+					MELFAS_TS_NAME, info);
 	if (ret < 0) {
-		dev_err(&client->dev, "Failed to register interrupt\n");
-		goto err_reg_input_dev;
+		dev_err(&client->dev, "Failed to register interrupt (%d)\n",
+			ret);
+		goto err_power_off;
 	}
 
 	info->irq = client->irq;
@@ -2986,16 +2982,8 @@ err_alloc_node_data_failed:
 	kfree(info->intensity);
 #endif
 
-err_reg_input_dev:
-	input_unregister_device(input_dev);
-	input_free_device(input_dev);
-err_fw_init:
+err_power_off:
 	melfas_power(info, 0);
-err_config:
-err_input_alloc:
-err_alloc:
-	kfree(info);
-	dev_err(&client->dev, "%s failed\n", __func__);
 	return ret;
 }
 
@@ -3014,10 +3002,9 @@ static void mms_ts_remove(struct i2c_client *client)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&info->early_suspend);
 #endif
-	if (info->irq >= 0)
-		free_irq(info->irq, info);
-	input_unregister_device(info->input_dev);
-	kfree(info);
+#if !TSP_ENABLE_SW_RESET
+	cancel_delayed_work_sync(&info->work_config_set);
+#endif
 }
 
 #if (defined(CONFIG_PM) || defined(CONFIG_HAS_EARLYSUSPEND)) && \
