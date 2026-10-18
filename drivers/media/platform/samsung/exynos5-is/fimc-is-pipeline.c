@@ -1325,12 +1325,12 @@ static void fimc_is_pipeline_scalerc_validate(struct fimc_is_pipeline *pipeline,
 			"Cannot scale up beyond max scale ratio [x4]\n");
 	}
 	if (scc_input.width > scc_output.width * FIMC_SCC_MIN_RESIZE_RATIO) {
-		scc_reg->width = scc_input.width / FIMC_SCC_MAX_RESIZE_RATIO;
+		scc_reg->width = scc_input.width / FIMC_SCC_MIN_RESIZE_RATIO;
 		v4l2_warn(&scc->subdev,
 			"Cannot scale down beyond min scale ratio [1/16]\n");
 	}
-	if (scc_input.height > scc_output.height * FIMC_SCC_MAX_RESIZE_RATIO) {
-		scc_reg->height = scc_input.height / FIMC_SCC_MAX_RESIZE_RATIO;
+	if (scc_input.height > scc_output.height * FIMC_SCC_MIN_RESIZE_RATIO) {
+		scc_reg->height = scc_input.height / FIMC_SCC_MIN_RESIZE_RATIO;
 		v4l2_warn(&scc->subdev,
 			"Cannot scale down beyond min scale ratio [1/16]\n");
 	}
@@ -1343,7 +1343,6 @@ static void fimc_is_pipeline_scalerc_validate(struct fimc_is_pipeline *pipeline,
 	case V4L2_PIX_FMT_NV12M:
 		scc_reg->width  -= scc_reg->width & 0xf;
 		scc_reg->height -= scc_reg->height & 0xf;
-	case V4L2_PIX_FMT_NV16:
 		break;
 	default:
 		break;
