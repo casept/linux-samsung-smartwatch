@@ -50,6 +50,9 @@
 		clocks = <&cmu_dmc CLK_DIV_DMC>;
 		clock-names = "bus";
 		operating-points-v2 = <&bus_dmc_opp_table>;
+		/* FIMC-LITE output overflows below 100 MHz at about 150 MB/s */
+		samsung,data-clock-ratio = <1>;
+		#interconnect-cells = <0>;
 		status = "disabled";
 
 		bus_dmc_opp_table: opp-table {
@@ -91,6 +94,13 @@
 		clocks = <&cmu CLK_DIV_ACLK_266>;
 		clock-names = "bus";
 		operating-points-v2 = <&bus_isp_opp_table>;
+		/*
+		 * The ISP runs from this clock and processes a 2 byte raw pixel
+		 * per cycle, so it keeps up with the camera from the pixel rate on
+		 */
+		samsung,data-clock-ratio = <2>;
+		interconnects = <&bus_leftbus &bus_dmc>;
+		#interconnect-cells = <0>;
 		status = "disabled";
 
 		bus_isp_opp_table: opp-table {
@@ -127,6 +137,8 @@
 		clocks = <&cmu CLK_DIV_GDL>;
 		clock-names = "bus";
 		operating-points-v2 = <&bus_leftbus_opp_table>;
+		interconnects = <&bus_dmc>;
+		#interconnect-cells = <0>;
 		status = "disabled";
 	};
 
@@ -599,6 +611,7 @@
 				interrupts = <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&cmu_isp CLK_LITE0>;
 				clock-names = "flite";
+				interconnects = <&bus_isp &bus_dmc>;
 				power-domains = <&pd_isp>;
 				status = "disabled";
 			};
@@ -609,6 +622,7 @@
 				interrupts = <GIC_SPI 199 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&cmu_isp CLK_LITE1>;
 				clock-names = "flite";
+				interconnects = <&bus_isp &bus_dmc>;
 				power-domains = <&pd_isp>;
 				status = "disabled";
 			};
