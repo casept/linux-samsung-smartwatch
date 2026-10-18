@@ -938,7 +938,9 @@ static int fimc_lite_reqbufs(struct file *file, void *priv,
 	struct fimc_lite *fimc = video_drvdata(file);
 	int ret;
 
-	reqbufs->count = max_t(u32, FLITE_REQ_BUFS_MIN, reqbufs->count);
+	/* A count of 0 frees the buffers */
+	if (reqbufs->count)
+		reqbufs->count = max_t(u32, FLITE_REQ_BUFS_MIN, reqbufs->count);
 	ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
 	if (!ret)
 		fimc->reqbufs_count = reqbufs->count;
