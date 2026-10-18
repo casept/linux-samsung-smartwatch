@@ -29,16 +29,6 @@
 #include "s5p_mfc_opr.h"
 #include "s5p_mfc_opr_v6.h"
 
-/* #define S5P_MFC_DEBUG_REGWRITE  */
-#ifdef S5P_MFC_DEBUG_REGWRITE
-#undef writel
-#define writel(v, r)							\
-	do {								\
-		pr_err("MFCWRITE(%p): %08x\n", r, (unsigned int)v);	\
-	__raw_writel(v, r);						\
-	} while (0)
-#endif /* S5P_MFC_DEBUG_REGWRITE */
-
 #define IS_MFCV6_V2(dev) (!IS_MFCV7_PLUS(dev) && dev->fw_ver == MFC_FW_V2)
 
 /* Allocate temporary buffers for decoding */
@@ -595,10 +585,10 @@ static int s5p_mfc_set_dec_stream_buffer_v6(struct s5p_mfc_ctx *ctx,
 	dev_dbg(&dev->plat_dev->dev, "inst_no: %d, buf_addr: 0x%08x,\n"
 		"buf_size: 0x%08x (%d)\n",
 		ctx->inst_no, buf_addr, strm_size, strm_size);
-	writel(strm_size, mfc_regs->d_stream_data_size);
-	writel(buf_addr, mfc_regs->d_cpb_buffer_addr);
-	writel(buf_size->cpb, mfc_regs->d_cpb_buffer_size);
-	writel(start_num_byte, mfc_regs->d_cpb_buffer_offset);
+	s5p_mfc_writel(dev, strm_size, mfc_regs->d_stream_data_size);
+	s5p_mfc_writel(dev, buf_addr, mfc_regs->d_cpb_buffer_addr);
+	s5p_mfc_writel(dev, buf_size->cpb, mfc_regs->d_cpb_buffer_size);
+	s5p_mfc_writel(dev, start_num_byte, mfc_regs->d_cpb_buffer_offset);
 
 	return 0;
 }
@@ -621,21 +611,22 @@ static int s5p_mfc_set_dec_frame_buffer_v6(struct s5p_mfc_ctx *ctx)
 	dev_dbg(&dev->plat_dev->dev, "Total DPB COUNT: %d\n", ctx->total_dpb_count);
 	dev_dbg(&dev->plat_dev->dev, "Setting display delay to %d\n", ctx->display_delay);
 
-	writel(ctx->total_dpb_count, mfc_regs->d_num_dpb);
-	writel(ctx->luma_size, mfc_regs->d_first_plane_dpb_size);
-	writel(ctx->chroma_size, mfc_regs->d_second_plane_dpb_size);
+	s5p_mfc_writel(dev, ctx->total_dpb_count, mfc_regs->d_num_dpb);
+	s5p_mfc_writel(dev, ctx->luma_size, mfc_regs->d_first_plane_dpb_size);
+	s5p_mfc_writel(dev, ctx->chroma_size, mfc_regs->d_second_plane_dpb_size);
 	if (ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc ==
 			V4L2_PIX_FMT_YVU420M)
-		writel(ctx->chroma_size_1, mfc_regs->d_third_plane_dpb_size);
-	writel(buf_addr1, mfc_regs->d_scratch_buffer_addr);
-	writel(ctx->scratch_buf_size, mfc_regs->d_scratch_buffer_size);
+		s5p_mfc_writel(dev, ctx->chroma_size_1, mfc_regs->d_third_plane_dpb_size);
+	s5p_mfc_writel(dev, buf_addr1, mfc_regs->d_scratch_buffer_addr);
+	s5p_mfc_writel(dev, ctx->scratch_buf_size, mfc_regs->d_scratch_buffer_size);
 
 	if (IS_MFCV8_PLUS(dev)) {
-		writel(ctx->stride[0], mfc_regs->d_first_plane_dpb_stride_size);
-		writel(ctx->stride[1], mfc_regs->d_second_plane_dpb_stride_size);
+		s5p_mfc_writel(dev, ctx->stride[0], mfc_regs->d_first_plane_dpb_stride_size);
+		s5p_mfc_writel(dev, ctx->stride[1], mfc_regs->d_second_plane_dpb_stride_size);
 		if (ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc ==
 				V4L2_PIX_FMT_YVU420M)
-			writel(ctx->stride[2], mfc_regs->d_third_plane_dpb_stride_size);
+			s5p_mfc_writel(dev, ctx->stride[2],
+				       mfc_regs->d_third_plane_dpb_stride_size);
 	}
 
 	buf_addr1 += ctx->scratch_buf_size;
@@ -644,8 +635,8 @@ static int s5p_mfc_set_dec_frame_buffer_v6(struct s5p_mfc_ctx *ctx)
 	if (ctx->codec_mode == S5P_FIMV_CODEC_H264_DEC ||
 			ctx->codec_mode == S5P_FIMV_CODEC_H264_MVC_DEC ||
 			ctx->codec_mode == S5P_FIMV_CODEC_HEVC_DEC) {
-		writel(ctx->mv_size, mfc_regs->d_mv_buffer_size);
-		writel(ctx->mv_count, mfc_regs->d_num_mv);
+		s5p_mfc_writel(dev, ctx->mv_size, mfc_regs->d_mv_buffer_size);
+		s5p_mfc_writel(dev, ctx->mv_count, mfc_regs->d_num_mv);
 	}
 
 	frame_size = ctx->luma_size;
@@ -658,18 +649,18 @@ static int s5p_mfc_set_dec_frame_buffer_v6(struct s5p_mfc_ctx *ctx)
 		/* Bank2 */
 		dev_dbg(&dev->plat_dev->dev, "Luma %d: %zx\n", i,
 					ctx->dst_bufs[i].cookie.raw.luma);
-		writel(ctx->dst_bufs[i].cookie.raw.luma,
+		s5p_mfc_writel(dev, ctx->dst_bufs[i].cookie.raw.luma,
 				mfc_regs->d_first_plane_dpb + i * 4);
 		dev_dbg(&dev->plat_dev->dev, "\tChroma %d: %zx\n", i,
 					ctx->dst_bufs[i].cookie.raw.chroma);
-		writel(ctx->dst_bufs[i].cookie.raw.chroma,
+		s5p_mfc_writel(dev, ctx->dst_bufs[i].cookie.raw.chroma,
 				mfc_regs->d_second_plane_dpb + i * 4);
 		if (ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc ==
 				V4L2_PIX_FMT_YVU420M) {
 			dev_dbg(&dev->plat_dev->dev, "\tChroma_1 %d: %zx\n", i, ctx
 					->dst_bufs[i].cookie.raw.chroma_1);
-			writel(ctx->dst_bufs[i].cookie.raw.chroma_1, mfc_regs->d_third_plane_dpb +
-					i * 4);
+			s5p_mfc_writel(dev, ctx->dst_bufs[i].cookie.raw.chroma_1,
+				       mfc_regs->d_third_plane_dpb + i * 4);
 		}
 	}
 	if (ctx->codec_mode == S5P_MFC_CODEC_H264_DEC ||
@@ -684,14 +675,14 @@ static int s5p_mfc_set_dec_frame_buffer_v6(struct s5p_mfc_ctx *ctx)
 
 			dev_dbg(&dev->plat_dev->dev, "\tBuf1: %zx, size: %d\n",
 					buf_addr1, buf_size1);
-			writel(buf_addr1, mfc_regs->d_mv_buffer + i * 4);
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->d_mv_buffer + i * 4);
 			buf_addr1 += frame_size_mv;
 			buf_size1 -= frame_size_mv;
 		}
 	}
 	if (ctx->codec_mode == S5P_FIMV_CODEC_VP9_DEC) {
-		writel(buf_addr1, mfc_regs->d_static_buffer_addr);
-		writel(DEC_VP9_STATIC_BUFFER_SIZE,
+		s5p_mfc_writel(dev, buf_addr1, mfc_regs->d_static_buffer_addr);
+		s5p_mfc_writel(dev, DEC_VP9_STATIC_BUFFER_SIZE,
 				mfc_regs->d_static_buffer_size);
 		buf_addr1 += DEC_VP9_STATIC_BUFFER_SIZE;
 		buf_size1 -= DEC_VP9_STATIC_BUFFER_SIZE;
@@ -704,7 +695,7 @@ static int s5p_mfc_set_dec_frame_buffer_v6(struct s5p_mfc_ctx *ctx)
 		return -ENOMEM;
 	}
 
-	writel(ctx->inst_no, mfc_regs->instance_id);
+	s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 	s5p_mfc_hw_call(dev->mfc_cmds, cmd_host2risc, dev,
 			S5P_FIMV_CH_INIT_BUFS_V6, NULL);
 
@@ -719,8 +710,8 @@ static int s5p_mfc_set_enc_stream_buffer_v6(struct s5p_mfc_ctx *ctx,
 	struct s5p_mfc_dev *dev = ctx->dev;
 	const struct s5p_mfc_regs *mfc_regs = dev->mfc_regs;
 
-	writel(addr, mfc_regs->e_stream_buffer_addr); /* 16B align */
-	writel(size, mfc_regs->e_stream_buffer_size);
+	s5p_mfc_writel(dev, addr, mfc_regs->e_stream_buffer_addr); /* 16B align */
+	s5p_mfc_writel(dev, size, mfc_regs->e_stream_buffer_size);
 
 	dev_dbg(&dev->plat_dev->dev, "stream buf addr: 0x%08lx, size: 0x%x\n",
 		  addr, size);
@@ -735,9 +726,9 @@ static void s5p_mfc_set_enc_frame_buffer_v6(struct s5p_mfc_ctx *ctx,
 	struct s5p_mfc_dev *dev = ctx->dev;
 	const struct s5p_mfc_regs *mfc_regs = dev->mfc_regs;
 
-	writel(y_addr, mfc_regs->e_source_first_plane_addr);
-	writel(c_addr, mfc_regs->e_source_second_plane_addr);
-	writel(c_1_addr, mfc_regs->e_source_third_plane_addr);
+	s5p_mfc_writel(dev, y_addr, mfc_regs->e_source_first_plane_addr);
+	s5p_mfc_writel(dev, c_addr, mfc_regs->e_source_second_plane_addr);
+	s5p_mfc_writel(dev, c_1_addr, mfc_regs->e_source_third_plane_addr);
 
 	dev_dbg(&dev->plat_dev->dev, "enc src y buf addr: 0x%08lx\n", y_addr);
 	dev_dbg(&dev->plat_dev->dev, "enc src c buf addr: 0x%08lx\n", c_addr);
@@ -752,16 +743,16 @@ static void s5p_mfc_get_enc_frame_buffer_v6(struct s5p_mfc_ctx *ctx,
 	const struct s5p_mfc_regs *mfc_regs = dev->mfc_regs;
 	unsigned long enc_recon_y_addr, enc_recon_c_addr;
 
-	*y_addr = readl(mfc_regs->e_encoded_source_first_plane_addr);
-	*c_addr = readl(mfc_regs->e_encoded_source_second_plane_addr);
+	*y_addr = s5p_mfc_readl(dev, mfc_regs->e_encoded_source_first_plane_addr);
+	*c_addr = s5p_mfc_readl(dev, mfc_regs->e_encoded_source_second_plane_addr);
 	if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->src_fmt->fourcc ==
 			V4L2_PIX_FMT_YVU420M)
-		*c_1_addr = readl(mfc_regs->e_encoded_source_third_plane_addr);
+		*c_1_addr = s5p_mfc_readl(dev, mfc_regs->e_encoded_source_third_plane_addr);
 	else
 		*c_1_addr = 0;
 
-	enc_recon_y_addr = readl(mfc_regs->e_recon_luma_dpb_addr);
-	enc_recon_c_addr = readl(mfc_regs->e_recon_chroma_dpb_addr);
+	enc_recon_y_addr = s5p_mfc_readl(dev, mfc_regs->e_recon_luma_dpb_addr);
+	enc_recon_c_addr = s5p_mfc_readl(dev, mfc_regs->e_recon_chroma_dpb_addr);
 
 	dev_dbg(&dev->plat_dev->dev, "recon y addr: 0x%08lx y_addr: 0x%08lx\n",
 		enc_recon_y_addr, *y_addr);
@@ -786,41 +777,41 @@ static int s5p_mfc_set_enc_ref_buffer_v6(struct s5p_mfc_ctx *ctx)
 	if (IS_MFCV10_PLUS(dev)) {
 		/* start address of per buffer is aligned */
 		for (i = 0; i < ctx->pb_count; i++) {
-			writel(buf_addr1, mfc_regs->e_luma_dpb + (4 * i));
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_luma_dpb + (4 * i));
 			buf_addr1 += ctx->luma_dpb_size;
 			buf_size1 -= ctx->luma_dpb_size;
 		}
 		for (i = 0; i < ctx->pb_count; i++) {
-			writel(buf_addr1, mfc_regs->e_chroma_dpb + (4 * i));
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_chroma_dpb + (4 * i));
 			buf_addr1 += ctx->chroma_dpb_size;
 			buf_size1 -= ctx->chroma_dpb_size;
 		}
 		for (i = 0; i < ctx->pb_count; i++) {
-			writel(buf_addr1, mfc_regs->e_me_buffer + (4 * i));
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_me_buffer + (4 * i));
 			buf_addr1 += ctx->me_buffer_size;
 			buf_size1 -= ctx->me_buffer_size;
 		}
 	} else {
 		for (i = 0; i < ctx->pb_count; i++) {
-			writel(buf_addr1, mfc_regs->e_luma_dpb + (4 * i));
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_luma_dpb + (4 * i));
 			buf_addr1 += ctx->luma_dpb_size;
-			writel(buf_addr1, mfc_regs->e_chroma_dpb + (4 * i));
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_chroma_dpb + (4 * i));
 			buf_addr1 += ctx->chroma_dpb_size;
-			writel(buf_addr1, mfc_regs->e_me_buffer + (4 * i));
+			s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_me_buffer + (4 * i));
 			buf_addr1 += ctx->me_buffer_size;
 			buf_size1 -= (ctx->luma_dpb_size + ctx->chroma_dpb_size
 					+ ctx->me_buffer_size);
 		}
 	}
 
-	writel(buf_addr1, mfc_regs->e_scratch_buffer_addr);
-	writel(ctx->scratch_buf_size, mfc_regs->e_scratch_buffer_size);
+	s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_scratch_buffer_addr);
+	s5p_mfc_writel(dev, ctx->scratch_buf_size, mfc_regs->e_scratch_buffer_size);
 	buf_addr1 += ctx->scratch_buf_size;
 	buf_size1 -= ctx->scratch_buf_size;
 
-	writel(buf_addr1, mfc_regs->e_tmv_buffer0);
+	s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_tmv_buffer0);
 	buf_addr1 += ctx->tmv_buffer_size >> 1;
-	writel(buf_addr1, mfc_regs->e_tmv_buffer1);
+	s5p_mfc_writel(dev, buf_addr1, mfc_regs->e_tmv_buffer1);
 	buf_addr1 += ctx->tmv_buffer_size >> 1;
 	buf_size1 -= ctx->tmv_buffer_size;
 
@@ -831,7 +822,7 @@ static int s5p_mfc_set_enc_ref_buffer_v6(struct s5p_mfc_ctx *ctx)
 		return -ENOMEM;
 	}
 
-	writel(ctx->inst_no, mfc_regs->instance_id);
+	s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 	s5p_mfc_hw_call(dev->mfc_cmds, cmd_host2risc, dev,
 			S5P_FIMV_CH_INIT_BUFS_V6, NULL);
 
@@ -846,15 +837,15 @@ static int s5p_mfc_set_slice_mode(struct s5p_mfc_ctx *ctx)
 
 	/* multi-slice control */
 	/* multi-slice MB number or bit size */
-	writel(ctx->slice_mode, mfc_regs->e_mslice_mode);
+	s5p_mfc_writel(dev, ctx->slice_mode, mfc_regs->e_mslice_mode);
 	if (ctx->slice_mode == V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_MB) {
-		writel(ctx->slice_size.mb, mfc_regs->e_mslice_size_mb);
+		s5p_mfc_writel(dev, ctx->slice_size.mb, mfc_regs->e_mslice_size_mb);
 	} else if (ctx->slice_mode ==
 			V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_BYTES) {
-		writel(ctx->slice_size.bits, mfc_regs->e_mslice_size_bits);
+		s5p_mfc_writel(dev, ctx->slice_size.bits, mfc_regs->e_mslice_size_bits);
 	} else {
-		writel(0x0, mfc_regs->e_mslice_size_mb);
-		writel(0x0, mfc_regs->e_mslice_size_bits);
+		s5p_mfc_writel(dev, 0x0, mfc_regs->e_mslice_size_mb);
+		s5p_mfc_writel(dev, 0x0, mfc_regs->e_mslice_size_bits);
 	}
 
 	return 0;
@@ -869,21 +860,21 @@ static int s5p_mfc_set_enc_params(struct s5p_mfc_ctx *ctx)
 
 
 	/* width */
-	writel(ctx->img_width, mfc_regs->e_frame_width); /* 16 align */
+	s5p_mfc_writel(dev, ctx->img_width, mfc_regs->e_frame_width); /* 16 align */
 	/* height */
-	writel(ctx->img_height, mfc_regs->e_frame_height); /* 16 align */
+	s5p_mfc_writel(dev, ctx->img_height, mfc_regs->e_frame_height); /* 16 align */
 
 	/* cropped width */
-	writel(ctx->img_width, mfc_regs->e_cropped_frame_width);
+	s5p_mfc_writel(dev, ctx->img_width, mfc_regs->e_cropped_frame_width);
 	/* cropped height */
-	writel(ctx->img_height, mfc_regs->e_cropped_frame_height);
+	s5p_mfc_writel(dev, ctx->img_height, mfc_regs->e_cropped_frame_height);
 	/* cropped offset */
-	writel(0x0, mfc_regs->e_frame_crop_offset);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_frame_crop_offset);
 
 	/* pictype : IDR period */
 	reg = 0;
 	reg |= p->gop_size & 0xFFFF;
-	writel(reg, mfc_regs->e_gop_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_gop_config);
 
 	/* multi-slice control */
 	/* multi-slice MB number or bit size */
@@ -891,79 +882,79 @@ static int s5p_mfc_set_enc_params(struct s5p_mfc_ctx *ctx)
 	reg = 0;
 	if (p->slice_mode == V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_MB) {
 		reg |= (0x1 << 3);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		ctx->slice_size.mb = p->slice_mb;
 	} else if (p->slice_mode == V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_BYTES) {
 		reg |= (0x1 << 3);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		ctx->slice_size.bits = p->slice_bit;
 	} else {
 		reg &= ~(0x1 << 3);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 	}
 
 	s5p_mfc_set_slice_mode(ctx);
 
 	/* cyclic intra refresh */
-	writel(p->intra_refresh_mb, mfc_regs->e_ir_size);
-	reg = readl(mfc_regs->e_enc_options);
+	s5p_mfc_writel(dev, p->intra_refresh_mb, mfc_regs->e_ir_size);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 	if (p->intra_refresh_mb == 0)
 		reg &= ~(0x1 << 4);
 	else
 		reg |= (0x1 << 4);
-	writel(reg, mfc_regs->e_enc_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 
 	/* 'NON_REFERENCE_STORE_ENABLE' for debugging */
-	reg = readl(mfc_regs->e_enc_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 	reg &= ~(0x1 << 9);
-	writel(reg, mfc_regs->e_enc_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 
 	/* memory structure cur. frame */
 	if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_NV12M) {
 		/* 0: Linear, 1: 2D tiled*/
-		reg = readl(mfc_regs->e_enc_options);
+		reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 		reg &= ~(0x1 << 7);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		/* 0: NV12(CbCr), 1: NV21(CrCb) */
-		writel(0x0, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x0, mfc_regs->pixel_format);
 	} else if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_NV21M) {
 		/* 0: Linear, 1: 2D tiled*/
-		reg = readl(mfc_regs->e_enc_options);
+		reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 		reg &= ~(0x1 << 7);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		/* 0: NV12(CbCr), 1: NV21(CrCb) */
-		writel(0x1, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x1, mfc_regs->pixel_format);
 	} else if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_NV12MT_16X16) {
 		/* 0: Linear, 1: 2D tiled*/
-		reg = readl(mfc_regs->e_enc_options);
+		reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 		reg |= (0x1 << 7);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		/* 0: NV12(CbCr), 1: NV21(CrCb) */
-		writel(0x0, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x0, mfc_regs->pixel_format);
 	} else if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_YVU420M) {
 		/* 0: Linear, 1: 2D tiled*/
-		reg = readl(mfc_regs->e_enc_options);
+		reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 		reg &= ~(0x1 << 7);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		/* 2: YV12(CrCb), 3: I420(CrCb) */
-		writel(0x2, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x2, mfc_regs->pixel_format);
 	} else if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_YUV420M) {
 		/* 0: Linear, 1: 2D tiled*/
-		reg = readl(mfc_regs->e_enc_options);
+		reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 		reg &= ~(0x1 << 7);
-		writel(reg, mfc_regs->e_enc_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 		/* 2: YV12(CrCb), 3: I420(CrCb) */
-		writel(0x3, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x3, mfc_regs->pixel_format);
 	}
 
 	/* memory structure recon. frame */
 	/* 0: Linear, 1: 2D tiled */
-	reg = readl(mfc_regs->e_enc_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 	reg |= (0x1 << 8);
-	writel(reg, mfc_regs->e_enc_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 
 	/* padding control & value */
-	writel(0x0, mfc_regs->e_padding_ctrl);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_padding_ctrl);
 	if (p->pad) {
 		reg = 0;
 		/** enable */
@@ -974,78 +965,78 @@ static int s5p_mfc_set_enc_params(struct s5p_mfc_ctx *ctx)
 		reg |= ((p->pad_cb & 0xFF) << 8);
 		/** y value */
 		reg |= p->pad_luma & 0xFF;
-		writel(reg, mfc_regs->e_padding_ctrl);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_padding_ctrl);
 	}
 
 	/* rate control config. */
 	reg = 0;
 	/* frame-level rate control */
 	reg |= ((p->rc_frame & 0x1) << 9);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* bit rate */
 	if (p->rc_frame)
-		writel(p->rc_bitrate,
+		s5p_mfc_writel(dev, p->rc_bitrate,
 			mfc_regs->e_rc_bit_rate);
 	else
-		writel(1, mfc_regs->e_rc_bit_rate);
+		s5p_mfc_writel(dev, 1, mfc_regs->e_rc_bit_rate);
 
 	/* reaction coefficient */
 	if (p->rc_frame) {
 		if (IS_MFCV12(dev)) {
 			/* loose CBR */
 			if (p->rc_reaction_coeff < LOOSE_CBR_MAX)
-				writel(1, mfc_regs->e_rc_mode);
+				s5p_mfc_writel(dev, 1, mfc_regs->e_rc_mode);
 			/* tight CBR */
 			else if (p->rc_reaction_coeff < TIGHT_CBR_MAX)
-				writel(0, mfc_regs->e_rc_mode);
+				s5p_mfc_writel(dev, 0, mfc_regs->e_rc_mode);
 			/* VBR */
 			else
-				writel(2, mfc_regs->e_rc_mode);
+				s5p_mfc_writel(dev, 2, mfc_regs->e_rc_mode);
 		} else {
 			/* tight CBR */
 			if (p->rc_reaction_coeff < TIGHT_CBR_MAX)
-				writel(1, mfc_regs->e_rc_mode);
+				s5p_mfc_writel(dev, 1, mfc_regs->e_rc_mode);
 			/* loose CBR */
 			else
-				writel(2, mfc_regs->e_rc_mode);
+				s5p_mfc_writel(dev, 2, mfc_regs->e_rc_mode);
 		}
 	}
 
 	/* seq header ctrl */
-	reg = readl(mfc_regs->e_enc_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_enc_options);
 	reg &= ~(0x1 << 2);
 	reg |= ((p->seq_hdr_mode & 0x1) << 2);
 
 	/* frame skip mode */
 	reg &= ~(0x3);
 	reg |= (p->frame_skip_mode & 0x3);
-	writel(reg, mfc_regs->e_enc_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_enc_options);
 
 	/* 'DROP_CONTROL_ENABLE', disable */
-	reg = readl(mfc_regs->e_rc_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_rc_config);
 	reg &= ~(0x1 << 10);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* setting for MV range [16, 256] */
 	reg = (p->mv_h_range & S5P_FIMV_E_MV_RANGE_V6_MASK);
-	writel(reg, mfc_regs->e_mv_hor_range);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_mv_hor_range);
 
 	reg = (p->mv_v_range & S5P_FIMV_E_MV_RANGE_V6_MASK);
-	writel(reg, mfc_regs->e_mv_ver_range);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_mv_ver_range);
 
-	writel(0x0, mfc_regs->e_frame_insertion);
-	writel(0x0, mfc_regs->e_roi_buffer_addr);
-	writel(0x0, mfc_regs->e_param_change);
-	writel(0x0, mfc_regs->e_rc_roi_ctrl);
-	writel(0x0, mfc_regs->e_picture_tag);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_frame_insertion);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_roi_buffer_addr);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_param_change);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_rc_roi_ctrl);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_picture_tag);
 
-	writel(0x0, mfc_regs->e_bit_count_enable);
-	writel(0x0, mfc_regs->e_max_bit_count);
-	writel(0x0, mfc_regs->e_min_bit_count);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_bit_count_enable);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_max_bit_count);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_min_bit_count);
 
-	writel(0x0, mfc_regs->e_metadata_buffer_addr);
-	writel(0x0, mfc_regs->e_metadata_buffer_size);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_metadata_buffer_addr);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_metadata_buffer_size);
 
 
 	return 0;
@@ -1064,10 +1055,10 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 	s5p_mfc_set_enc_params(ctx);
 
 	/* pictype : number of B */
-	reg = readl(mfc_regs->e_gop_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_gop_config);
 	reg &= ~(0x3 << 16);
 	reg |= ((p->num_b_frame & 0x3) << 16);
-	writel(reg, mfc_regs->e_gop_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_gop_config);
 
 	/* UHD encoding case */
 	if (ctx->img_width == 3840 && ctx->img_height == 2160) {
@@ -1087,19 +1078,19 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 	reg |= ((p_h264->level & 0xFF) << 8);
 	/** profile - 0 ~ 3 */
 	reg |= p_h264->profile & 0x3F;
-	writel(reg, mfc_regs->e_picture_profile);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_picture_profile);
 
 	/* rate control config. */
-	reg = readl(mfc_regs->e_rc_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_rc_config);
 	/** macroblock level rate control */
 	reg &= ~(0x1 << 8);
 	reg |= ((p->rc_mb & 0x1) << 8);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/** frame QP */
 	reg &= ~(0x3F);
 	reg |= p_h264->rc_frame_qp & 0x3F;
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* max & min value of QP */
 	reg = 0;
@@ -1107,16 +1098,16 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 	reg |= ((p_h264->rc_max_qp & 0x3F) << 8);
 	/** min QP */
 	reg |= p_h264->rc_min_qp & 0x3F;
-	writel(reg, mfc_regs->e_rc_qp_bound);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_qp_bound);
 
 	/* other QPs */
-	writel(0x0, mfc_regs->e_fixed_picture_qp);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_fixed_picture_qp);
 	if (!p->rc_frame && !p->rc_mb) {
 		reg = 0;
 		reg |= ((p_h264->rc_b_frame_qp & 0x3F) << 16);
 		reg |= ((p_h264->rc_p_frame_qp & 0x3F) << 8);
 		reg |= p_h264->rc_frame_qp & 0x3F;
-		writel(reg, mfc_regs->e_fixed_picture_qp);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_fixed_picture_qp);
 	}
 
 	/* frame rate */
@@ -1124,38 +1115,38 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 		reg = 0;
 		reg |= ((p->rc_framerate_num & 0xFFFF) << 16);
 		reg |= p->rc_framerate_denom & 0xFFFF;
-		writel(reg, mfc_regs->e_rc_frame_rate);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_rc_frame_rate);
 	}
 
 	/* vbv buffer size */
 	if (p->frame_skip_mode ==
 			V4L2_MPEG_MFC51_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT) {
-		writel(p_h264->cpb_size & 0xFFFF,
+		s5p_mfc_writel(dev, p_h264->cpb_size & 0xFFFF,
 				mfc_regs->e_vbv_buffer_size);
 
 		if (p->rc_frame)
-			writel(p->vbv_delay, mfc_regs->e_vbv_init_delay);
+			s5p_mfc_writel(dev, p->vbv_delay, mfc_regs->e_vbv_init_delay);
 	}
 
 	/* interlace */
 	reg = 0;
 	reg |= ((p_h264->interlace & 0x1) << 3);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* height */
 	if (p_h264->interlace) {
-		writel(ctx->img_height >> 1,
+		s5p_mfc_writel(dev, ctx->img_height >> 1,
 				mfc_regs->e_frame_height); /* 32 align */
 		/* cropped height */
-		writel(ctx->img_height >> 1,
+		s5p_mfc_writel(dev, ctx->img_height >> 1,
 				mfc_regs->e_cropped_frame_height);
 	}
 
 	/* loop filter ctrl */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x3 << 1);
 	reg |= ((p_h264->loop_filter_mode & 0x3) << 1);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* loopfilter alpha offset */
 	if (p_h264->loop_filter_alpha < 0) {
@@ -1165,7 +1156,7 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 		reg = 0x00;
 		reg |= (p_h264->loop_filter_alpha & 0xF);
 	}
-	writel(reg, mfc_regs->e_h264_lf_alpha_offset);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_lf_alpha_offset);
 
 	/* loopfilter beta offset */
 	if (p_h264->loop_filter_beta < 0) {
@@ -1175,28 +1166,28 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 		reg = 0x00;
 		reg |= (p_h264->loop_filter_beta & 0xF);
 	}
-	writel(reg, mfc_regs->e_h264_lf_beta_offset);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_lf_beta_offset);
 
 	/* entropy coding mode */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1);
 	reg |= p_h264->entropy_mode & 0x1;
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* number of ref. picture */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 7);
 	reg |= (((p_h264->num_ref_pic_4p - 1) & 0x1) << 7);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* 8x8 transform enable */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x3 << 12);
 	reg |= ((p_h264->_8x8_transform & 0x3) << 12);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* macroblock adaptive scaling features */
-	writel(0x0, mfc_regs->e_mb_rc_config);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_mb_rc_config);
 	if (p->rc_mb) {
 		reg = 0;
 		/** dark region */
@@ -1207,95 +1198,95 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 		reg |= ((p_h264->rc_mb_static & 0x1) << 1);
 		/** high activity region */
 		reg |= p_h264->rc_mb_activity & 0x1;
-		writel(reg, mfc_regs->e_mb_rc_config);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_mb_rc_config);
 	}
 
 	/* aspect ratio VUI */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 5);
 	reg |= ((p_h264->vui_sar & 0x1) << 5);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
-	writel(0x0, mfc_regs->e_aspect_ratio);
-	writel(0x0, mfc_regs->e_extended_sar);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_aspect_ratio);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_extended_sar);
 	if (p_h264->vui_sar) {
 		/* aspect ration IDC */
 		reg = 0;
 		reg |= p_h264->vui_sar_idc & 0xFF;
-		writel(reg, mfc_regs->e_aspect_ratio);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_aspect_ratio);
 		if (p_h264->vui_sar_idc == 0xFF) {
 			/* extended SAR */
 			reg = 0;
 			reg |= (p_h264->vui_ext_sar_width & 0xFFFF) << 16;
 			reg |= p_h264->vui_ext_sar_height & 0xFFFF;
-			writel(reg, mfc_regs->e_extended_sar);
+			s5p_mfc_writel(dev, reg, mfc_regs->e_extended_sar);
 		}
 	}
 
 	/* intra picture period for H.264 open GOP */
 	/* control */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 4);
 	reg |= ((p_h264->open_gop & 0x1) << 4);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* value */
-	writel(0x0, mfc_regs->e_h264_i_period);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_h264_i_period);
 	if (p_h264->open_gop) {
 		reg = 0;
 		reg |= p_h264->open_gop_size & 0xFFFF;
-		writel(reg, mfc_regs->e_h264_i_period);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_h264_i_period);
 	}
 
 	/* 'WEIGHTED_BI_PREDICTION' for B is disable */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x3 << 9);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* 'CONSTRAINED_INTRA_PRED_ENABLE' is disable */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 14);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* ASO */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 6);
 	reg |= ((p_h264->aso & 0x1) << 6);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 
 	/* hier qp enable */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 8);
 	reg |= ((p_h264->open_gop & 0x1) << 8);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 	reg = 0;
 	if (p_h264->hier_qp && p_h264->hier_qp_layer) {
 		reg |= (p_h264->hier_qp_type & 0x1) << 0x3;
 		reg |= p_h264->hier_qp_layer & 0x7;
-		writel(reg, mfc_regs->e_h264_num_t_layer);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_h264_num_t_layer);
 		/* QP value for each layer */
 		for (i = 0; i < p_h264->hier_qp_layer &&
 				i < ARRAY_SIZE(p_h264->hier_qp_layer_qp); i++) {
-			writel(p_h264->hier_qp_layer_qp[i],
+			s5p_mfc_writel(dev, p_h264->hier_qp_layer_qp[i],
 				mfc_regs->e_h264_hierarchical_qp_layer0
 				+ i * 4);
 		}
 	}
 	/* number of coding layer should be zero when hierarchical is disable */
-	writel(reg, mfc_regs->e_h264_num_t_layer);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_num_t_layer);
 
 	/* frame packing SEI generation */
-	reg = readl(mfc_regs->e_h264_options);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_h264_options);
 	reg &= ~(0x1 << 25);
 	reg |= ((p_h264->sei_frame_packing & 0x1) << 25);
-	writel(reg, mfc_regs->e_h264_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_h264_options);
 	if (p_h264->sei_frame_packing) {
 		reg = 0;
 		/** current frame0 flag */
 		reg |= ((p_h264->sei_fp_curr_frame_0 & 0x1) << 2);
 		/** arrangement type */
 		reg |= p_h264->sei_fp_arrangement_type & 0x3;
-		writel(reg, mfc_regs->e_h264_frame_packing_sei_info);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_h264_frame_packing_sei_info);
 	}
 
 	if (p_h264->fmo) {
@@ -1304,7 +1295,7 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 			if (p_h264->fmo_slice_grp > 4)
 				p_h264->fmo_slice_grp = 4;
 			for (i = 0; i < (p_h264->fmo_slice_grp & 0xF); i++)
-				writel(p_h264->fmo_run_len[i] - 1,
+				s5p_mfc_writel(dev, p_h264->fmo_run_len[i] - 1,
 					mfc_regs->e_h264_fmo_run_length_minus1_0
 					+ i * 4);
 			break;
@@ -1316,10 +1307,10 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 		case V4L2_MPEG_VIDEO_H264_FMO_MAP_TYPE_WIPE_SCAN:
 			if (p_h264->fmo_slice_grp > 2)
 				p_h264->fmo_slice_grp = 2;
-			writel(p_h264->fmo_chg_dir & 0x1,
+			s5p_mfc_writel(dev, p_h264->fmo_chg_dir & 0x1,
 				mfc_regs->e_h264_fmo_slice_grp_change_dir);
 			/* the valid range is 0 ~ number of macroblocks -1 */
-			writel(p_h264->fmo_chg_rate,
+			s5p_mfc_writel(dev, p_h264->fmo_chg_rate,
 			mfc_regs->e_h264_fmo_slice_grp_change_rate_minus1);
 			break;
 		default:
@@ -1330,12 +1321,12 @@ static int s5p_mfc_set_enc_params_h264(struct s5p_mfc_ctx *ctx)
 			break;
 		}
 
-		writel(p_h264->fmo_map_type,
+		s5p_mfc_writel(dev, p_h264->fmo_map_type,
 				mfc_regs->e_h264_fmo_slice_grp_map_type);
-		writel(p_h264->fmo_slice_grp - 1,
+		s5p_mfc_writel(dev, p_h264->fmo_slice_grp - 1,
 				mfc_regs->e_h264_fmo_num_slice_grp_minus1);
 	} else {
-		writel(0, mfc_regs->e_h264_fmo_num_slice_grp_minus1);
+		s5p_mfc_writel(dev, 0, mfc_regs->e_h264_fmo_num_slice_grp_minus1);
 	}
 
 
@@ -1354,10 +1345,10 @@ static int s5p_mfc_set_enc_params_mpeg4(struct s5p_mfc_ctx *ctx)
 	s5p_mfc_set_enc_params(ctx);
 
 	/* pictype : number of B */
-	reg = readl(mfc_regs->e_gop_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_gop_config);
 	reg &= ~(0x3 << 16);
 	reg |= ((p->num_b_frame & 0x3) << 16);
-	writel(reg, mfc_regs->e_gop_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_gop_config);
 
 	/* profile & level */
 	reg = 0;
@@ -1365,19 +1356,19 @@ static int s5p_mfc_set_enc_params_mpeg4(struct s5p_mfc_ctx *ctx)
 	reg |= ((p_mpeg4->level & 0xFF) << 8);
 	/** profile - 0 ~ 1 */
 	reg |= p_mpeg4->profile & 0x3F;
-	writel(reg, mfc_regs->e_picture_profile);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_picture_profile);
 
 	/* rate control config. */
-	reg = readl(mfc_regs->e_rc_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_rc_config);
 	/** macroblock level rate control */
 	reg &= ~(0x1 << 8);
 	reg |= ((p->rc_mb & 0x1) << 8);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/** frame QP */
 	reg &= ~(0x3F);
 	reg |= p_mpeg4->rc_frame_qp & 0x3F;
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* max & min value of QP */
 	reg = 0;
@@ -1385,16 +1376,16 @@ static int s5p_mfc_set_enc_params_mpeg4(struct s5p_mfc_ctx *ctx)
 	reg |= ((p_mpeg4->rc_max_qp & 0x3F) << 8);
 	/** min QP */
 	reg |= p_mpeg4->rc_min_qp & 0x3F;
-	writel(reg, mfc_regs->e_rc_qp_bound);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_qp_bound);
 
 	/* other QPs */
-	writel(0x0, mfc_regs->e_fixed_picture_qp);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_fixed_picture_qp);
 	if (!p->rc_frame && !p->rc_mb) {
 		reg = 0;
 		reg |= ((p_mpeg4->rc_b_frame_qp & 0x3F) << 16);
 		reg |= ((p_mpeg4->rc_p_frame_qp & 0x3F) << 8);
 		reg |= p_mpeg4->rc_frame_qp & 0x3F;
-		writel(reg, mfc_regs->e_fixed_picture_qp);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_fixed_picture_qp);
 	}
 
 	/* frame rate */
@@ -1402,21 +1393,21 @@ static int s5p_mfc_set_enc_params_mpeg4(struct s5p_mfc_ctx *ctx)
 		reg = 0;
 		reg |= ((p->rc_framerate_num & 0xFFFF) << 16);
 		reg |= p->rc_framerate_denom & 0xFFFF;
-		writel(reg, mfc_regs->e_rc_frame_rate);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_rc_frame_rate);
 	}
 
 	/* vbv buffer size */
 	if (p->frame_skip_mode ==
 			V4L2_MPEG_MFC51_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT) {
-		writel(p->vbv_size & 0xFFFF, mfc_regs->e_vbv_buffer_size);
+		s5p_mfc_writel(dev, p->vbv_size & 0xFFFF, mfc_regs->e_vbv_buffer_size);
 
 		if (p->rc_frame)
-			writel(p->vbv_delay, mfc_regs->e_vbv_init_delay);
+			s5p_mfc_writel(dev, p->vbv_delay, mfc_regs->e_vbv_init_delay);
 	}
 
 	/* Disable HEC */
-	writel(0x0, mfc_regs->e_mpeg4_options);
-	writel(0x0, mfc_regs->e_mpeg4_hec_period);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_mpeg4_options);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_mpeg4_hec_period);
 
 
 	return 0;
@@ -1437,19 +1428,19 @@ static int s5p_mfc_set_enc_params_h263(struct s5p_mfc_ctx *ctx)
 	reg = 0;
 	/** profile */
 	reg |= (0x1 << 4);
-	writel(reg, mfc_regs->e_picture_profile);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_picture_profile);
 
 	/* rate control config. */
-	reg = readl(mfc_regs->e_rc_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_rc_config);
 	/** macroblock level rate control */
 	reg &= ~(0x1 << 8);
 	reg |= ((p->rc_mb & 0x1) << 8);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/** frame QP */
 	reg &= ~(0x3F);
 	reg |= p_h263->rc_frame_qp & 0x3F;
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* max & min value of QP */
 	reg = 0;
@@ -1457,16 +1448,16 @@ static int s5p_mfc_set_enc_params_h263(struct s5p_mfc_ctx *ctx)
 	reg |= ((p_h263->rc_max_qp & 0x3F) << 8);
 	/** min QP */
 	reg |= p_h263->rc_min_qp & 0x3F;
-	writel(reg, mfc_regs->e_rc_qp_bound);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_qp_bound);
 
 	/* other QPs */
-	writel(0x0, mfc_regs->e_fixed_picture_qp);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_fixed_picture_qp);
 	if (!p->rc_frame && !p->rc_mb) {
 		reg = 0;
 		reg |= ((p_h263->rc_b_frame_qp & 0x3F) << 16);
 		reg |= ((p_h263->rc_p_frame_qp & 0x3F) << 8);
 		reg |= p_h263->rc_frame_qp & 0x3F;
-		writel(reg, mfc_regs->e_fixed_picture_qp);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_fixed_picture_qp);
 	}
 
 	/* frame rate */
@@ -1474,16 +1465,16 @@ static int s5p_mfc_set_enc_params_h263(struct s5p_mfc_ctx *ctx)
 		reg = 0;
 		reg |= ((p->rc_framerate_num & 0xFFFF) << 16);
 		reg |= p->rc_framerate_denom & 0xFFFF;
-		writel(reg, mfc_regs->e_rc_frame_rate);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_rc_frame_rate);
 	}
 
 	/* vbv buffer size */
 	if (p->frame_skip_mode ==
 			V4L2_MPEG_MFC51_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT) {
-		writel(p->vbv_size & 0xFFFF, mfc_regs->e_vbv_buffer_size);
+		s5p_mfc_writel(dev, p->vbv_size & 0xFFFF, mfc_regs->e_vbv_buffer_size);
 
 		if (p->rc_frame)
-			writel(p->vbv_delay, mfc_regs->e_vbv_init_delay);
+			s5p_mfc_writel(dev, p->vbv_delay, mfc_regs->e_vbv_init_delay);
 	}
 
 
@@ -1503,57 +1494,57 @@ static int s5p_mfc_set_enc_params_vp8(struct s5p_mfc_ctx *ctx)
 	s5p_mfc_set_enc_params(ctx);
 
 	/* pictype : number of B */
-	reg = readl(mfc_regs->e_gop_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_gop_config);
 	reg &= ~(0x3 << 16);
 	reg |= ((p->num_b_frame & 0x3) << 16);
-	writel(reg, mfc_regs->e_gop_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_gop_config);
 
 	/* profile - 0 ~ 3 */
 	reg = p_vp8->profile & 0x3;
-	writel(reg, mfc_regs->e_picture_profile);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_picture_profile);
 
 	/* rate control config. */
-	reg = readl(mfc_regs->e_rc_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_rc_config);
 	/** macroblock level rate control */
 	reg &= ~(0x1 << 8);
 	reg |= ((p->rc_mb & 0x1) << 8);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* frame rate */
 	if (p->rc_frame && p->rc_framerate_num && p->rc_framerate_denom) {
 		reg = 0;
 		reg |= ((p->rc_framerate_num & 0xFFFF) << 16);
 		reg |= p->rc_framerate_denom & 0xFFFF;
-		writel(reg, mfc_regs->e_rc_frame_rate);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_rc_frame_rate);
 	}
 
 	/* frame QP */
 	reg &= ~(0x7F);
 	reg |= p_vp8->rc_frame_qp & 0x7F;
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* other QPs */
-	writel(0x0, mfc_regs->e_fixed_picture_qp);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_fixed_picture_qp);
 	if (!p->rc_frame && !p->rc_mb) {
 		reg = 0;
 		reg |= ((p_vp8->rc_p_frame_qp & 0x7F) << 8);
 		reg |= p_vp8->rc_frame_qp & 0x7F;
-		writel(reg, mfc_regs->e_fixed_picture_qp);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_fixed_picture_qp);
 	}
 
 	/* max QP */
 	reg = ((p_vp8->rc_max_qp & 0x7F) << 8);
 	/* min QP */
 	reg |= p_vp8->rc_min_qp & 0x7F;
-	writel(reg, mfc_regs->e_rc_qp_bound);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_qp_bound);
 
 	/* vbv buffer size */
 	if (p->frame_skip_mode ==
 			V4L2_MPEG_MFC51_VIDEO_FRAME_SKIP_MODE_BUF_LIMIT) {
-		writel(p->vbv_size & 0xFFFF, mfc_regs->e_vbv_buffer_size);
+		s5p_mfc_writel(dev, p->vbv_size & 0xFFFF, mfc_regs->e_vbv_buffer_size);
 
 		if (p->rc_frame)
-			writel(p->vbv_delay, mfc_regs->e_vbv_init_delay);
+			s5p_mfc_writel(dev, p->vbv_delay, mfc_regs->e_vbv_init_delay);
 	}
 
 	/* VP8 specific params */
@@ -1575,7 +1566,7 @@ static int s5p_mfc_set_enc_params_vp8(struct s5p_mfc_ctx *ctx)
 	}
 	reg |= (val & 0xF) << 3;
 	reg |= (p_vp8->num_ref & 0x2);
-	writel(reg, mfc_regs->e_vp8_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_vp8_options);
 
 
 	return 0;
@@ -1594,11 +1585,11 @@ static int s5p_mfc_set_enc_params_hevc(struct s5p_mfc_ctx *ctx)
 	s5p_mfc_set_enc_params(ctx);
 
 	/* pictype : number of B */
-	reg = readl(mfc_regs->e_gop_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_gop_config);
 	/* num_b_frame - 0 ~ 2 */
 	reg &= ~(0x3 << 16);
 	reg |= (p->num_b_frame << 16);
-	writel(reg, mfc_regs->e_gop_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_gop_config);
 
 	/* UHD encoding case */
 	if ((ctx->img_width == 3840) && (ctx->img_height == 2160)) {
@@ -1616,7 +1607,7 @@ static int s5p_mfc_set_enc_params_hevc(struct s5p_mfc_ctx *ctx)
 	reg |= (p_hevc->level << 8);
 	/* tier - 0 ~ 1 */
 	reg |= (p_hevc->tier << 16);
-	writel(reg, mfc_regs->e_picture_profile);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_picture_profile);
 
 	switch (p_hevc->loopfilter) {
 	case V4L2_MPEG_VIDEO_HEVC_LOOP_FILTER_MODE_DISABLED:
@@ -1653,52 +1644,52 @@ static int s5p_mfc_set_enc_params_hevc(struct s5p_mfc_ctx *ctx)
 	reg |= (p_hevc->encoding_nostartcode_enable & 0x1) << 23;
 	reg |= (p_hevc->prepend_sps_pps_to_idr << 26);
 
-	writel(reg, mfc_regs->e_hevc_options);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_hevc_options);
 	/* refresh period */
 	if (p_hevc->refreshtype) {
 		reg = 0;
 		reg |= (p_hevc->refreshperiod & 0xFFFF);
-		writel(reg, mfc_regs->e_hevc_refresh_period);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_hevc_refresh_period);
 	}
 	/* loop filter setting */
 	if (!(p_hevc->loopfilter_disable & 0x1)) {
 		reg = 0;
 		reg |= (p_hevc->lf_beta_offset_div2);
-		writel(reg, mfc_regs->e_hevc_lf_beta_offset_div2);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_hevc_lf_beta_offset_div2);
 		reg = 0;
 		reg |= (p_hevc->lf_tc_offset_div2);
-		writel(reg, mfc_regs->e_hevc_lf_tc_offset_div2);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_hevc_lf_tc_offset_div2);
 	}
 	/* hier qp enable */
 	if (p_hevc->num_hier_layer) {
 		reg = 0;
 		reg |= (p_hevc->hier_qp_type & 0x1) << 0x3;
 		reg |= p_hevc->num_hier_layer & 0x7;
-		writel(reg, mfc_regs->e_num_t_layer);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_num_t_layer);
 		/* QP value for each layer */
 		if (p_hevc->hier_qp_enable) {
 			for (i = 0; i < 7; i++)
-				writel(p_hevc->hier_qp_layer[i],
+				s5p_mfc_writel(dev, p_hevc->hier_qp_layer[i],
 					mfc_regs->e_hier_qp_layer0 + i * 4);
 		}
 		if (p->rc_frame) {
 			for (i = 0; i < 7; i++)
-				writel(p_hevc->hier_bit_layer[i],
+				s5p_mfc_writel(dev, p_hevc->hier_bit_layer[i],
 						mfc_regs->e_hier_bit_rate_layer0
 						+ i * 4);
 		}
 	}
 
 	/* rate control config. */
-	reg = readl(mfc_regs->e_rc_config);
+	reg = s5p_mfc_readl(dev, mfc_regs->e_rc_config);
 	/* macroblock level rate control */
 	reg &= ~(0x1 << 8);
 	reg |= (p->rc_mb << 8);
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 	/* frame QP */
 	reg &= ~(0xFF);
 	reg |= p_hevc->rc_frame_qp;
-	writel(reg, mfc_regs->e_rc_config);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_config);
 
 	/* frame rate */
 	if (p->rc_frame) {
@@ -1707,7 +1698,7 @@ static int s5p_mfc_set_enc_params_hevc(struct s5p_mfc_ctx *ctx)
 		reg |= ((p_hevc->rc_framerate) << 16);
 		reg &= ~(0xFFFF);
 		reg |= FRAME_DELTA_DEFAULT;
-		writel(reg, mfc_regs->e_rc_frame_rate);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_rc_frame_rate);
 	}
 
 	/* max & min value of QP */
@@ -1718,9 +1709,9 @@ static int s5p_mfc_set_enc_params_hevc(struct s5p_mfc_ctx *ctx)
 	/* min QP */
 	reg &= ~(0xFF);
 	reg |= p_hevc->rc_min_qp;
-	writel(reg, mfc_regs->e_rc_qp_bound);
+	s5p_mfc_writel(dev, reg, mfc_regs->e_rc_qp_bound);
 
-	writel(0x0, mfc_regs->e_fixed_picture_qp);
+	s5p_mfc_writel(dev, 0x0, mfc_regs->e_fixed_picture_qp);
 	if (!p->rc_frame && !p->rc_mb) {
 		reg = 0;
 		reg &= ~(0xFF << 16);
@@ -1729,7 +1720,7 @@ static int s5p_mfc_set_enc_params_hevc(struct s5p_mfc_ctx *ctx)
 		reg |= (p_hevc->rc_p_frame_qp << 8);
 		reg &= ~(0xFF);
 		reg |= p_hevc->rc_frame_qp;
-		writel(reg, mfc_regs->e_fixed_picture_qp);
+		s5p_mfc_writel(dev, reg, mfc_regs->e_fixed_picture_qp);
 	}
 
 	return 0;
@@ -1746,20 +1737,20 @@ static int s5p_mfc_init_decode_v6(struct s5p_mfc_ctx *ctx)
 	dev_dbg(&dev->plat_dev->dev, "InstNo: %d/%d\n", ctx->inst_no,
 			S5P_FIMV_CH_SEQ_HEADER_V6);
 	dev_dbg(&dev->plat_dev->dev, "BUFs: %08x %08x %08x\n",
-		  readl(mfc_regs->d_cpb_buffer_addr),
-		  readl(mfc_regs->d_cpb_buffer_addr),
-		  readl(mfc_regs->d_cpb_buffer_addr));
+		  s5p_mfc_readl(dev, mfc_regs->d_cpb_buffer_addr),
+		  s5p_mfc_readl(dev, mfc_regs->d_cpb_buffer_addr),
+		  s5p_mfc_readl(dev, mfc_regs->d_cpb_buffer_addr));
 
 	/* FMO_ASO_CTRL - 0: Enable, 1: Disable */
 	reg |= (fmo_aso_ctrl << S5P_FIMV_D_OPT_FMO_ASO_CTRL_MASK_V6);
 
 	if (ctx->display_delay_enable) {
 		reg |= (0x1 << S5P_FIMV_D_OPT_DDELAY_EN_SHIFT_V6);
-		writel(ctx->display_delay, mfc_regs->d_display_delay);
+		s5p_mfc_writel(dev, ctx->display_delay, mfc_regs->d_display_delay);
 	}
 
 	if (IS_MFCV7_PLUS(dev) || IS_MFCV6_V2(dev)) {
-		writel(reg, mfc_regs->d_dec_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->d_dec_options);
 		reg = 0;
 	}
 
@@ -1774,25 +1765,25 @@ static int s5p_mfc_init_decode_v6(struct s5p_mfc_ctx *ctx)
 		reg |= (0x1 << S5P_FIMV_D_OPT_TILE_MODE_SHIFT_V6);
 
 	if (IS_MFCV7_PLUS(dev) || IS_MFCV6_V2(dev))
-		writel(reg, mfc_regs->d_init_buffer_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->d_init_buffer_options);
 	else
-		writel(reg, mfc_regs->d_dec_options);
+		s5p_mfc_writel(dev, reg, mfc_regs->d_dec_options);
 
 	/* 0: NV12(CbCr), 1: NV21(CrCb), 2: YV12(CrCb), 3: I420(CbCr) */
 	if (ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M)
-		writel(0x3, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x3, mfc_regs->pixel_format);
 	else if (ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M)
-		writel(0x2, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x2, mfc_regs->pixel_format);
 	else if (ctx->dst_fmt->fourcc == V4L2_PIX_FMT_NV21M)
-		writel(0x1, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x1, mfc_regs->pixel_format);
 	else
-		writel(0x0, mfc_regs->pixel_format);
+		s5p_mfc_writel(dev, 0x0, mfc_regs->pixel_format);
 
 
 	/* sei parse */
-	writel(ctx->sei_fp_parse & 0x1, mfc_regs->d_sei_enable);
+	s5p_mfc_writel(dev, ctx->sei_fp_parse & 0x1, mfc_regs->d_sei_enable);
 
-	writel(ctx->inst_no, mfc_regs->instance_id);
+	s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 	s5p_mfc_hw_call(dev->mfc_cmds, cmd_host2risc, dev,
 			S5P_FIMV_CH_SEQ_HEADER_V6, NULL);
 
@@ -1806,7 +1797,7 @@ static inline void s5p_mfc_set_flush(struct s5p_mfc_ctx *ctx, int flush)
 
 	if (flush) {
 		dev->curr_ctx = ctx->num;
-		writel(ctx->inst_no, mfc_regs->instance_id);
+		s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 		s5p_mfc_hw_call(dev->mfc_cmds, cmd_host2risc, dev,
 				S5P_FIMV_H2R_CMD_FLUSH_V6, NULL);
 	}
@@ -1819,10 +1810,10 @@ static int s5p_mfc_decode_one_frame_v6(struct s5p_mfc_ctx *ctx,
 	struct s5p_mfc_dev *dev = ctx->dev;
 	const struct s5p_mfc_regs *mfc_regs = dev->mfc_regs;
 
-	writel(ctx->dec_dst_flag, mfc_regs->d_available_dpb_flag_lower);
-	writel(ctx->slice_interface & 0x1, mfc_regs->d_slice_if_enable);
+	s5p_mfc_writel(dev, ctx->dec_dst_flag, mfc_regs->d_available_dpb_flag_lower);
+	s5p_mfc_writel(dev, ctx->slice_interface & 0x1, mfc_regs->d_slice_if_enable);
 
-	writel(ctx->inst_no, mfc_regs->instance_id);
+	s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 	/* Issue different commands to instance basing on whether it
 	 * is the last frame or not. */
 	switch (last_frame) {
@@ -1866,14 +1857,14 @@ static int s5p_mfc_init_encode_v6(struct s5p_mfc_ctx *ctx)
 
 	/* Set stride lengths for v7 & above */
 	if (IS_MFCV7_PLUS(dev)) {
-		writel(ctx->stride[0], mfc_regs->e_source_first_plane_stride);
-		writel(ctx->stride[1], mfc_regs->e_source_second_plane_stride);
+		s5p_mfc_writel(dev, ctx->stride[0], mfc_regs->e_source_first_plane_stride);
+		s5p_mfc_writel(dev, ctx->stride[1], mfc_regs->e_source_second_plane_stride);
 		if (ctx->src_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->src_fmt->fourcc ==
 				V4L2_PIX_FMT_YVU420M)
-			writel(ctx->stride[2], mfc_regs->e_source_third_plane_stride);
+			s5p_mfc_writel(dev, ctx->stride[2], mfc_regs->e_source_third_plane_stride);
 	}
 
-	writel(ctx->inst_no, mfc_regs->instance_id);
+	s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 	s5p_mfc_hw_call(dev->mfc_cmds, cmd_host2risc, dev,
 			S5P_FIMV_CH_SEQ_HEADER_V6, NULL);
 
@@ -1890,7 +1881,7 @@ static int s5p_mfc_h264_set_aso_slice_order_v6(struct s5p_mfc_ctx *ctx)
 
 	if (p_h264->aso) {
 		for (i = 0; i < ARRAY_SIZE(p_h264->aso_slice_order); i++) {
-			writel(p_h264->aso_slice_order[i],
+			s5p_mfc_writel(dev, p_h264->aso_slice_order[i],
 				mfc_regs->e_h264_aso_slice_order_0 + i * 4);
 		}
 	}
@@ -1918,7 +1909,7 @@ static int s5p_mfc_encode_one_frame_v6(struct s5p_mfc_ctx *ctx)
 	else
 		cmd = S5P_FIMV_CH_LAST_FRAME_V6;
 
-	writel(ctx->inst_no, mfc_regs->instance_id);
+	s5p_mfc_writel(dev, ctx->inst_no, mfc_regs->instance_id);
 	s5p_mfc_hw_call(dev->mfc_cmds, cmd_host2risc, dev, cmd, NULL);
 
 	dev_dbg(&dev->plat_dev->dev, "--\n");
@@ -2237,8 +2228,8 @@ static void s5p_mfc_try_run_v6(struct s5p_mfc_dev *dev)
 static void s5p_mfc_clear_int_flags_v6(struct s5p_mfc_dev *dev)
 {
 	const struct s5p_mfc_regs *mfc_regs = dev->mfc_regs;
-	writel(0, mfc_regs->risc2host_command);
-	writel(0, mfc_regs->risc2host_int);
+	s5p_mfc_writel(dev, 0, mfc_regs->risc2host_command);
+	s5p_mfc_writel(dev, 0, mfc_regs->risc2host_int);
 }
 
 static unsigned int
@@ -2247,7 +2238,7 @@ s5p_mfc_read_info_v6(struct s5p_mfc_ctx *ctx, unsigned long ofs)
 	int ret;
 
 	s5p_mfc_clock_on(ctx->dev);
-	ret = readl((void __iomem *)ofs);
+	ret = s5p_mfc_readl(ctx->dev, (void __iomem *)ofs);
 	s5p_mfc_clock_off(ctx->dev);
 
 	return ret;
@@ -2255,51 +2246,51 @@ s5p_mfc_read_info_v6(struct s5p_mfc_ctx *ctx, unsigned long ofs)
 
 static int s5p_mfc_get_dspl_y_adr_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_display_first_plane_addr);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_display_first_plane_addr);
 }
 
 static int s5p_mfc_get_dec_y_adr_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_decoded_first_plane_addr);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_decoded_first_plane_addr);
 }
 
 static int s5p_mfc_get_dspl_status_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_display_status);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_display_status);
 }
 
 static int s5p_mfc_get_dec_status_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_decoded_status);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_decoded_status);
 }
 
 static int s5p_mfc_get_dec_frame_type_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_decoded_frame_type) &
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_decoded_frame_type) &
 		S5P_FIMV_DECODE_FRAME_MASK_V6;
 }
 
 static int s5p_mfc_get_disp_frame_type_v6(struct s5p_mfc_ctx *ctx)
 {
 	struct s5p_mfc_dev *dev = ctx->dev;
-	return readl(dev->mfc_regs->d_display_frame_type) &
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_display_frame_type) &
 		S5P_FIMV_DECODE_FRAME_MASK_V6;
 }
 
 static int s5p_mfc_get_consumed_stream_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_decoded_nal_size);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_decoded_nal_size);
 }
 
 static int s5p_mfc_get_int_reason_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->risc2host_command) &
+	return s5p_mfc_readl(dev, dev->mfc_regs->risc2host_command) &
 		S5P_FIMV_RISC2HOST_CMD_MASK;
 }
 
 static int s5p_mfc_get_int_err_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->error_code);
+	return s5p_mfc_readl(dev, dev->mfc_regs->error_code);
 }
 
 static int s5p_mfc_err_dec_v6(unsigned int err)
@@ -2309,52 +2300,52 @@ static int s5p_mfc_err_dec_v6(unsigned int err)
 
 static int s5p_mfc_get_img_width_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_display_frame_width);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_display_frame_width);
 }
 
 static int s5p_mfc_get_img_height_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_display_frame_height);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_display_frame_height);
 }
 
 static int s5p_mfc_get_dpb_count_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_min_num_dpb);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_min_num_dpb);
 }
 
 static int s5p_mfc_get_mv_count_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_min_num_mv);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_min_num_mv);
 }
 
 static int s5p_mfc_get_min_scratch_buf_size(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->d_min_scratch_buffer_size);
+	return s5p_mfc_readl(dev, dev->mfc_regs->d_min_scratch_buffer_size);
 }
 
 static int s5p_mfc_get_e_min_scratch_buf_size(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->e_min_scratch_buffer_size);
+	return s5p_mfc_readl(dev, dev->mfc_regs->e_min_scratch_buffer_size);
 }
 
 static int s5p_mfc_get_inst_no_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->ret_instance_id);
+	return s5p_mfc_readl(dev, dev->mfc_regs->ret_instance_id);
 }
 
 static int s5p_mfc_get_enc_dpb_count_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->e_num_dpb);
+	return s5p_mfc_readl(dev, dev->mfc_regs->e_num_dpb);
 }
 
 static int s5p_mfc_get_enc_strm_size_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->e_stream_size);
+	return s5p_mfc_readl(dev, dev->mfc_regs->e_stream_size);
 }
 
 static int s5p_mfc_get_enc_slice_type_v6(struct s5p_mfc_dev *dev)
 {
-	return readl(dev->mfc_regs->e_slice_type);
+	return s5p_mfc_readl(dev, dev->mfc_regs->e_slice_type);
 }
 
 static unsigned int s5p_mfc_get_pic_type_top_v6(struct s5p_mfc_ctx *ctx)

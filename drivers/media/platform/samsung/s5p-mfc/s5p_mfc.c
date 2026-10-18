@@ -32,6 +32,9 @@
 #include "s5p_mfc_cmd.h"
 #include "s5p_mfc_pm.h"
 
+#define CREATE_TRACE_POINTS
+#include "s5p_mfc_trace.h"
+
 #define S5P_MFC_DEC_NAME	"s5p-mfc-dec"
 #define S5P_MFC_ENC_NAME	"s5p-mfc-enc"
 
@@ -121,6 +124,18 @@ static void wake_up_dev(struct s5p_mfc_dev *dev, unsigned int reason,
 	dev->int_type = reason;
 	dev->int_err = err;
 	wake_up(&dev->queue);
+}
+
+void s5p_mfc_trace_reg_read(struct s5p_mfc_dev *dev, const void __iomem *addr,
+			    u32 val)
+{
+	trace_s5p_mfc_reg_read(dev, addr, val);
+}
+
+void s5p_mfc_trace_reg_write(struct s5p_mfc_dev *dev, const void __iomem *addr,
+			     u32 val)
+{
+	trace_s5p_mfc_reg_write(dev, addr, val);
 }
 
 static bool s5p_mfc_ctx_busy(struct s5p_mfc_ctx *ctx)

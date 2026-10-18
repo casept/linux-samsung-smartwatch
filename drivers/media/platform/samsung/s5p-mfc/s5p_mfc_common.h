@@ -13,6 +13,7 @@
 #define S5P_MFC_COMMON_H_
 
 #include <linux/platform_device.h>
+#include <linux/tracepoint-defs.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
@@ -99,9 +100,9 @@
 
 #define MFC_MAX_CLOCKS		4
 
-#define mfc_read(dev, offset)		readl(dev->regs_base + (offset))
-#define mfc_write(dev, data, offset)	writel((data), dev->regs_base + \
-								(offset))
+#define mfc_read(dev, offset)		s5p_mfc_readl(dev, (dev)->regs_base + (offset))
+#define mfc_write(dev, data, offset)	s5p_mfc_writel(dev, data, \
+					       (dev)->regs_base + (offset))
 
 /*
  * enum s5p_mfc_fmt_type - type of the pixelformat
@@ -808,5 +809,30 @@ void s5p_mfc_cleanup_queue(struct list_head *lh, struct vb2_queue *vq);
 					MFC_V12_BIT)
 
 #define MFC_V10PLUS_BITS	(MFC_V10_BIT | MFC_V12_BIT)
+
+DECLARE_TRACEPOINT(s5p_mfc_reg_read);
+DECLARE_TRACEPOINT(s5p_mfc_reg_write);
+void s5p_mfc_trace_reg_read(struct s5p_mfc_dev *dev, const void __iomem *addr,
+			    u32 val);
+void s5p_mfc_trace_reg_write(struct s5p_mfc_dev *dev, const void __iomem *addr,
+			     u32 val);
+
+static inline u32 s5p_mfc_readl(struct s5p_mfc_dev *dev,
+				const void __iomem *addr)
+{
+	u32 val = readl(addr);
+
+	if (tracepoint_enabled(s5p_mfc_reg_read))
+		s5p_mfc_trace_reg_read(dev, addr, val);
+	return val;
+}
+
+static inline void s5p_mfc_writel(struct s5p_mfc_dev *dev, u32 val,
+				  void __iomem *addr)
+{
+	writel(val, addr);
+	if (tracepoint_enabled(s5p_mfc_reg_write))
+		s5p_mfc_trace_reg_write(dev, addr, val);
+}
 
 #endif /* S5P_MFC_COMMON_H_ */
