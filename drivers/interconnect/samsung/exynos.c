@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
+#include <linux/workqueue.h>
 
 #define EXYNOS_ICC_DEFAULT_BUS_CLK_RATIO	8
 
@@ -25,6 +26,8 @@ struct exynos_icc_priv {
 	struct icc_node *node;
 
 	struct dev_pm_qos_request qos_req;
+	struct work_struct qos_work;
+	s32 qos_freq;
 	u32 bus_clk_ratio;
 };
 
@@ -58,26 +61,37 @@ static struct icc_node *exynos_icc_get_parent(struct device_node *np)
 	return icc_node;
 }
 
-static int exynos_generic_icc_set(struct icc_node *src, struct icc_node *dst)
+static void exynos_icc_qos_work(struct work_struct *work)
 {
-	struct exynos_icc_priv *src_priv = src->data, *dst_priv = dst->data;
-	s32 src_freq = max(src->avg_bw, src->peak_bw) / src_priv->bus_clk_ratio;
-	s32 dst_freq = max(dst->avg_bw, dst->peak_bw) / dst_priv->bus_clk_ratio;
+	struct exynos_icc_priv *priv = container_of(work, struct exynos_icc_priv,
+						    qos_work);
 	int ret;
 
-	ret = dev_pm_qos_update_request(&src_priv->qos_req, src_freq);
-	if (ret < 0) {
-		dev_err(src_priv->dev, "failed to update PM QoS of %s (src)\n",
-			src->name);
-		return ret;
-	}
+	ret = dev_pm_qos_update_request(&priv->qos_req,
+					READ_ONCE(priv->qos_freq));
+	if (ret < 0)
+		dev_err(priv->dev, "failed to update PM QoS: %d\n", ret);
+}
 
-	ret = dev_pm_qos_update_request(&dst_priv->qos_req, dst_freq);
-	if (ret < 0) {
-		dev_err(dst_priv->dev, "failed to update PM QoS of %s (dst)\n",
-			dst->name);
-		return ret;
-	}
+static void exynos_icc_update_qos(struct icc_node *node)
+{
+	struct exynos_icc_priv *priv = node->data;
+
+	WRITE_ONCE(priv->qos_freq,
+		   max(node->avg_bw, node->peak_bw) / priv->bus_clk_ratio);
+	schedule_work(&priv->qos_work);
+}
+
+/*
+ * The PM QoS update goes through devfreq down to clocks and regulators, which
+ * take locks that are held while allocating memory.  The interconnect core
+ * calls us with icc_bw_lock held, which must not depend on memory reclaim, so
+ * apply the update from a work item.
+ */
+static int exynos_generic_icc_set(struct icc_node *src, struct icc_node *dst)
+{
+	exynos_icc_update_qos(src);
+	exynos_icc_update_qos(dst);
 
 	return 0;
 }
@@ -99,6 +113,7 @@ static void exynos_generic_icc_remove(struct platform_device *pdev)
 
 	icc_provider_deregister(&priv->provider);
 	icc_nodes_remove(&priv->provider);
+	cancel_work_sync(&priv->qos_work);
 	dev_pm_qos_remove_request(&priv->qos_req);
 }
 
@@ -115,6 +130,7 @@ static int exynos_generic_icc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->dev = &pdev->dev;
+	INIT_WORK(&priv->qos_work, exynos_icc_qos_work);
 	platform_set_drvdata(pdev, priv);
 
 	provider = &priv->provider;
@@ -177,6 +193,7 @@ static int exynos_generic_icc_probe(struct platform_device *pdev)
 
 err_pmqos_del:
 	icc_nodes_remove(provider);
+	cancel_work_sync(&priv->qos_work);
 	dev_pm_qos_remove_request(&priv->qos_req);
 
 	return ret;
