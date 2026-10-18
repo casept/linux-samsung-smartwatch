@@ -28,6 +28,8 @@
 
 #define DEF_SRC_FMT_ENC	V4L2_PIX_FMT_NV12M
 #define DEF_DST_FMT_ENC	V4L2_PIX_FMT_H264
+#define DEF_WIDTH_ENC	640
+#define DEF_HEIGHT_ENC	480
 
 static const struct s5p_mfc_fmt formats[] = {
 	{
@@ -2821,11 +2823,18 @@ void s5p_mfc_enc_ctrls_delete(struct s5p_mfc_ctx *ctx)
 
 void s5p_mfc_enc_init(struct s5p_mfc_ctx *ctx)
 {
+	struct s5p_mfc_dev *dev = ctx->dev;
 	struct v4l2_format f;
 	f.fmt.pix_mp.pixelformat = DEF_SRC_FMT_ENC;
 	ctx->src_fmt = find_format(&f, MFC_FMT_RAW);
 	f.fmt.pix_mp.pixelformat = DEF_DST_FMT_ENC;
 	ctx->dst_fmt = find_format(&f, MFC_FMT_ENC);
+
+	/* Buffers can be requested before the formats get set */
+	ctx->img_width = DEF_WIDTH_ENC;
+	ctx->img_height = DEF_HEIGHT_ENC;
+	s5p_mfc_hw_call(dev->mfc_ops, enc_calc_src_size, ctx);
+	ctx->enc_dst_buf_size = dev->variant->buf_size->cpb;
 
 	/* The rate control needs a frame rate, until one is set */
 	ctx->enc_params.rc_framerate_num = 30;
