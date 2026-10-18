@@ -9,6 +9,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
+#include <linux/iopoll.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -125,6 +126,26 @@ static void wake_up_dev(struct s5p_mfc_dev *dev, unsigned int reason,
 	dev->int_type = reason;
 	dev->int_err = err;
 	wake_up(&dev->queue);
+}
+
+static bool s5p_mfc_ctx_busy(struct s5p_mfc_ctx *ctx)
+{
+	struct s5p_mfc_dev *dev = ctx->dev;
+
+	return dev->curr_ctx == ctx->num && test_bit(0, &dev->hw_lock);
+}
+
+/*
+ * Wait for the hardware to be done with what it runs for the context, before
+ * the buffers it may be using go away.
+ */
+void s5p_mfc_wait_for_ctx_idle(struct s5p_mfc_ctx *ctx)
+{
+	bool busy;
+
+	if (read_poll_timeout(s5p_mfc_ctx_busy, busy, !busy, 1000,
+			      MFC_INT_TIMEOUT * USEC_PER_MSEC, false, ctx))
+		mfc_err("Context %d is still running\n", ctx->num);
 }
 
 void s5p_mfc_cleanup_queue(struct list_head *lh, struct vb2_queue *vq)
@@ -974,8 +995,11 @@ static int s5p_mfc_release(struct file *file)
 
 	/* if dev is null, do cleanup that doesn't need dev */
 	mfc_debug_enter();
-	if (dev)
+	if (dev) {
 		mutex_lock(&dev->mfc_mutex);
+		clear_work_bit_irqsave(ctx);
+		s5p_mfc_wait_for_ctx_idle(ctx);
+	}
 	vb2_queue_release(&ctx->vq_src);
 	vb2_queue_release(&ctx->vq_dst);
 	if (dev) {
