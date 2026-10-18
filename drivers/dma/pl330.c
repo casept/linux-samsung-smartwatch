@@ -2090,7 +2090,11 @@ static void pl330_tasklet(struct tasklet_struct *t)
 		spin_lock(&pch->thread->dmac->lock);
 		_stop(pch->thread);
 		spin_unlock(&pch->thread->dmac->lock);
-		power_down = true;
+		/*
+		 * The tasklet may run after pl330_terminate_all() has emptied
+		 * the lists and dropped the channel's runtime PM reference.
+		 */
+		power_down = pch->active;
 		pch->active = false;
 	} else {
 		/* Make sure the PL330 Channel thread is active */
