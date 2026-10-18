@@ -190,6 +190,10 @@ static void scaler_video_capture_buffer_queue(struct vb2_buffer *vb)
 	fimc_is_pipeline_buf_lock(ctx->pipeline);
 	fimc_is_scaler_wait_queue_add(ctx, buf);
 	fimc_is_pipeline_buf_unlock(ctx->pipeline);
+
+	/* A shot may be waiting for an output buffer */
+	if (test_bit(STATE_RUNNING, &ctx->capture_state))
+		fimc_is_pipeline_shot_safe(ctx->pipeline);
 }
 
 static void scaler_video_capture_buffer_cleanup(struct vb2_buffer *vb)

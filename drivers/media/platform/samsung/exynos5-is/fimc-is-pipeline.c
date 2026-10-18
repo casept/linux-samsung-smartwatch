@@ -1698,15 +1698,36 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 	struct fimc_is_buf *scc_buf, *scp_buf, *bayer_buf;
 	unsigned int shot_paddr = pipeline->minfo->shot.paddr;
 	struct camera2_scaler_uctl_base *scaler_ud;
+	bool idle;
+
+	/* Closing it freed the shot, a scaler may still be queuing buffers */
+	if (!test_bit(PIPELINE_OPEN, &pipeline->state))
+		return -ENODEV;
+
+	if (test_bit(PIPELINE_RUN, &pipeline->state))
+		return -EBUSY;
+
+	/*
+	 * Shoot when there's a bayer buffer, and an output buffer for each
+	 * started scaler, as the output would be lost otherwise.
+	 */
+	fimc_is_pipeline_buf_lock(pipeline);
+	idle = list_empty(&pipeline->isp.wait_queue) ||
+	       (test_bit(COMP_START, &pipeline->subip_state[IS_SCC]) &&
+		list_empty(&pipeline->scaler[SCALER_SCC].wait_queue)) ||
+	       (test_bit(COMP_START, &pipeline->subip_state[IS_SCP]) &&
+		list_empty(&pipeline->scaler[SCALER_SCP].wait_queue));
+	fimc_is_pipeline_buf_unlock(pipeline);
+	if (idle) {
+		wake_up(&pipeline->wait_q);
+		return 0;
+	}
 
 	if (!test_bit(PIPELINE_START, &pipeline->state)) {
 		ret = fimc_is_itf_process_on(&is->interface, pipeline->instance);
 		if (ret)
 			return -EINVAL;
 	}
-
-	if (test_bit(PIPELINE_RUN, &pipeline->state))
-		return -EBUSY;
 
 	/**
 	 * Verify if previous requests didn't result in potentiall error.
@@ -1770,7 +1791,6 @@ int fimc_is_pipeline_shot(struct fimc_is_pipeline *pipeline)
 			set_bit(COMP_RUN, &pipeline->subip_state[IS_SCC]);
 		}
 	} else {
-		dev_err(pipeline->dev, "No SCC buffer available\n");
 		for (i = 0; i < 3; i++)
 			scaler_ud->scc_target_address[i] = 0;
 	}
