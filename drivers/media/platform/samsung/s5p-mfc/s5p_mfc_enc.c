@@ -2764,4 +2764,8 @@ void s5p_mfc_enc_init(struct s5p_mfc_ctx *ctx)
 	ctx->src_fmt = find_format(&f, MFC_FMT_RAW);
 	f.fmt.pix_mp.pixelformat = DEF_DST_FMT_ENC;
 	ctx->dst_fmt = find_format(&f, MFC_FMT_ENC);
+
+	/* The rate control needs a frame rate, until one is set */
+	ctx->enc_params.rc_framerate_num = 30;
+	ctx->enc_params.rc_framerate_denom = 1;
 }
