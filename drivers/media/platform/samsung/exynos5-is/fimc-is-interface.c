@@ -1034,18 +1034,14 @@ static int fimc_is_log_show(struct seq_file *s, void *data)
 	struct fimc_is_interface *itf = s->private;
 	struct fimc_is *is = fimc_interface_to_is(itf);
 	struct fimc_is_fw_mem fw_minfo;
-	u8 *buf;
+	const char *buf;
 
 	if (FIMC_IS_FW_CALL_OP(mem_config, &fw_minfo))
 		return -ENODEV;
 
-	buf = (u8 *)(is->minfo.fw.vaddr + fw_minfo.dbg_offset);
-
-	if (is->minfo.fw.vaddr == 0) {
-		dev_err(itf->dev, "Firmware memory is not initialized\n");
-		return -EIO;
-	}
-	seq_printf(s, "%s\n", buf);
+	/* The log stays around after the firmware is powered down */
+	buf = is->minfo.fw.vaddr + fw_minfo.dbg_offset;
+	seq_write(s, buf, strnlen(buf, DEBUG_CNT));
 	return 0;
 }
 
