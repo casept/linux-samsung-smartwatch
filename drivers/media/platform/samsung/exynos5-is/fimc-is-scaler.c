@@ -350,13 +350,12 @@ static int scaler_reqbufs(struct file *file, void *priv,
 	if (test_bit(STATE_RUNNING, &ctx->capture_state))
 		return -EBUSY;
 
-	if (test_bit(STATE_BUFS_ALLOCATED, &ctx->capture_state) &&
-	    !reqbufs->count) {
-		/*
-		 * Release previously allocated buffers
-		 * vb2 will make sure the buffers can be freed safely.
-		 */
-		ret = vb2_reqbufs(&ctx->vbq, reqbufs);
+	/*
+	 * A count of 0 frees the buffers, also when there are none. vb2 makes
+	 * sure the buffers can be freed safely.
+	 */
+	if (!reqbufs->count) {
+		ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
 		if (!ret)
 			clear_bit(STATE_BUFS_ALLOCATED, &ctx->capture_state);
 		return ret;
@@ -364,10 +363,8 @@ static int scaler_reqbufs(struct file *file, void *priv,
 	reqbufs->count = max_t(u32, FIMC_IS_SCALER_REQ_BUFS_MIN,
 				reqbufs->count);
 	ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
-	if (ret) {
-		v4l2_err(&ctx->subdev, "vb2 req buffers failed\n");
+	if (ret)
 		return ret;
-	}
 
 	if (reqbufs->count < FIMC_IS_SCALER_REQ_BUFS_MIN) {
 		reqbufs->count = 0;

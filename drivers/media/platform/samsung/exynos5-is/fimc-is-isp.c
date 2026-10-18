@@ -293,9 +293,9 @@ static int isp_reqbufs(struct file *file, void *priv,
 	if (test_bit(STATE_RUNNING, &isp->output_state))
 		return -EBUSY;
 
-	if (test_bit(STATE_BUFS_ALLOCATED, &isp->output_state)
-	&& !(reqbufs->count)) {
-		ret = vb2_reqbufs(&isp->vbq, reqbufs);
+	/* A count of 0 frees the buffers, also when there are none */
+	if (!reqbufs->count) {
+		ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
 		if (!ret)
 			clear_bit(STATE_BUFS_ALLOCATED, &isp->output_state);
 		return ret;
@@ -303,10 +303,8 @@ static int isp_reqbufs(struct file *file, void *priv,
 
 	reqbufs->count = max_t(u32, FIMC_IS_ISP_REQ_BUFS_MIN, reqbufs->count);
 	ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
-	if (ret) {
-		v4l2_err(&isp->subdev, "vb2 req buffers failed\n");
+	if (ret)
 		return ret;
-	}
 
 	if (reqbufs->count < FIMC_IS_ISP_REQ_BUFS_MIN) {
 		reqbufs->count = 0;
