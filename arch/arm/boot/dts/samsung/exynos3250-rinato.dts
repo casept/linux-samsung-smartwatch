@@ -1017,13 +1017,12 @@
 	cap-mmc-highspeed;
 	mmc-hs200-1_8v;
 	card-detect-delay = <200>;
-	/* In mainline, LDO12 is set as the supplier, but downstream uses LDO4.
-	 * Maybe this is a copy-paste mistake from monk or artik5?
-	 *
-	 * Either way, LDO11 makes the most sense here given it's name and
-	 * output voltage of 1.8v, which the eMMC runs at.
+	/*
+	 * The eMMC core runs from LDO12 and its I/O from LDO11, both switched
+	 * on and off together by the PMIC's EMMCEN pin.
 	 */
-	vmmc-supply = <&ldo11_reg>;
+	vmmc-supply = <&ldo12_reg>;
+	vqmmc-supply = <&ldo11_reg>;
 	clock-frequency = <100000000>;
 	max-frequency = <100000000>;
 	mmc-ddr-1_8v;
