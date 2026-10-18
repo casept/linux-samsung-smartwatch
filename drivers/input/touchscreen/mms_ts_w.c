@@ -3162,6 +3162,7 @@ static const struct of_device_id melfas_match_table[] = {
 	},
 	{ /* sentinel */ }
 };
+MODULE_DEVICE_TABLE(of, melfas_match_table);
 #else
 #define melfas_match_table NULL
 #endif
