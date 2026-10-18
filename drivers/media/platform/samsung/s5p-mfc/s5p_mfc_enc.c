@@ -1118,9 +1118,12 @@ static int s5p_mfc_ctx_ready(struct s5p_mfc_ctx *ctx)
 	/* context is ready to make header */
 	if (ctx->state == MFCINST_GOT_INST && ctx->dst_queue_cnt >= 1)
 		return 1;
+	/* context is ready to set up its buffers */
+	if (ctx->state == MFCINST_HEAD_PRODUCED && ctx->bank1.virt &&
+		ctx->src_queue_cnt >= 1 && ctx->dst_queue_cnt >= 1)
+		return 1;
 	/* context is ready to encode a frame */
-	if ((ctx->state == MFCINST_RUNNING ||
-		ctx->state == MFCINST_HEAD_PRODUCED) &&
+	if (ctx->state == MFCINST_RUNNING &&
 		ctx->src_queue_cnt >= 1 && ctx->dst_queue_cnt >= 1)
 		return 1;
 	/* context is ready to encode remaining frames */
@@ -2587,6 +2590,31 @@ static void s5p_mfc_return_dst_buffers(struct s5p_mfc_ctx *ctx)
 	spin_unlock_irqrestore(&dev->irqlock, flags);
 }
 
+/*
+ * Make the header, then allocate the buffers sized by it. The allocation
+ * can sleep, so it can't happen when running the context from interrupt
+ * context.
+ */
+static void s5p_mfc_enc_prepare(struct s5p_mfc_ctx *ctx)
+{
+	struct s5p_mfc_dev *dev = ctx->dev;
+
+	if (!IS_MFCV6_PLUS(dev))
+		return;
+
+	if (ctx->state == MFCINST_GOT_INST && s5p_mfc_ctx_ready(ctx)) {
+		set_work_bit_irqsave(ctx);
+		s5p_mfc_hw_call(dev->mfc_ops, try_run, dev);
+		s5p_mfc_wait_for_done_ctx(ctx, S5P_MFC_R2H_CMD_SEQ_DONE_RET, 0);
+	}
+
+	if (ctx->state == MFCINST_HEAD_PRODUCED && !ctx->bank1.virt &&
+	    s5p_mfc_hw_call(dev->mfc_ops, alloc_codec_buffers, ctx)) {
+		mfc_err("Failed to allocate encoding buffers\n");
+		ctx->state = MFCINST_ERROR;
+	}
+}
+
 static int s5p_mfc_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct s5p_mfc_ctx *ctx = vb2_get_drv_priv(q);
@@ -2601,14 +2629,7 @@ static int s5p_mfc_start_streaming(struct vb2_queue *q, unsigned int count)
 				return -ENOBUFS;
 			}
 		}
-		/* Encoding frames needs what the header tells, make it first */
-		if (ctx->state == MFCINST_GOT_INST && s5p_mfc_ctx_ready(ctx)) {
-			set_work_bit_irqsave(ctx);
-			s5p_mfc_hw_call(dev->mfc_ops, try_run, dev);
-			s5p_mfc_wait_for_done_ctx(ctx,
-						S5P_MFC_R2H_CMD_SEQ_DONE_RET,
-						0);
-		}
+		s5p_mfc_enc_prepare(ctx);
 	}
 
 	/* If context is ready then dev = work->data;schedule it to run */
@@ -2679,6 +2700,8 @@ static void s5p_mfc_buf_queue(struct vb2_buffer *vb)
 	} else {
 		mfc_err("unsupported buffer type (%d)\n", vq->type);
 	}
+	if (vb2_start_streaming_called(&ctx->vq_dst))
+		s5p_mfc_enc_prepare(ctx);
 	if (s5p_mfc_ctx_ready(ctx))
 		set_work_bit_irqsave(ctx);
 	s5p_mfc_hw_call(dev->mfc_ops, try_run, dev);
