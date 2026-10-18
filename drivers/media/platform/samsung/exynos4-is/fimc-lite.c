@@ -1016,6 +1016,7 @@ static const struct v4l2_ioctl_ops fimc_lite_ioctl_ops = {
 	.vidioc_create_bufs		= vb2_ioctl_create_bufs,
 	.vidioc_qbuf			= vb2_ioctl_qbuf,
 	.vidioc_dqbuf			= vb2_ioctl_dqbuf,
+	.vidioc_expbuf			= vb2_ioctl_expbuf,
 	.vidioc_streamon		= fimc_lite_streamon,
 	.vidioc_streamoff		= fimc_lite_streamoff,
 };
@@ -1345,7 +1346,7 @@ static int fimc_lite_subdev_registered(struct v4l2_subdev *sd)
 
 	memset(q, 0, sizeof(*q));
 	q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	q->io_modes = VB2_MMAP | VB2_USERPTR;
+	q->io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
 	q->ops = &fimc_lite_qops;
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->buf_struct_size = sizeof(struct flite_buffer);
