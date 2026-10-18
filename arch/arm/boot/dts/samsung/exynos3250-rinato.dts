@@ -1068,13 +1068,18 @@
 	non-removable;
 	cap-sd-highspeed;
 	cap-sdio-irq;
+	/* Power the WiFi down in suspend, brcmfmac probes it again on resume */
+	cap-power-off-card;
 	samsung,dw-mshc-ciu-div = <1>;
 	samsung,dw-mshc-sdr-timing = <0 1>;
 	samsung,dw-mshc-ddr-timing = <1 2>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus1 &sd1_bus4>;
 	bus-width = <4>;
-	vmmc-supply = <&ldo12_reg>;
+	/*
+	 * The WiFi runs off the battery and VCC_AP_1.8V like the Bluetooth,
+	 * neither of which is switched, only WL_REG_ON is.
+	 */
 	mmc-pwrseq = <&wlan_pwrseq>;
 
 	brcmf: wifi@1 {
