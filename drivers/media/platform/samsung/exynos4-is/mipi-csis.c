@@ -7,6 +7,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/errno.h>
@@ -234,6 +235,8 @@ struct csis_drvdata {
  * @supplies: CSIS regulator supplies
  * @clock: CSIS clocks
  * @irq: requested s5p-mipi-csis irq number
+ * @debugfs: debugfs directory
+ * @regset: register set exposed through debugfs
  * @flags: the state variable for power and streaming control
  * @clk_frequency: device bus clock frequency
  * @hs_settle: HS-RX settle time
@@ -258,6 +261,8 @@ struct csis_state {
 	struct regulator_bulk_data supplies[CSIS_NUM_SUPPLIES];
 	struct clk *clock[NUM_CSIS_CLOCKS];
 	int irq;
+	struct dentry *debugfs;
+	struct debugfs_regset32 regset;
 	u32 flags;
 
 	u32 clk_frequency;
@@ -907,6 +912,31 @@ static const struct csis_drvdata s5pcsis_drvdata[] = {
 static int s5pcsis_pm_resume(struct device *dev, bool runtime);
 static const struct of_device_id s5pcsis_of_match[];
 
+static const struct debugfs_reg32 s5pcsis_regs[] = {
+	{ "CTRL",	S5PCSIS_CTRL },
+	{ "DPHYCTRL",	S5PCSIS_DPHYCTRL },
+	{ "CONFIG",	S5PCSIS_CONFIG },
+	{ "DPHYSTS",	0x0c },
+	{ "INTMSK",	S5PCSIS_INTMSK },
+	{ "INTSRC",	S5PCSIS_INTSRC },
+	{ "RESOL",	S5PCSIS_RESOL },
+	{ "SDW_CONFIG",	0x38 },
+};
+
+static void s5pcsis_debugfs_init(struct csis_state *state)
+{
+	struct device *dev = &state->pdev->dev;
+
+	state->regset.regs = s5pcsis_regs;
+	state->regset.nregs = ARRAY_SIZE(s5pcsis_regs);
+	state->regset.base = state->regs;
+	/* Keeps the device resumed while reading */
+	state->regset.dev = dev;
+
+	state->debugfs = debugfs_create_dir(dev_name(dev), NULL);
+	debugfs_create_regset32("regs", 0400, state->debugfs, &state->regset);
+}
+
 static int s5pcsis_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *of_id;
@@ -1015,6 +1045,8 @@ static int s5pcsis_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto e_m_ent;
 	}
+
+	s5pcsis_debugfs_init(state);
 
 	dev_info(&pdev->dev, "lanes: %d, hs_settle: %d, wclk: %d, freq: %u\n",
 		 state->num_lanes, state->hs_settle, state->wclk_ext,
@@ -1132,6 +1164,7 @@ static void s5pcsis_remove(struct platform_device *pdev)
 	struct v4l2_subdev *sd = platform_get_drvdata(pdev);
 	struct csis_state *state = sd_to_csis_state(sd);
 
+	debugfs_remove_recursive(state->debugfs);
 	pm_runtime_disable(&pdev->dev);
 	s5pcsis_pm_suspend(&pdev->dev, true);
 	if (state->drv_data->sclk_csis)
