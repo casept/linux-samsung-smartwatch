@@ -2919,8 +2919,7 @@ static int mms_ts_probe(struct i2c_client *client)
 		info->register_cb(&info->callbacks);
 
 	ret = devm_request_threaded_irq(&client->dev, client->irq, NULL,
-					mms_ts_interrupt,
-					IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+					mms_ts_interrupt, IRQF_ONESHOT,
 					MELFAS_TS_NAME, info);
 	if (ret < 0) {
 		dev_err(&client->dev, "Failed to register interrupt (%d)\n",

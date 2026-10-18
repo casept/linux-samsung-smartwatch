@@ -582,7 +582,7 @@
 			compatible = "melfas,mms128s";
 			reg = <0x48>;
 			interrupt-parent = <&gpx3>;
-			interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+			interrupts = <5 IRQ_TYPE_LEVEL_LOW>;
 			vddo-supply = <&ldo19_reg>;
 			avdd-supply = <&ldo15_reg>;
 
