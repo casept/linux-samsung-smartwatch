@@ -34,6 +34,10 @@ properties:
   interrupts:
     maxItems: 1
 
+  interconnects:
+    maxItems: 1
+    description: Path of the output DMA to memory.
+
   iommus:
     maxItems: 1
 
