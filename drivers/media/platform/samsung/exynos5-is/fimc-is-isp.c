@@ -537,7 +537,8 @@ static inline int isp_video_set_sensor_ctrl(struct fimc_is_isp *isp,
 	/* @TODO: Make some reasonable adjustment between the settings */
 	switch (id) {
 	case FIMC_IS_CID_EXPOSURE:
-		val *= 1000000;
+		/* From 100 us units to the ns the firmware takes */
+		val *= 100000;
 		break;
 	case FIMC_IS_CID_ISO:
 		val = isp_video_iso_qmenu[val];
