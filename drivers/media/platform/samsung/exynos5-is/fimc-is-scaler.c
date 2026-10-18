@@ -256,20 +256,8 @@ static int scaler_g_fmt_mplane(struct file *file, void *priv,
 	struct fimc_is_scaler *ctx = video_drvdata(file);
 	struct v4l2_pix_format_mplane *pixm = &f->fmt.pix_mp;
 	const struct fimc_is_fmt *fmt = ctx->fmt;
-	int i;
 
-	for (i = 0; i < fmt->num_planes; i++) {
-		struct v4l2_plane_pix_format *plane_fmt = &pixm->plane_fmt[i];
-
-		plane_fmt->bytesperline = (ctx->width * fmt->depth[i]) / 8;
-		plane_fmt->sizeimage = plane_fmt->bytesperline * ctx->height;
-		memset(plane_fmt->reserved, 0, sizeof(plane_fmt->reserved));
-	}
-
-	pixm->num_planes = fmt->num_planes;
-	pixm->pixelformat = fmt->fourcc;
-	pixm->width = ctx->width;
-	pixm->height = ctx->height;
+	v4l2_fill_pixfmt_mp(pixm, fmt->fourcc, ctx->width, ctx->height);
 	pixm->field = V4L2_FIELD_NONE;
 	pixm->colorspace = V4L2_COLORSPACE_JPEG;
 	memset(pixm->reserved, 0, sizeof(pixm->reserved));
@@ -282,27 +270,20 @@ static int scaler_try_fmt_mplane(struct file *file, void *priv,
 {
 	const struct fimc_is_fmt *fmt;
 	struct v4l2_pix_format_mplane *pixm = &f->fmt.pix_mp;
-	u32 i;
+	unsigned int align;
 
 	fmt = find_format(f);
 	if (!fmt)
 		fmt = &formats[0];
 
+	/* The firmware rounds the size down to these alignments */
+	align = fmt->fourcc == V4L2_PIX_FMT_YUYV ? 3 : 4;
 	v4l_bound_align_image(&pixm->width, SCALER_MIN_WIDTH,
-			SCALER_MAX_WIDTH, 0,
+			SCALER_MAX_WIDTH, align,
 			&pixm->height, SCALER_MIN_HEIGHT,
-			SCALER_MAX_HEIGHT, 0, 0);
+			SCALER_MAX_HEIGHT, align, 0);
 
-	for (i = 0; i < fmt->num_planes; i++) {
-		struct v4l2_plane_pix_format *plane_fmt = &pixm->plane_fmt[i];
-
-		plane_fmt->bytesperline = (pixm->width * fmt->depth[i]) / 8;
-		plane_fmt->sizeimage = (pixm->width * pixm->height *
-					fmt->depth[i]) / 8;
-		memset(plane_fmt->reserved, 0, sizeof(plane_fmt->reserved));
-	}
-	pixm->num_planes = fmt->num_planes;
-	pixm->pixelformat = fmt->fourcc;
+	v4l2_fill_pixfmt_mp(pixm, fmt->fourcc, pixm->width, pixm->height);
 	pixm->colorspace = V4L2_COLORSPACE_JPEG;
 	pixm->field = V4L2_FIELD_NONE;
 	memset(pixm->reserved, 0, sizeof(pixm->reserved));
