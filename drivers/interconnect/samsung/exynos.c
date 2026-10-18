@@ -99,6 +99,7 @@ static void exynos_generic_icc_remove(struct platform_device *pdev)
 
 	icc_provider_deregister(&priv->provider);
 	icc_nodes_remove(&priv->provider);
+	dev_pm_qos_remove_request(&priv->qos_req);
 }
 
 static int exynos_generic_icc_probe(struct platform_device *pdev)
