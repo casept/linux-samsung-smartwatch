@@ -245,21 +245,6 @@ static int itf_wait_idlestate(struct fimc_is_interface *itf)
 	return 0;
 }
 
-int fimc_is_itf_wait_init_state(struct fimc_is_interface *itf)
-{
-	int ret;
-
-	ret = wait_event_timeout(itf->irq_queue,
-		itf_get_state(itf, IS_IF_STATE_INIT),
-		FIMC_IS_STARTUP_TIMEOUT);
-
-	if (!ret) {
-		dev_err(itf->dev, "%s Timeout\n", __func__);
-		return -ETIME;
-	}
-	return 0;
-}
-
 /* Send Host to IS command interrupt */
 static void itf_hic_interrupt(struct fimc_is_interface *itf)
 {
@@ -273,6 +258,11 @@ static int itf_send_sensor_number(struct fimc_is_interface *itf)
 		.param = { IHC_GET_SENSOR_NUMBER, 1 },
 	};
 	unsigned long flags;
+	int ret;
+
+	ret = itf_wait_hw_ready(itf);
+	if (ret)
+		return ret;
 
 	spin_lock_irqsave(&itf->slock, flags);
 	write_hic_shared_reg(itf, &msg);
@@ -280,6 +270,29 @@ static int itf_send_sensor_number(struct fimc_is_interface *itf)
 	spin_unlock_irqrestore(&itf->slock, flags);
 
 	return 0;
+}
+
+/*
+ * Waits for the firmware to report it booted and answers it with the number
+ * of sensors, which completes its initialization.
+ */
+int fimc_is_itf_wait_init_state(struct fimc_is_interface *itf)
+{
+	int ret;
+
+	ret = wait_event_timeout(itf->irq_queue,
+		itf_get_state(itf, IS_IF_STATE_INIT),
+		FIMC_IS_STARTUP_TIMEOUT);
+
+	if (!ret) {
+		dev_err(itf->dev, "%s Timeout\n", __func__);
+		return -ETIME;
+	}
+
+	/* Each firmware boot reports once */
+	itf_clr_state(itf, IS_IF_STATE_INIT);
+
+	return itf_send_sensor_number(itf);
 }
 
 static int fimc_is_itf_set_cmd(struct fimc_is_interface *itf,
@@ -434,8 +447,6 @@ static void itf_handle_general(struct fimc_is_interface *itf,
 		if (fimc_is_fw_config(&itf->fw_data, msg->param[0]))
 			dev_err(itf->dev,
 			"Failed to initialize fw data. Using default settings");
-		/* Respond with sensor number */
-		itf_send_sensor_number(itf);
 		itf_init_wakeup(itf);
 		break;
 	case ISR_DONE:
