@@ -179,12 +179,23 @@ static int fimc_lite_reinit(struct fimc_lite *fimc, bool suspend)
 	struct flite_buffer *buf;
 	unsigned long flags;
 	bool streaming;
+	int ret = 0;
 
 	spin_lock_irqsave(&fimc->slock, flags);
 	streaming = fimc->state & (1 << ST_SENSOR_STREAM);
+	fimc->state &= ~(1 << ST_SENSOR_STREAM);
+	spin_unlock_irqrestore(&fimc->slock, flags);
 
+	/*
+	 * Stop the source while still capturing, so that it can finish its
+	 * last frame. The buffers have been taken off the hardware already.
+	 */
+	if (streaming)
+		ret = fimc_pipeline_call(&fimc->ve, set_stream, 0);
+
+	spin_lock_irqsave(&fimc->slock, flags);
 	fimc->state &= ~(1 << ST_FLITE_RUN | 1 << ST_FLITE_OFF |
-			 1 << ST_FLITE_STREAM | 1 << ST_SENSOR_STREAM);
+			 1 << ST_FLITE_STREAM | 1 << ST_FLITE_STOPPING);
 	if (suspend)
 		fimc->state |= (1 << ST_FLITE_SUSPENDED);
 	else
@@ -209,10 +220,7 @@ static int fimc_lite_reinit(struct fimc_lite *fimc, bool suspend)
 
 	flite_hw_reset(fimc);
 
-	if (!streaming)
-		return 0;
-
-	return fimc_pipeline_call(&fimc->ve, set_stream, 0);
+	return ret;
 }
 
 static int fimc_lite_stop_capture(struct fimc_lite *fimc, bool suspend)
@@ -221,6 +229,20 @@ static int fimc_lite_stop_capture(struct fimc_lite *fimc, bool suspend)
 
 	if (!fimc_lite_active(fimc))
 		return 0;
+
+	if (fimc->dd->max_dma_bufs > 1) {
+		/*
+		 * Stop writing to the buffers, but keep receiving frames
+		 * until the source has stopped. The frame being written to
+		 * still completes, the source stops at a frame end.
+		 */
+		spin_lock_irqsave(&fimc->slock, flags);
+		set_bit(ST_FLITE_STOPPING, &fimc->state);
+		flite_hw_set_dma_buf_mask(fimc, 0);
+		spin_unlock_irqrestore(&fimc->slock, flags);
+
+		return fimc_lite_reinit(fimc, suspend);
+	}
 
 	spin_lock_irqsave(&fimc->slock, flags);
 	set_bit(ST_FLITE_OFF, &fimc->state);
@@ -304,7 +326,8 @@ static irqreturn_t flite_irq_handler(int irq, void *priv)
 	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMSTART)
 		flite_hw_mask_overflow_irq(fimc, false);
 
-	if (atomic_read(&fimc->out_path) != FIMC_IO_DMA)
+	if (atomic_read(&fimc->out_path) != FIMC_IO_DMA ||
+	    test_bit(ST_FLITE_STOPPING, &fimc->state))
 		goto done;
 
 	if (intsrc & FLITE_REG_CISTATUS_IRQ_SRC_FRMSTART) {
