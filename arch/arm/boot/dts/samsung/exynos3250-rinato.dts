@@ -1129,10 +1129,14 @@
 	status = "okay";
 };
 
+/*
+ * The SoC's RTC doesn't hold a valid time on this board, and the PMIC's is
+ * there to keep time and wake the system up instead.
+ */
 &rtc {
 	clocks = <&cmu CLK_RTC>, <&s2mps14_osc S2MPS11_CLK_AP>;
 	clock-names = "rtc", "rtc_src";
-	status = "okay";
+	status = "disabled";
 };
 
 &xusbxti {
