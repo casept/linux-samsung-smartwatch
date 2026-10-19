@@ -210,7 +210,8 @@ static int max17040_get_soc(struct max17040_chip *chip)
 	if (ret)
 		return ret;
 
-	return soc >> (chip->quirk_double_soc ? 9 : 8);
+	/* The gauge reads a little over 100% on a fully charged cell */
+	return min(soc >> (chip->quirk_double_soc ? 9 : 8), 100U);
 }
 
 static int max17040_get_version(struct max17040_chip *chip)
