@@ -42,7 +42,7 @@ struct s6e63j0x03 {
 };
 
 static const struct drm_display_mode default_mode = {
-	.clock = 4649,
+	.clock = 9298,
 	.hdisplay = 320,
 	.hsync_start = 320 + 1,
 	.hsync_end = 320 + 1 + 1,
@@ -257,8 +257,8 @@ static int s6e63j0x03_panel_init(struct s6e63j0x03 *ctx)
 	if (ret < 0)
 		return ret;
 
-	/* set frame freq */
-	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xb5, 0x00, 0x02, 0x00);
+	/* set frame freq to 60Hz, matching the ltps timing below */
+	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xb5, 0x00, 0x01, 0x00);
 	if (ret < 0)
 		return ret;
 
