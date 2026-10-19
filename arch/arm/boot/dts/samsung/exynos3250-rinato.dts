@@ -863,10 +863,6 @@
 				regulator-name = "HRM_VCC_1.8V";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
 			};
 
 			// Delivers 3.3V downstream
@@ -875,10 +871,6 @@
 				regulator-name = "HRM_VCC_3.3V";
 				regulator-min-microvolt = <3000000>;
 				regulator-max-microvolt = <3000000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
 			};
 
 			ldo25_reg: LDO25 {
@@ -1159,6 +1151,8 @@
 		ap-mcu-gpios = <&gpx0 0 GPIO_ACTIVE_HIGH>;
 		mcu-ap-gpios = <&gpx0 4 GPIO_ACTIVE_HIGH>;
 		mcu-reset-gpios = <&gpx0 5 GPIO_ACTIVE_HIGH>;
+		vdd-supply = <&ldo23_reg>;
+		hrm-supply = <&ldo24_reg>;
 
 		controller-data {
 			samsung,spi-feedback-delay = <2>;

@@ -10,12 +10,17 @@
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/property.h>
+#include <linux/regulator/consumer.h>
+#include <linux/string_choices.h>
 
 #include "ssp.h"
 
 #define SSP_WDT_TIME			10000
 #define SSP_LIMIT_RESET_CNT		20
 #define SSP_LIMIT_TIMEOUT_CNT		3
+
+#define SSP_HRM_SENSORS	(BIT(SSP_BIO_HRM_RAW) | BIT(SSP_BIO_HRM_RAW_FAC) | \
+			 BIT(SSP_BIO_HRM_LIB))
 
 /* It is possible that it is max clk rate for version 1.0 of bootcode */
 #define SSP_BOOT_SPI_HZ	400000
@@ -200,6 +205,28 @@ static void ssp_disable_wdt_timer(struct ssp_data *data)
 	cancel_work_sync(&data->work_wdt);
 }
 
+static int ssp_set_hrm_power(struct ssp_data *data, bool on)
+{
+	int ret;
+
+	if (on == data->hrm_powered)
+		return 0;
+
+	if (on)
+		ret = regulator_enable(data->hrm_supply);
+	else
+		ret = regulator_disable(data->hrm_supply);
+	if (ret) {
+		dev_err(&data->spi->dev, "Failed to switch HRM supply %s: %d\n",
+			str_on_off(on), ret);
+		return ret;
+	}
+
+	data->hrm_powered = on;
+
+	return 0;
+}
+
 /**
  * ssp_get_sensor_delay() - gets sensor data acquisition period
  * @data:	sensorhub structure
@@ -231,10 +258,18 @@ int ssp_enable_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 	to_send.b = cpu_to_le32(data->batch_latency_buf[type]);
 	to_send.c = data->batch_opt_buf[type];
 
+	guard(mutex)(&data->enable_lock);
+
 	switch (data->check_status[type]) {
 	case SSP_INITIALIZATION_STATE:
 		/* do calibration step, now just enable */
 	case SSP_ADD_SENSOR_STATE:
+		if (BIT(type) & SSP_HRM_SENSORS) {
+			ret = ssp_set_hrm_power(data, true);
+			if (ret)
+				return ret;
+		}
+
 		ret = ssp_send_instruction(data,
 					   SSP_MSG2SSP_INST_BYPASS_SENSOR_ADD,
 					   type,
@@ -242,6 +277,8 @@ int ssp_enable_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 		if (ret < 0) {
 			dev_err(&data->spi->dev, "Enabling sensor failed\n");
 			data->check_status[type] = SSP_NO_SENSOR_STATE;
+			if (!(data->sensor_enable & SSP_HRM_SENSORS))
+				ssp_set_hrm_power(data, false);
 			goto derror;
 		}
 
@@ -319,6 +356,8 @@ int ssp_disable_sensor(struct ssp_data *data, enum ssp_sensor_type type)
 	int ret;
 	__le32 command;
 
+	guard(mutex)(&data->enable_lock);
+
 	if (data->sensor_enable & BIT(type)) {
 		command = cpu_to_le32(data->delay_buf[type]);
 
@@ -332,6 +371,8 @@ int ssp_disable_sensor(struct ssp_data *data, enum ssp_sensor_type type)
 		}
 
 		data->sensor_enable &= ~BIT(type);
+		if (!(data->sensor_enable & SSP_HRM_SENSORS))
+			ssp_set_hrm_power(data, false);
 	}
 
 	data->check_status[type] = SSP_ADD_SENSOR_STATE;
@@ -497,6 +538,16 @@ static int ssp_probe(struct spi_device *spi)
 		return -ENODEV;
 	}
 
+	/* The MCU firmware hangs during boot without this supply */
+	ret = devm_regulator_get_enable(&spi->dev, "vdd");
+	if (ret)
+		return dev_err_probe(&spi->dev, ret, "Failed to enable vdd\n");
+
+	data->hrm_supply = devm_regulator_get(&spi->dev, "hrm");
+	if (IS_ERR(data->hrm_supply))
+		return dev_err_probe(&spi->dev, PTR_ERR(data->hrm_supply),
+				     "Failed to get HRM supply\n");
+
 	ret = mfd_add_devices(&spi->dev, PLATFORM_DEVID_NONE,
 			      sensorhub_sensor_devs,
 			      ARRAY_SIZE(sensorhub_sensor_devs), NULL, 0, NULL);
@@ -517,6 +568,7 @@ static int ssp_probe(struct spi_device *spi)
 	spi_set_drvdata(spi, data);
 
 	mutex_init(&data->comm_lock);
+	mutex_init(&data->enable_lock);
 
 	for (i = 0; i < SSP_SENSOR_MAX; ++i) {
 		data->delay_buf[i] = SSP_DEFAULT_POLLING_DELAY;
@@ -551,6 +603,9 @@ static int ssp_probe(struct spi_device *spi)
 	/* Let's start with enabled one so irq balance could be ok */
 	data->shut_down = false;
 
+	/* Restart the MCU in case it got stuck before vdd was enabled */
+	ssp_toggle_mcu_reset_gpio(data);
+
 	/* just to avoid unbalanced irq set wake up */
 	enable_irq_wake(data->spi->irq);
 
@@ -571,6 +626,7 @@ err_read_reg:
 	free_irq(data->spi->irq, data);
 err_setup_irq:
 	mutex_destroy(&data->pending_lock);
+	mutex_destroy(&data->enable_lock);
 	mutex_destroy(&data->comm_lock);
 err_setup_spi:
 	mfd_remove_devices(&spi->dev);
@@ -599,7 +655,10 @@ static void ssp_remove(struct spi_device *spi)
 	timer_delete_sync(&data->wdt_timer);
 	cancel_work_sync(&data->work_wdt);
 
+	ssp_set_hrm_power(data, false);
+
 	mutex_destroy(&data->comm_lock);
+	mutex_destroy(&data->enable_lock);
 	mutex_destroy(&data->pending_lock);
 
 	mfd_remove_devices(&spi->dev);

@@ -170,6 +170,9 @@ struct ssp_sensorhub_info {
  * @fw_dl_state:	firmware download state
  * @comm_lock:		lock protecting the handshake
  * @pending_lock:	lock protecting pending list and completion
+ * @enable_lock:	lock serializing sensor enabling and the HRM supply
+ * @hrm_supply:		heart rate monitor supply
+ * @hrm_powered:	whether the HRM supply is enabled
  * @mcu_reset_gpiod:	mcu reset line
  * @ap_mcu_gpiod:	ap to mcu gpio line
  * @mcu_ap_gpiod:	mcu to ap gpio line
@@ -213,6 +216,10 @@ struct ssp_data {
 
 	struct mutex comm_lock;
 	struct mutex pending_lock;
+	struct mutex enable_lock;
+
+	struct regulator *hrm_supply;
+	bool hrm_powered;
 
 	struct gpio_desc *mcu_reset_gpiod;
 	struct gpio_desc *ap_mcu_gpiod;

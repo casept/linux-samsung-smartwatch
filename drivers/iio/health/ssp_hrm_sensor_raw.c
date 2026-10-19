@@ -16,8 +16,6 @@
 #define SSP_HRM_RAW_NAME "ssp-hrm-raw"
 static const char ssp_hrm_raw_device_name[] = SSP_HRM_RAW_NAME;
 
-/* TODO: Need to enable regulator for LEDs */
-
 /* TODO: Remove, only here for reference */
 struct ssp_hrm_raw {
 	u32 ch_a;

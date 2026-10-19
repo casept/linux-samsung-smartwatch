@@ -16,8 +16,6 @@
 #define SSP_HRM_NAME "ssp-hrm"
 static const char ssp_hrm_device_name[] = SSP_HRM_NAME;
 
-/* TODO: Need to enable regulator for LEDs */
-
 /* TODO: Remove, only here for reference */
 struct ssp_hrm_lib {
 	s16 hr;
