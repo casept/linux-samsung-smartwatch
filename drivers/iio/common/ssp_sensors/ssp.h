@@ -170,7 +170,8 @@ struct ssp_sensorhub_info {
  * @fw_dl_state:	firmware download state
  * @comm_lock:		lock protecting the handshake
  * @pending_lock:	lock protecting pending list and completion
- * @enable_lock:	lock serializing sensor enabling and the HRM supply
+ * @enable_lock:	lock serializing sensor state changes, MCU init and the
+ *			HRM supply
  * @hrm_supply:		heart rate monitor supply
  * @hrm_powered:	whether the HRM supply is enabled
  * @mcu_reset_gpiod:	mcu reset line

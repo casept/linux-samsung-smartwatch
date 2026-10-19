@@ -78,19 +78,33 @@ static void ssp_toggle_mcu_reset_gpio(struct ssp_data *data)
 	msleep(50);
 }
 
-static void ssp_sync_available_sensors(struct ssp_data *data)
+static int ssp_add_sensor(struct ssp_data *data, enum ssp_sensor_type type,
+			  u32 delay)
+{
+	struct ssp_instruction to_send;
+
+	to_send.a = cpu_to_le32(delay);
+	to_send.b = cpu_to_le32(data->batch_latency_buf[type]);
+	to_send.c = data->batch_opt_buf[type];
+
+	return ssp_send_instruction(data, SSP_MSG2SSP_INST_BYPASS_SENSOR_ADD,
+				    type, (u8 *)&to_send, sizeof(to_send));
+}
+
+/* Re-adds the sensors that were running before the MCU got reset */
+static void ssp_sync_enabled_sensors(struct ssp_data *data)
 {
 	int i, ret;
 
+	lockdep_assert_held(&data->enable_lock);
+
 	for (i = 0; i < SSP_SENSOR_MAX; ++i) {
-		if (data->available_sensors & BIT(i)) {
-			ret = ssp_enable_sensor(data, i, data->delay_buf[i]);
-			if (ret < 0) {
-				dev_err(&data->spi->dev,
-					"Sync sensor nr: %d fail\n", i);
-				continue;
-			}
-		}
+		if (!(data->sensor_enable & BIT(i)))
+			continue;
+
+		ret = ssp_add_sensor(data, i, data->delay_buf[i]);
+		if (ret < 0)
+			dev_err(&data->spi->dev, "Sync sensor nr: %d fail\n", i);
 	}
 
 	ret = ssp_command(data, SSP_MSG2SSP_AP_MCU_SET_DUMPMODE,
@@ -270,10 +284,7 @@ int ssp_enable_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 				return ret;
 		}
 
-		ret = ssp_send_instruction(data,
-					   SSP_MSG2SSP_INST_BYPASS_SENSOR_ADD,
-					   type,
-					   (u8 *)&to_send, sizeof(to_send));
+		ret = ssp_add_sensor(data, type, delay);
 		if (ret < 0) {
 			dev_err(&data->spi->dev, "Enabling sensor failed\n");
 			data->check_status[type] = SSP_NO_SENSOR_STATE;
@@ -329,6 +340,8 @@ int ssp_change_delay(struct ssp_data *data, enum ssp_sensor_type type,
 	to_send.a = cpu_to_le32(delay);
 	to_send.b = cpu_to_le32(data->batch_latency_buf[type]);
 	to_send.c = data->batch_opt_buf[type];
+
+	guard(mutex)(&data->enable_lock);
 
 	ret = ssp_send_instruction(data, SSP_MSG2SSP_INST_CHANGE_DELAY, type,
 				   (u8 *)&to_send, sizeof(to_send));
@@ -449,10 +462,12 @@ static void ssp_refresh_task(struct work_struct *work)
 
 	dev_info(&data->spi->dev, "refreshing\n");
 
+	guard(mutex)(&data->enable_lock);
+
 	data->reset_cnt++;
 
 	if (ssp_initialize_mcu(data) >= 0) {
-		ssp_sync_available_sensors(data);
+		ssp_sync_enabled_sensors(data);
 		if (data->last_ap_state != 0)
 			ssp_command(data, data->last_ap_state, 0);
 
@@ -548,6 +563,20 @@ int ssp_register_consumer(struct iio_dev *indio_dev, enum ssp_sensor_type type)
 }
 EXPORT_SYMBOL_NS(ssp_register_consumer, "IIO_SSP_SENSORS");
 
+static int ssp_probe_mcu(struct ssp_data *data)
+{
+	/* The MCU announces its reset, keep the refresh task from interfering */
+	guard(mutex)(&data->enable_lock);
+
+	data->fw_dl_state = ssp_check_fwbl(data);
+	if (data->fw_dl_state != SSP_FW_DL_STATE_NONE) {
+		dev_err(&data->spi->dev, "Firmware version not supported! Continuing, but things may not work!\n");
+		return 0;
+	}
+
+	return ssp_initialize_mcu(data);
+}
+
 static int ssp_probe(struct spi_device *spi)
 {
 	int ret, i;
@@ -622,15 +651,10 @@ static int ssp_probe(struct spi_device *spi)
 	/* just to avoid unbalanced irq set wake up */
 	enable_irq_wake(data->spi->irq);
 
-	data->fw_dl_state = ssp_check_fwbl(data);
-	if (data->fw_dl_state == SSP_FW_DL_STATE_NONE) {
-		ret = ssp_initialize_mcu(data);
-		if (ret < 0) {
-			dev_err(&spi->dev, "Initialize_mcu failed\n");
-			goto err_read_reg;
-		}
-	} else {
-		dev_err(&spi->dev, "Firmware version not supported! Continuing, but things may not work!\n");
+	ret = ssp_probe_mcu(data);
+	if (ret < 0) {
+		dev_err(&spi->dev, "Initialize_mcu failed\n");
+		goto err_read_reg;
 	}
 
 	ret = mfd_add_devices(&spi->dev, PLATFORM_DEVID_NONE,
