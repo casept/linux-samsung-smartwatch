@@ -31,7 +31,6 @@
 #define TSP_TA_CALLBACK 1
 #define TSP_ENABLE_SW_RESET 0
 #define SHOW_TSP_DEBUG_MSG 0
-#define ALWAYS_ON_TOUCH
 
 #include <linux/delay.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -55,6 +54,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/pm_wakeup.h>
 #if TOUCH_BOOSTER
 #include <mach/cpufreq.h>
 #include <mach/dev.h>
@@ -85,6 +85,8 @@
 #define MMS_NOISE_REG 0x30
 #define MMS_NOISE_ON 0x01
 #define MMS_NOISE_OFF 0x02
+
+#define MMS_WAKEUP_EVENT_MS 500
 
 enum {
 	COMPARE_UPDATE = 0,
@@ -389,6 +391,7 @@ struct mms_ts_info {
 	u8 *config_fw;
 
 	bool resume_done;
+	bool suspended_for_wakeup;
 
 #if !TSP_ENABLE_SW_RESET
 	struct delayed_work work_config_set;
@@ -1373,6 +1376,13 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		},
 	};
 	finger_event_sz = EVENT_SZ_8_BYTES;
+
+	/*
+	 * Stay awake until userspace has seen the touch.
+	 * FIXME: Check whether autosleep really needs the timeout.
+	 */
+	if (device_may_wakeup(&client->dev))
+		pm_wakeup_event(&client->dev, MMS_WAKEUP_EVENT_MS);
 
 	if (!info->enabled) {
 		dev_err(&client->dev, "%s: touch Wake\n", __func__);
@@ -2931,7 +2941,6 @@ static int mms_ts_probe(struct i2c_client *client)
 
 	barrier();
 
-	device_init_wakeup(&client->dev, 1);
 	// wake_lock_init(&info->tsp_wake_lock, WAKE_LOCK_SUSPEND,
 	//	       "report_touch_wake_lock");
 
@@ -3006,8 +3015,7 @@ static void mms_ts_remove(struct i2c_client *client)
 #endif
 }
 
-#if (defined(CONFIG_PM) || defined(CONFIG_HAS_EARLYSUSPEND)) && \
-	!defined(ALWAYS_ON_TOUCH)
+#if defined(CONFIG_PM) || defined(CONFIG_HAS_EARLYSUSPEND)
 static int mms_ts_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -3026,7 +3034,17 @@ static int mms_ts_suspend(struct device *dev)
 	if (!info->enabled)
 		return 0;
 
+	/*
+	 * No I2C transfers until resume. The interrupt still wakes the system
+	 * while disabled and is handled once it gets enabled again.
+	 */
 	disable_irq(info->irq);
+
+	/* Keep scanning and wake the system on touch */
+	if (device_may_wakeup(dev)) {
+		info->suspended_for_wakeup = true;
+		return 0;
+	}
 
 	info->enabled = false;
 	release_all_fingers(info);
@@ -3050,6 +3068,12 @@ static int mms_ts_resume(struct device *dev)
 	dev_dbg(&info->client->dev, "%s %s\n", __func__,
 		info->enabled ? "ON" : "OFF");
 
+	if (info->suspended_for_wakeup) {
+		info->suspended_for_wakeup = false;
+		enable_irq(info->irq);
+		return 0;
+	}
+
 	if (info->enabled)
 		return 0;
 
@@ -3072,38 +3096,6 @@ static int mms_ts_resume(struct device *dev)
 	return 0;
 }
 
-#elif defined(ALWAYS_ON_TOUCH)
-static int mms_ts_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct mms_ts_info *info = i2c_get_clientdata(client);
-
-	dev_dbg(&info->client->dev, "%s %s\n", __func__,
-		info->enabled ? "ON" : "OFF");
-
-	if (device_may_wakeup(dev)) {
-		enable_irq_wake(client->irq);
-		info->enabled = false;
-	}
-
-	return 0;
-}
-
-static int mms_ts_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct mms_ts_info *info = i2c_get_clientdata(client);
-
-	dev_dbg(&info->client->dev, "%s %s\n", __func__,
-		info->enabled ? "ON" : "OFF");
-
-	if (device_may_wakeup(dev)) {
-		disable_irq_wake(client->irq);
-		info->enabled = true;
-	}
-
-	return 0;
-}
 #endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND

@@ -783,10 +783,6 @@
 				regulator-name = "TSP_AVDD_3.3V";
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
 			};
 
 			ldo16_reg: LDO16 {
@@ -827,10 +823,6 @@
 				regulator-name = "TSP_VDD_1.8V";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
 			};
 
 			ldo20_reg: LDO20 {
@@ -995,6 +987,7 @@
 		interrupts = <5 IRQ_TYPE_LEVEL_LOW>;
 		vddo-supply = <&ldo19_reg>;
 		avdd-supply = <&ldo15_reg>;
+		wakeup-source;
 
 		melfas,max_x = <320>;
 		melfas,max_y = <320>;
@@ -1250,8 +1243,8 @@
 		PIN_SLP(gpa0-3, INPUT, DOWN);
 		PIN_SLP(gpa0-4, INPUT, DOWN);
 		PIN_SLP(gpa0-5, INPUT, DOWN);
-		PIN_SLP(gpa0-6, INPUT, DOWN);
-		PIN_SLP(gpa0-7, INPUT, DOWN);
+		PIN_SLP(gpa0-6, INPUT, NONE);
+		PIN_SLP(gpa0-7, INPUT, NONE);
 
 		PIN_SLP(gpa1-0, INPUT, DOWN);
 		PIN_SLP(gpa1-1, INPUT, DOWN);
