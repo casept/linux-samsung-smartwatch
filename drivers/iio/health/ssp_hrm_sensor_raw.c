@@ -119,6 +119,7 @@ static int ssp_process_hrm_raw_data(struct iio_dev *indio_dev, void *buf,
 
 static const struct iio_buffer_setup_ops ssp_hrm_raw_buffer_ops = {
 	.postenable = &ssp_common_buffer_postenable,
+	.predisable = &ssp_common_buffer_predisable,
 	.postdisable = &ssp_common_buffer_postdisable,
 };
 

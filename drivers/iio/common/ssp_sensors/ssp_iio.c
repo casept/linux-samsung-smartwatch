@@ -7,7 +7,6 @@
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
 #include <linux/module.h>
-#include <linux/slab.h>
 #include <linux/unaligned.h>
 #include <linux/units.h>
 #include "ssp_iio_sensor.h"
@@ -21,20 +20,45 @@
  */
 int ssp_common_buffer_postenable(struct iio_dev *indio_dev)
 {
+	int ret;
 	struct ssp_sensor_data *spd = iio_priv(indio_dev);
 	struct ssp_data *data = dev_get_drvdata(indio_dev->dev.parent->parent);
 
-	/* the allocation is made in post because scan size is known in this
-	 * moment
-	 * */
-	spd->buffer = kmalloc(indio_dev->scan_bytes, GFP_KERNEL | GFP_DMA);
-	if (!spd->buffer)
-		return -ENOMEM;
+	if (indio_dev->scan_bytes > sizeof(spd->buffer))
+		return -EINVAL;
 
-	return ssp_enable_sensor(data, spd->type,
-				 ssp_get_sensor_delay(data, spd->type));
+	ret = ssp_enable_sensor(data, spd->type,
+				ssp_get_sensor_delay(data, spd->type));
+	if (ret < 0)
+		return ret;
+
+	/* Pairs with smp_load_acquire() in ssp_common_process_data() */
+	smp_store_release(&spd->streaming, true);
+
+	return 0;
 }
 EXPORT_SYMBOL_NS(ssp_common_buffer_postenable, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_common_buffer_predisable() - generic predisable callback for ssp buffer
+ *
+ * @indio_dev:		iio device
+ *
+ * Stops pushing data before the IIO core tears the buffer down.
+ *
+ * Return: 0
+ */
+int ssp_common_buffer_predisable(struct iio_dev *indio_dev)
+{
+	struct ssp_sensor_data *spd = iio_priv(indio_dev);
+	struct ssp_data *data = dev_get_drvdata(indio_dev->dev.parent->parent);
+
+	WRITE_ONCE(spd->streaming, false);
+	ssp_sync_consumers(data);
+
+	return 0;
+}
+EXPORT_SYMBOL_NS(ssp_common_buffer_predisable, "IIO_SSP_SENSORS");
 
 /**
  * ssp_common_buffer_postdisable() - generic postdisable callback for ssp buffer
@@ -45,17 +69,10 @@ EXPORT_SYMBOL_NS(ssp_common_buffer_postenable, "IIO_SSP_SENSORS");
  */
 int ssp_common_buffer_postdisable(struct iio_dev *indio_dev)
 {
-	int ret;
 	struct ssp_sensor_data *spd = iio_priv(indio_dev);
 	struct ssp_data *data = dev_get_drvdata(indio_dev->dev.parent->parent);
 
-	ret = ssp_disable_sensor(data, spd->type);
-	if (ret < 0)
-		return ret;
-
-	kfree(spd->buffer);
-
-	return ret;
+	return ssp_disable_sensor(data, spd->type);
 }
 EXPORT_SYMBOL_NS(ssp_common_buffer_postdisable, "IIO_SSP_SENSORS");
 
@@ -75,8 +92,12 @@ int ssp_common_process_data(struct iio_dev *indio_dev, void *buf,
 	int64_t calculated_time;
 	struct ssp_sensor_data *spd = iio_priv(indio_dev);
 
-	if (indio_dev->scan_bytes == 0)
+	/* Frames can still arrive after the buffer got disabled */
+	if (!smp_load_acquire(&spd->streaming))
 		return 0;
+
+	if (WARN_ON_ONCE(len > SSP_MAX_SCAN_SIZE))
+		return -EINVAL;
 
 	/*
 	 * it always sends full set of samples, remember about available masks
@@ -86,8 +107,8 @@ int ssp_common_process_data(struct iio_dev *indio_dev, void *buf,
 	calculated_time = timestamp +
 		(int64_t)get_unaligned_le32(buf + len) * MEGA;
 
-	return iio_push_to_buffers_with_timestamp(indio_dev, spd->buffer,
-						  calculated_time);
+	return iio_push_to_buffers_with_ts(indio_dev, spd->buffer,
+					   sizeof(spd->buffer), calculated_time);
 }
 EXPORT_SYMBOL_NS(ssp_common_process_data, "IIO_SSP_SENSORS");
 

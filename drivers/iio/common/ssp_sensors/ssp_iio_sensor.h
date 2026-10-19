@@ -38,6 +38,8 @@
 
 int ssp_common_buffer_postenable(struct iio_dev *indio_dev);
 
+int ssp_common_buffer_predisable(struct iio_dev *indio_dev);
+
 int ssp_common_buffer_postdisable(struct iio_dev *indio_dev);
 
 int ssp_common_process_data(struct iio_dev *indio_dev, void *buf,

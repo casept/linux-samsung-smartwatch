@@ -530,6 +530,18 @@ static struct ssp_data *ssp_parse_dt(struct device *dev)
 	return data;
 }
 
+/**
+ * ssp_sync_consumers() - waits for the data frame being parsed, if any
+ * @data:	sensorhub structure
+ *
+ * Consumer state changed before the call is seen by all later data frames.
+ */
+void ssp_sync_consumers(struct ssp_data *data)
+{
+	synchronize_irq(data->spi->irq);
+}
+EXPORT_SYMBOL_NS(ssp_sync_consumers, "IIO_SSP_SENSORS");
+
 static void ssp_unregister_consumer(void *arg)
 {
 	struct iio_dev *indio_dev = arg;
@@ -537,8 +549,7 @@ static void ssp_unregister_consumer(void *arg)
 	struct ssp_data *data = dev_get_drvdata(indio_dev->dev.parent->parent);
 
 	WRITE_ONCE(data->sensor_devs[spd->type], NULL);
-	/* Let a data frame that is being parsed finish with the consumer */
-	synchronize_irq(data->spi->irq);
+	ssp_sync_consumers(data);
 }
 
 /**
