@@ -40,6 +40,14 @@ properties:
     description:
       Reset the sensorhub.
 
+  vdd-supply:
+    description:
+      Supply the sensorhub firmware needs to run.
+
+  hrm-supply:
+    description:
+      Supply of the heart rate monitor front end.
+
 required:
   - compatible
   - reg
@@ -50,6 +58,14 @@ required:
 
 allOf:
   - $ref: /schemas/spi/spi-peripheral-props.yaml#
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: samsung,sensorhub-rinato
+    then:
+      required:
+        - vdd-supply
 
 unevaluatedProperties: false
 
@@ -68,6 +84,8 @@ examples:
             ap-mcu-gpios = <&gpx0 0 0>;
             mcu-ap-gpios = <&gpx0 4 0>;
             mcu-reset-gpios = <&gpx0 5 0>;
+            vdd-supply = <&ldo23_reg>;
+            hrm-supply = <&ldo24_reg>;
         };
     };
 ...
