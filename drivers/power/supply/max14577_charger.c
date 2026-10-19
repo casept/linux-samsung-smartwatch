@@ -196,13 +196,6 @@ out:
  * The max14577 chip doesn't report any status of battery presence.
  * Lets assume that it will always be used with some battery.
  */
-static int max14577_get_present(struct max14577_charger *chg, int *val)
-{
-	*val = 1;
-
-	return 0;
-}
-
 static int max14577_set_fast_charge_timer(struct max14577_charger *chg,
 		unsigned long hours)
 {
@@ -394,7 +387,6 @@ static enum power_supply_property max14577_charger_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
-	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
@@ -423,9 +415,6 @@ static int max14577_charger_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		ret = max14577_get_battery_health(chg, &val->intval);
-		break;
-	case POWER_SUPPLY_PROP_PRESENT:
-		ret = max14577_get_present(chg, &val->intval);
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		ret = max14577_get_online(chg, &val->intval);
