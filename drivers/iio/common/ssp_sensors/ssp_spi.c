@@ -268,7 +268,7 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 {
 	int idx, sd;
 	struct ssp_sensor_data *spd;
-	struct iio_dev **indio_devs = data->sensor_devs;
+	struct iio_dev *indio_dev;
 
 	for (idx = 0; idx < len;) {
 		switch (dataframe[idx++]) {
@@ -282,12 +282,13 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 				return -EPROTO;
 			}
 
-			if (indio_devs[sd]) {
-				spd = iio_priv(indio_devs[sd]);
+			indio_dev = READ_ONCE(data->sensor_devs[sd]);
+			if (indio_dev) {
+				spd = iio_priv(indio_dev);
 				if (spd->process_data) {
 					if (idx >= len)
 						return -EPROTO;
-					spd->process_data(indio_devs[sd],
+					spd->process_data(indio_dev,
 							  &dataframe[idx],
 							  data->timestamp);
 				}

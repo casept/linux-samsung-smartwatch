@@ -57,8 +57,8 @@ struct ssp_sensor_data {
 	u8 *buffer;
 };
 
-void ssp_register_consumer(struct iio_dev *indio_dev,
-			   enum ssp_sensor_type type);
+int ssp_register_consumer(struct iio_dev *indio_dev,
+			  enum ssp_sensor_type type);
 
 int ssp_enable_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 		      u32 delay);

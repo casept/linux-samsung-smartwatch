@@ -513,17 +513,36 @@ static struct ssp_data *ssp_parse_dt(struct device *dev)
 	return data;
 }
 
+static void ssp_unregister_consumer(void *arg)
+{
+	struct iio_dev *indio_dev = arg;
+	struct ssp_sensor_data *spd = iio_priv(indio_dev);
+	struct ssp_data *data = dev_get_drvdata(indio_dev->dev.parent->parent);
+
+	WRITE_ONCE(data->sensor_devs[spd->type], NULL);
+	/* Let a data frame that is being parsed finish with the consumer */
+	synchronize_irq(data->spi->irq);
+}
+
 /**
  * ssp_register_consumer() - registers iio consumer in ssp framework
  *
  * @indio_dev:	consumer iio device
  * @type:	ssp sensor type
+ *
+ * The consumer is unregistered automatically when its device is unbound.
+ *
+ * Return: 0 or negative error code
  */
-void ssp_register_consumer(struct iio_dev *indio_dev, enum ssp_sensor_type type)
+int ssp_register_consumer(struct iio_dev *indio_dev, enum ssp_sensor_type type)
 {
 	struct ssp_data *data = dev_get_drvdata(indio_dev->dev.parent->parent);
 
-	data->sensor_devs[type] = indio_dev;
+	/* The interrupt thread may use it right away */
+	smp_store_release(&data->sensor_devs[type], indio_dev);
+
+	return devm_add_action_or_reset(indio_dev->dev.parent,
+					ssp_unregister_consumer, indio_dev);
 }
 EXPORT_SYMBOL_NS(ssp_register_consumer, "IIO_SSP_SENSORS");
 
@@ -548,19 +567,11 @@ static int ssp_probe(struct spi_device *spi)
 		return dev_err_probe(&spi->dev, PTR_ERR(data->hrm_supply),
 				     "Failed to get HRM supply\n");
 
-	ret = mfd_add_devices(&spi->dev, PLATFORM_DEVID_NONE,
-			      sensorhub_sensor_devs,
-			      ARRAY_SIZE(sensorhub_sensor_devs), NULL, 0, NULL);
-	if (ret < 0) {
-		dev_err(&spi->dev, "mfd add devices fail\n");
-		return ret;
-	}
-
 	spi->mode = SPI_MODE_1;
 	ret = spi_setup(spi);
 	if (ret < 0) {
 		dev_err(&spi->dev, "Failed to setup spi\n");
-		goto err_setup_spi;
+		return ret;
 	}
 
 	data->fw_dl_state = SSP_FW_DL_STATE_NONE;
@@ -620,16 +631,23 @@ static int ssp_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "Firmware version not supported! Continuing, but things may not work!\n");
 	}
 
+	ret = mfd_add_devices(&spi->dev, PLATFORM_DEVID_NONE,
+			      sensorhub_sensor_devs,
+			      ARRAY_SIZE(sensorhub_sensor_devs), NULL, 0, NULL);
+	if (ret < 0) {
+		dev_err(&spi->dev, "mfd add devices fail\n");
+		goto err_read_reg;
+	}
+
 	return 0;
 
 err_read_reg:
 	free_irq(data->spi->irq, data);
+	cancel_delayed_work_sync(&data->work_refresh);
 err_setup_irq:
 	mutex_destroy(&data->pending_lock);
 	mutex_destroy(&data->enable_lock);
 	mutex_destroy(&data->comm_lock);
-err_setup_spi:
-	mfd_remove_devices(&spi->dev);
 
 	dev_err(&spi->dev, "Probe failed!\n");
 
@@ -639,6 +657,8 @@ err_setup_spi:
 static void ssp_remove(struct spi_device *spi)
 {
 	struct ssp_data *data = spi_get_drvdata(spi);
+
+	mfd_remove_devices(&spi->dev);
 
 	if (ssp_command(data, SSP_MSG2SSP_AP_STATUS_SHUTDOWN, 0) < 0)
 		dev_err(&data->spi->dev,
@@ -660,8 +680,6 @@ static void ssp_remove(struct spi_device *spi)
 	mutex_destroy(&data->comm_lock);
 	mutex_destroy(&data->enable_lock);
 	mutex_destroy(&data->pending_lock);
-
-	mfd_remove_devices(&spi->dev);
 }
 
 static int ssp_suspend(struct device *dev)

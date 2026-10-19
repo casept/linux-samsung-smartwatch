@@ -161,14 +161,16 @@ static int ssp_hrm_raw_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, indio_dev);
 
+	/* Unregistered only after the buffer got disabled on removal */
+	ret = ssp_register_consumer(indio_dev, SSP_BIO_HRM_RAW_FAC);
+	if (ret)
+		return ret;
+
 	ret = devm_iio_device_register(&pdev->dev, indio_dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register IIO device!\n");
 		return ret;
 	}
-
-	/* ssp registering should be done after all iio setup */
-	ssp_register_consumer(indio_dev, SSP_BIO_HRM_RAW_FAC);
 
 	dev_info(&pdev->dev, "Probe OK!\n");
 	return 0;

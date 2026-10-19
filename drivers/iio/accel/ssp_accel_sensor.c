@@ -119,14 +119,12 @@ static int ssp_accel_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, indio_dev);
 
-	ret = devm_iio_device_register(&pdev->dev, indio_dev);
-	if (ret < 0)
+	/* Unregistered only after the buffer got disabled on removal */
+	ret = ssp_register_consumer(indio_dev, SSP_ACCELEROMETER_SENSOR);
+	if (ret)
 		return ret;
 
-	/* ssp registering should be done after all iio setup */
-	ssp_register_consumer(indio_dev, SSP_ACCELEROMETER_SENSOR);
-
-	return 0;
+	return devm_iio_device_register(&pdev->dev, indio_dev);
 }
 
 static struct platform_driver ssp_accel_driver = {
