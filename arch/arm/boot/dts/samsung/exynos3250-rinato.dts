@@ -600,6 +600,8 @@
 
 &gpu {
 	mali-supply = <&buck3_reg>;
+	assigned-clocks = <&cmu CLK_SCLK_G3D>;
+	assigned-clock-rates = <134000000>;
 	status = "okay";
 };
 
