@@ -391,6 +391,7 @@ struct mms_ts_info {
 	u8 *config_fw;
 
 	bool resume_done;
+	bool wake_irq_enabled;
 	bool suspended_for_wakeup;
 
 #if !TSP_ENABLE_SW_RESET
@@ -3042,6 +3043,13 @@ static int mms_ts_suspend(struct device *dev)
 
 	/* Keep scanning and wake the system on touch */
 	if (device_may_wakeup(dev)) {
+		/*
+		 * FIXME: The I2C core already arms the IRQ for wakeup-source,
+		 * but only at noirq time, after Exynos pinctrl has written the
+		 * wakeup mask in late suspend. Drop this once pinctrl writes
+		 * it later.
+		 */
+		info->wake_irq_enabled = !enable_irq_wake(client->irq);
 		info->suspended_for_wakeup = true;
 		return 0;
 	}
@@ -3067,6 +3075,12 @@ static int mms_ts_resume(struct device *dev)
 
 	dev_dbg(&info->client->dev, "%s %s\n", __func__,
 		info->enabled ? "ON" : "OFF");
+
+	/* FIXME: Drop together with the enable_irq_wake() in suspend */
+	if (info->wake_irq_enabled) {
+		disable_irq_wake(client->irq);
+		info->wake_irq_enabled = false;
+	}
 
 	if (info->suspended_for_wakeup) {
 		info->suspended_for_wakeup = false;
