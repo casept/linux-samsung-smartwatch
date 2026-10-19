@@ -95,6 +95,7 @@ static struct ssp_msg *ssp_create_msg(u8 cmd, u16 len, u16 opt, u32 data)
 
 	msg->length = len;
 	msg->options = opt;
+	INIT_LIST_HEAD(&msg->list);
 
 	memcpy(msg->buffer, &h, SSP_HEADER_SIZE);
 
@@ -212,7 +213,7 @@ static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 	if (status < 0) {
 		if (!use_no_irq) {
 			mutex_lock(&data->pending_lock);
-			list_del(&msg->list);
+			list_del_init(&msg->list);
 			mutex_unlock(&data->pending_lock);
 		}
 		goto _error_locked;
@@ -224,8 +225,17 @@ static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 		if (wait_for_completion_timeout(done,
 						msecs_to_jiffies(timeout)) ==
 		    0) {
+			/*
+			 * The interrupt thread may have taken the message off
+			 * the list and be answering it right now, it holds
+			 * pending_lock until done.
+			 */
 			mutex_lock(&data->pending_lock);
-			list_del(&msg->list);
+			if (completion_done(done)) {
+				mutex_unlock(&data->pending_lock);
+				return 0;
+			}
+			list_del_init(&msg->list);
 			mutex_unlock(&data->pending_lock);
 
 			data->timeout_cnt++;
@@ -364,7 +374,7 @@ int ssp_irq_msg(struct ssp_data *data)
 		mutex_lock(&data->pending_lock);
 		list_for_each_entry_safe(iter, n, &data->pending_list, list) {
 			if (iter->options == msg_options) {
-				list_del(&iter->list);
+				list_del_init(&iter->list);
 				msg = iter;
 				break;
 			}
@@ -451,7 +461,7 @@ void ssp_clean_pending_list(struct ssp_data *data)
 
 	mutex_lock(&data->pending_lock);
 	list_for_each_entry_safe(msg, n, &data->pending_list, list) {
-		list_del(&msg->list);
+		list_del_init(&msg->list);
 
 		if (msg->done)
 			if (!completion_done(msg->done))
