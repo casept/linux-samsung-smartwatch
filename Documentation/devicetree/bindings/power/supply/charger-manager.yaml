@@ -76,6 +76,20 @@ properties:
     description: capcity to consider as full battery in uAh
     $ref: /schemas/types.yaml#/definitions/uint32
 
+  cm-fullbatt-charger-eoc:
+    description: |
+      Only consider the battery full once all chargers report end of charge.
+      The cm-fullbatt-voltage, cm-fullbatt-soc and cm-fullbatt-capacity
+      thresholds that are given then all have to be met as well, rather than
+      each of them being sufficient on its own. Once full, they decide when
+      charging restarts as usual.
+    type: boolean
+
+  cm-fullbatt-topoff-ms:
+    description: |
+      With cm-fullbatt-charger-eoc, keep charging for this long after the end
+      of charge. The battery is reported full during the top-off already.
+
   cm-thermal-zone:
     description: name of external thermometer's thermal zone
     $ref: /schemas/types.yaml#/definitions/string

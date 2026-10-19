@@ -137,6 +137,13 @@ struct charger_regulator {
  * @fullbatt_full_capacity: full capacity measure
  *	If full capacity of battery >= fullbatt_full_capacity,
  *	it is assumed to be full.
+ * @fullbatt_charger_eoc:
+ *	If true, the battery is only full once the chargers report end of
+ *	charge. The thresholds above then all have to be met as well instead
+ *	of each being sufficient on its own.
+ * @fullbatt_topoff_ms:
+ *	With fullbatt_charger_eoc, keep charging for this long after the end
+ *	of charge. The battery is reported full during the top-off already.
  * @polling_interval_ms: interval in millisecond at which
  *	charger manager will monitor battery health
  * @battery_present:
@@ -170,6 +177,8 @@ struct charger_desc {
 	unsigned int fullbatt_uV;
 	unsigned int fullbatt_soc;
 	unsigned int fullbatt_full_capacity;
+	bool fullbatt_charger_eoc;
+	unsigned int fullbatt_topoff_ms;
 
 	enum data_source battery_present;
 
@@ -214,6 +223,10 @@ struct charger_desc {
  *	saved status of battery before entering suspend-to-RAM
  * @charging_start_time: saved start time of enabling charging
  * @charging_end_time: saved end time of disabling charging
+ * @eoc_time: time the chargers first reported end of charge, 0 if they
+ *	have not since charging was last enabled
+ * @recharging: charging a battery that was full again, which is still
+ *	reported as full
  * @battery_status: Current battery status
  */
 struct charger_manager {
@@ -234,6 +247,8 @@ struct charger_manager {
 
 	u64 charging_start_time;
 	u64 charging_end_time;
+	u64 eoc_time;
+	bool recharging;
 
 	int battery_status;
 };

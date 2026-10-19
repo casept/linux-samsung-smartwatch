@@ -278,6 +278,82 @@ static bool is_charging(struct charger_manager *cm)
  * is_full_charged - Returns true if the battery is fully charged.
  * @cm: the Charger Manager representing the battery.
  */
+static bool is_charger_eoc(struct charger_manager *cm)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int i, ret;
+
+	for (i = 0; cm->desc->psy_charger_stat[i]; i++) {
+		psy = power_supply_get_by_name(cm->desc->psy_charger_stat[i]);
+		if (!psy)
+			return false;
+
+		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_STATUS,
+						&val);
+		power_supply_put(psy);
+		if (ret || val.intval != POWER_SUPPLY_STATUS_FULL)
+			return false;
+	}
+
+	return i > 0;
+}
+
+/* Thresholds the battery cannot be measured against are ignored, as below. */
+static bool is_full_threshold_met(struct charger_manager *cm,
+				  struct power_supply *fuel_gauge)
+{
+	struct charger_desc *desc = cm->desc;
+	union power_supply_propval val;
+	int uV;
+
+	if (desc->fullbatt_uV > 0 && !get_batt_uV(cm, &uV) &&
+	    uV < desc->fullbatt_uV)
+		return false;
+
+	if (desc->fullbatt_full_capacity > 0 &&
+	    !power_supply_get_property(fuel_gauge,
+				       POWER_SUPPLY_PROP_CHARGE_FULL, &val) &&
+	    val.intval <= desc->fullbatt_full_capacity)
+		return false;
+
+	if (desc->fullbatt_soc > 0 &&
+	    !power_supply_get_property(fuel_gauge,
+				       POWER_SUPPLY_PROP_CAPACITY, &val) &&
+	    val.intval < desc->fullbatt_soc)
+		return false;
+
+	return true;
+}
+
+/*
+ * The chargers' end of charge only means full while they are charging, so
+ * once charging has stopped the regular thresholds decide when to recharge.
+ */
+static bool is_charge_ended(struct charger_manager *cm,
+			    struct power_supply *fuel_gauge)
+{
+	if (!cm->charger_enabled)
+		return false;
+
+	if (!is_charger_eoc(cm) || !is_full_threshold_met(cm, fuel_gauge))
+		return false;
+
+	cm->eoc_time = ktime_to_ms(ktime_get());
+	dev_info(cm->dev, "End of charge, topping off for %ums\n",
+		 cm->desc->fullbatt_topoff_ms);
+
+	return true;
+}
+
+/* The battery already counts as full while the top-off charge runs. */
+static bool is_topping_off(struct charger_manager *cm)
+{
+	return cm->eoc_time &&
+	       ktime_to_ms(ktime_get()) - cm->eoc_time <
+	       cm->desc->fullbatt_topoff_ms;
+}
+
 static bool is_full_charged(struct charger_manager *cm)
 {
 	struct charger_desc *desc = cm->desc;
@@ -294,6 +370,12 @@ static bool is_full_charged(struct charger_manager *cm)
 	fuel_gauge = power_supply_get_by_name(cm->desc->psy_fuel_gauge);
 	if (!fuel_gauge)
 		return false;
+
+	if (desc->fullbatt_charger_eoc &&
+	    cm->battery_status != POWER_SUPPLY_STATUS_FULL) {
+		is_full = is_charge_ended(cm, fuel_gauge);
+		goto out;
+	}
 
 	/* Full, if it's over the fullbatt voltage */
 	if (desc->fullbatt_uV > 0) {
@@ -380,6 +462,8 @@ static int try_charger_enable(struct charger_manager *cm, bool enable)
 	/* Ignore if it's redundant command */
 	if (enable == cm->charger_enabled)
 		return 0;
+
+	cm->eoc_time = 0;
 
 	if (enable) {
 		if (cm->emergency_stop)
@@ -611,7 +695,17 @@ static bool _cm_monitor(struct charger_manager *cm)
 
 	target = cm_get_target_status(cm);
 
-	try_charger_enable(cm, (target == POWER_SUPPLY_STATUS_CHARGING));
+	try_charger_enable(cm, target == POWER_SUPPLY_STATUS_CHARGING ||
+			   (target == POWER_SUPPLY_STATUS_FULL &&
+			    is_topping_off(cm)));
+
+	/* Topping a full battery back up doesn't make it any less full. */
+	if (cm->desc->fullbatt_charger_eoc &&
+	    cm->battery_status == POWER_SUPPLY_STATUS_FULL &&
+	    target == POWER_SUPPLY_STATUS_CHARGING)
+		cm->recharging = true;
+	else if (target != POWER_SUPPLY_STATUS_CHARGING)
+		cm->recharging = false;
 
 	if (cm->battery_status != target) {
 		cm->battery_status = target;
@@ -723,7 +817,8 @@ static int charger_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = cm->battery_status;
+		val->intval = cm->recharging ? POWER_SUPPLY_STATUS_FULL :
+					       cm->battery_status;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		if (cm->emergency_stop == CM_BATT_OVERHEAT)
@@ -1321,6 +1416,10 @@ static struct charger_desc *of_cm_parse_desc(struct device *dev)
 	of_property_read_u32(np, "cm-fullbatt-soc", &desc->fullbatt_soc);
 	of_property_read_u32(np, "cm-fullbatt-capacity",
 					&desc->fullbatt_full_capacity);
+	desc->fullbatt_charger_eoc =
+		of_property_read_bool(np, "cm-fullbatt-charger-eoc");
+	of_property_read_u32(np, "cm-fullbatt-topoff-ms",
+					&desc->fullbatt_topoff_ms);
 
 	of_property_read_u32(np, "cm-battery-stat", &battery_stat);
 	desc->battery_present = battery_stat;
