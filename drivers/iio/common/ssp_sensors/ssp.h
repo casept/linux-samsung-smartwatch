@@ -146,6 +146,8 @@ struct ssp_sensorhub_info {
  * @timestamp:		previous time in ns calculated for time syncing
  * @com_fail_cnt:	communication fail count
  * @reset_cnt:		reset count
+ * @refresh_failures:	failed MCU initializations in a row
+ * @refresh_requested:	a reset of the MCU wants it initialized again
  * @timeout_cnt:	timeout count
  * @available_sensors:	available sensors seen by sensorhub (bit array)
  * @cur_firm_rev:	cached current firmware revision
@@ -197,6 +199,8 @@ struct ssp_data {
 
 	unsigned int com_fail_cnt;
 	unsigned int reset_cnt;
+	unsigned int refresh_failures;
+	atomic_t refresh_requested;
 	unsigned int timeout_cnt;
 
 	unsigned int available_sensors;

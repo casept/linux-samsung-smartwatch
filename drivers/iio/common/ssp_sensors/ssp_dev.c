@@ -18,6 +18,7 @@
 #define SSP_WDT_TIME			10000
 #define SSP_LIMIT_RESET_CNT		20
 #define SSP_LIMIT_TIMEOUT_CNT		3
+#define SSP_REFRESH_RETRIES		5
 
 #define SSP_HRM_SENSORS	(BIT(SSP_BIO_HRM_RAW) | BIT(SSP_BIO_HRM_RAW_FAC) | \
 			 BIT(SSP_BIO_HRM_LIB))
@@ -92,9 +93,9 @@ static int ssp_add_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 }
 
 /* Re-adds the sensors that were running before the MCU got reset */
-static void ssp_sync_enabled_sensors(struct ssp_data *data)
+static int ssp_sync_enabled_sensors(struct ssp_data *data)
 {
-	int i, ret;
+	int i, ret, err = 0;
 
 	lockdep_assert_held(&data->enable_lock);
 
@@ -103,15 +104,22 @@ static void ssp_sync_enabled_sensors(struct ssp_data *data)
 			continue;
 
 		ret = ssp_add_sensor(data, i, data->delay_buf[i]);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(&data->spi->dev, "Sync sensor nr: %d fail\n", i);
+			/* The first error tells the most */
+			err = err ?: ret;
+		}
 	}
 
 	ret = ssp_command(data, SSP_MSG2SSP_AP_MCU_SET_DUMPMODE,
 			  data->mcu_dump_mode);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(&data->spi->dev,
 			"SSP_MSG2SSP_AP_MCU_SET_DUMPMODE failed\n");
+		err = err ?: ret;
+	}
+
+	return err;
 }
 
 /* Disabling a wakeup source that failed to enable warns */
@@ -578,26 +586,53 @@ static void ssp_refresh_task(struct work_struct *work)
 {
 	struct ssp_data *data = container_of((struct delayed_work *)work,
 					     struct ssp_data, work_refresh);
+	int ret;
 
 	dev_info(&data->spi->dev, "refreshing\n");
 
 	guard(mutex)(&data->enable_lock);
 
-	data->reset_cnt++;
-
-	if (ssp_initialize_mcu(data) >= 0) {
+	/* Each reset of the MCU gets the full retries */
+	if (atomic_xchg(&data->refresh_requested, 0)) {
+		data->reset_cnt++;
+		data->refresh_failures = 0;
 		ssp_forget_unremoved(data);
-		ssp_sync_enabled_sensors(data);
-		ssp_update_running(data);
-		if (data->last_ap_state != 0)
-			ssp_command(data, data->last_ap_state, 0);
-
-		if (data->last_resume_state != 0)
-			ssp_command(data, data->last_resume_state, 0);
-
-		data->timeout_cnt = 0;
-		data->com_fail_cnt = 0;
 	}
+
+	ret = ssp_initialize_mcu(data);
+	if (ret >= 0)
+		ret = ssp_sync_enabled_sensors(data);
+	if (ret < 0) {
+		/* For example when the MCU got reset again meanwhile */
+		if (++data->refresh_failures > SSP_REFRESH_RETRIES) {
+			dev_err(&data->spi->dev,
+				"Giving up initializing the MCU: %d\n", ret);
+			/*
+			 * Drop the supply and watchdog for sensors whose removal
+			 * the reset confirmed, enabled ones keep them
+			 */
+			ssp_update_running(data);
+			return;
+		}
+
+		dev_warn(&data->spi->dev,
+			 "Initializing the MCU failed: %d, retrying\n", ret);
+		/* Not delaying a refresh requested meanwhile */
+		queue_delayed_work(system_freezable_power_efficient_wq,
+				   &data->work_refresh,
+				   msecs_to_jiffies(SSP_SW_RESET_TIME));
+		return;
+	}
+
+	ssp_update_running(data);
+	if (data->last_ap_state != 0)
+		ssp_command(data, data->last_ap_state, 0);
+
+	if (data->last_resume_state != 0)
+		ssp_command(data, data->last_resume_state, 0);
+
+	data->timeout_cnt = 0;
+	data->com_fail_cnt = 0;
 }
 
 int ssp_queue_ssp_refresh_task(struct ssp_data *data, unsigned int delay)
@@ -605,10 +640,12 @@ int ssp_queue_ssp_refresh_task(struct ssp_data *data, unsigned int delay)
 	/*
 	 * Called from the interrupt thread, which a running refresh task
 	 * needs to complete its transfers, so don't wait for it. If it is
-	 * running, it runs once more afterwards.
+	 * running, it runs once more afterwards. Not while suspended.
 	 */
-	return mod_delayed_work(system_power_efficient_wq, &data->work_refresh,
-				msecs_to_jiffies(delay));
+	atomic_set(&data->refresh_requested, 1);
+
+	return mod_delayed_work(system_freezable_power_efficient_wq,
+				&data->work_refresh, msecs_to_jiffies(delay));
 }
 
 static const struct of_device_id ssp_of_match[] = {
