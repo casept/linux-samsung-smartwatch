@@ -790,6 +790,13 @@ static const struct of_device_id ssp_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, ssp_of_match);
 
+static const struct spi_device_id ssp_id[] = {
+	{ "sensorhub-rinato", (kernel_ulong_t)&ssp_rinato_info },
+	{ "sensorhub-thermostat", (kernel_ulong_t)&ssp_thermostat_info },
+	{ }
+};
+MODULE_DEVICE_TABLE(spi, ssp_id);
+
 static struct ssp_data *ssp_parse_dt(struct device *dev)
 {
 	struct ssp_data *data;
@@ -811,7 +818,7 @@ static struct ssp_data *ssp_parse_dt(struct device *dev)
 	if (IS_ERR(data->mcu_reset_gpiod))
 		return NULL;
 
-	data->sensorhub_info = device_get_match_data(dev);
+	data->sensorhub_info = spi_get_device_match_data(to_spi_device(dev));
 
 	dev_set_drvdata(dev, data);
 
@@ -1366,6 +1373,7 @@ static struct spi_driver ssp_driver = {
 		.of_match_table = ssp_of_match,
 		.name = "sensorhub"
 	},
+	.id_table = ssp_id,
 };
 
 module_spi_driver(ssp_driver);
