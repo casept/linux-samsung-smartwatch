@@ -69,6 +69,9 @@ static const struct mfd_cell sensorhub_sensor_devs[] = {
 	{
 		.name = "ssp-hrm-raw",
 	},
+	{
+		.name = "ssp-pedometer",
+	},
 };
 
 static void ssp_toggle_mcu_reset_gpio(struct ssp_data *data)

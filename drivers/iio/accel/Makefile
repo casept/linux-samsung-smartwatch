@@ -79,6 +79,7 @@ obj-$(CONFIG_STK8BA50)		+= stk8ba50.o
 obj-$(CONFIG_IIO_CROS_EC_ACCEL_LEGACY) += cros_ec_accel_legacy.o
 
 obj-$(CONFIG_IIO_SSP_SENSORS_COMMONS) += ssp_accel_sensor.o
+obj-$(CONFIG_IIO_SSP_SENSORS_COMMONS) += ssp_pedometer.o
 
 obj-$(CONFIG_IIO_ST_ACCEL_3AXIS) += st_accel.o
 st_accel-y := st_accel_core.o
