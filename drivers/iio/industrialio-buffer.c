@@ -1600,6 +1600,7 @@ static int iio_buffer_chrdev_release(struct inode *inode, struct file *filep)
 {
 	struct iio_dev_buffer_pair *ib = filep->private_data;
 	struct iio_dev *indio_dev = ib->indio_dev;
+	struct module *driver_module = to_iio_dev_opaque(indio_dev)->driver_module;
 	struct iio_buffer *buffer = ib->buffer;
 	struct iio_dmabuf_priv *priv, *tmp;
 
@@ -1620,6 +1621,8 @@ static int iio_buffer_chrdev_release(struct inode *inode, struct file *filep)
 	kfree(ib);
 	clear_bit(IIO_BUSY_BIT_POS, &buffer->flags);
 	iio_device_put(indio_dev);
+	/* The last put above may still release the buffer */
+	module_put(driver_module);
 
 	return 0;
 }
@@ -2035,11 +2038,20 @@ static long iio_device_buffer_getfd(struct iio_dev *indio_dev, unsigned long arg
 
 	iio_device_get(indio_dev);
 
+	/*
+	 * Like the chrdev of the device does, keep the driver and with it the
+	 * buffer implementation loaded while the buffer can be released.
+	 */
+	if (!try_module_get(iio_dev_opaque->driver_module)) {
+		ret = -ENODEV;
+		goto error_iio_dev_put;
+	}
+
 	buffer = iio_dev_opaque->attached_buffers[idx];
 
 	if (test_and_set_bit(IIO_BUSY_BIT_POS, &buffer->flags)) {
 		ret = -EBUSY;
-		goto error_iio_dev_put;
+		goto error_module_put;
 	}
 
 	ib = kzalloc(sizeof(*ib), GFP_KERNEL);
@@ -2078,6 +2090,8 @@ error_free_ib:
 	kfree(ib);
 error_clear_busy_bit:
 	clear_bit(IIO_BUSY_BIT_POS, &buffer->flags);
+error_module_put:
+	module_put(iio_dev_opaque->driver_module);
 error_iio_dev_put:
 	iio_device_put(indio_dev);
 	return ret;
