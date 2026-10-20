@@ -2150,6 +2150,7 @@ static struct wireless_dev *brcmf_p2p_create_p2pdev(struct brcmf_p2p_info *p2p,
 	struct brcmf_cfg80211_vif *p2p_vif;
 	struct brcmf_if *p2p_ifp;
 	struct brcmf_if *pri_ifp;
+	bool vif_owned;
 	int err;
 	u32 bsscfgidx;
 
@@ -2183,7 +2184,8 @@ static struct wireless_dev *brcmf_p2p_create_p2pdev(struct brcmf_p2p_info *p2p,
 		bphy_err(drvr, "set p2p_disc error\n");
 		brcmf_fweh_p2pdev_setup(pri_ifp, false);
 		brcmf_cfg80211_arm_vif_event(p2p->cfg, NULL);
-		goto fail;
+		/* Interrupted, the firmware may have created it anyway */
+		goto fail_disc;
 	}
 
 	/* wait for firmware event */
@@ -2194,7 +2196,7 @@ static struct wireless_dev *brcmf_p2p_create_p2pdev(struct brcmf_p2p_info *p2p,
 	if (!err) {
 		bphy_err(drvr, "timeout occurred\n");
 		err = -EIO;
-		goto fail;
+		goto fail_disc;
 	}
 
 	/* discovery interface created */
@@ -2207,7 +2209,8 @@ static struct wireless_dev *brcmf_p2p_create_p2pdev(struct brcmf_p2p_info *p2p,
 	err = brcmf_fil_iovar_int_get(pri_ifp, "p2p_dev", &bsscfgidx);
 	if (err < 0) {
 		bphy_err(drvr, "retrieving discover bsscfg index failed\n");
-		goto fail;
+		p2p->bss_idx[P2PAPI_BSSCFG_DEVICE].vif = NULL;
+		goto fail_disc;
 	}
 
 	WARN_ON(p2p_ifp->bsscfgidx != bsscfgidx);
@@ -2218,6 +2221,19 @@ static struct wireless_dev *brcmf_p2p_create_p2pdev(struct brcmf_p2p_info *p2p,
 
 	return &p2p_vif->wdev;
 
+fail_disc:
+	/*
+	 * The firmware may have created the interface anyway, after the wait
+	 * for it ended. If the vif event bound the vif to it before being
+	 * disarmed, the interface owns the vif from now on and frees it when
+	 * the firmware removes the interface again, which can't happen before
+	 * this returns, as removing takes the locks held here. An interface
+	 * created after disarming is left without a vif.
+	 */
+	vif_owned = p2p_vif->ifp;
+	brcmf_fil_iovar_int_set(pri_ifp, "p2p_disc", 0);
+	if (vif_owned)
+		return ERR_PTR(err);
 fail:
 	brcmf_free_vif(p2p_vif);
 	return ERR_PTR(err);
@@ -2435,16 +2451,23 @@ void brcmf_p2p_ifp_removed(struct brcmf_if *ifp, bool locked)
 
 	brcmf_dbg(INFO, "P2P: device interface removed\n");
 	vif = ifp->vif;
+	/* Created by the firmware after creating the P2P device failed */
+	if (!vif)
+		return;
+
 	cfg = wdev_to_cfg(&vif->wdev);
-	cfg->p2p.bss_idx[P2PAPI_BSSCFG_DEVICE].vif = NULL;
 	if (!locked) {
 		rtnl_lock();
 		wiphy_lock(cfg->wiphy);
+	}
+	/* Not for a vif left to the interface when creating it failed */
+	if (cfg->p2p.bss_idx[P2PAPI_BSSCFG_DEVICE].vif == vif)
+		cfg->p2p.bss_idx[P2PAPI_BSSCFG_DEVICE].vif = NULL;
+	if (vif->wdev.registered)
 		cfg80211_unregister_wdev(&vif->wdev);
+	if (!locked) {
 		wiphy_unlock(cfg->wiphy);
 		rtnl_unlock();
-	} else {
-		cfg80211_unregister_wdev(&vif->wdev);
 	}
 	brcmf_free_vif(vif);
 }

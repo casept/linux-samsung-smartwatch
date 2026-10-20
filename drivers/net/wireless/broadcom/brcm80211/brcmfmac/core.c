@@ -865,7 +865,16 @@ struct brcmf_if *brcmf_add_if(struct brcmf_pub *drvr, s32 bsscfgidx, s32 ifidx,
 	 * in case we missed the BRCMF_E_IF_DEL event.
 	 */
 	if (ifp) {
-		if (ifidx) {
+		if (!ifp->ndev) {
+			/*
+			 * A P2P device, whose removal was missed or is still
+			 * pending after creating it failed
+			 */
+			brcmf_dbg(INFO, "replacing P2P device interface\n");
+			brcmf_p2p_ifp_removed(ifp, false);
+			kfree(ifp);
+			drvr->iflist[bsscfgidx] = NULL;
+		} else if (ifidx) {
 			bphy_err(drvr, "ERROR: netdev:%s already exists\n",
 				 ifp->ndev->name);
 			netif_stop_queue(ifp->ndev);
