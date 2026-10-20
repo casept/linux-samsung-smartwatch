@@ -86,7 +86,7 @@ static const struct ssp_cell sensorhub_sensor_devs[] = {
 	SSP_CELL("ssp-accelerometer", BIT(SSP_ACCELEROMETER_SENSOR)),
 	SSP_CELL("ssp-gyroscope", BIT(SSP_GYROSCOPE_SENSOR)),
 	SSP_CELL("ssp-hrm", BIT(SSP_BIO_HRM_LIB)),
-	SSP_CELL("ssp-hrm-raw", BIT(SSP_BIO_HRM_RAW_FAC)),
+	SSP_CELL("ssp-hrm-raw-fac", BIT(SSP_BIO_HRM_RAW_FAC)),
 	/* The libraries work on the accelerometer data */
 	SSP_LIBRARY_CELL("ssp-pedometer", SSP_LIBRARY_PEDOMETER,
 			 BIT(SSP_ACCELEROMETER_SENSOR)),

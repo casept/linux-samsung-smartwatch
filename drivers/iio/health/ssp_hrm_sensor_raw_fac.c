@@ -14,11 +14,11 @@
 #include <linux/types.h>
 #include "../common/ssp_sensors/ssp_iio_sensor.h"
 
-#define SSP_HRM_RAW_NAME "ssp-hrm-raw"
-static const char ssp_hrm_raw_device_name[] = SSP_HRM_RAW_NAME;
+#define SSP_HRM_RAW_FAC_NAME "ssp-hrm-raw-fac"
+static const char ssp_hrm_raw_fac_device_name[] = SSP_HRM_RAW_FAC_NAME;
 
 /* TODO: Remove, only here for reference */
-struct ssp_hrm_raw {
+struct ssp_hrm_raw_fac {
 	u32 ch_a;
 	u32 ch_b;
 	u32 frequency;
@@ -96,7 +96,7 @@ static const unsigned long ssp_hrm_scan_mask[] = {
 	0,
 };
 
-static const struct iio_chan_spec ssp_hrm_channels_raw[] = {
+static const struct iio_chan_spec ssp_hrm_channels_raw_fac[] = {
 	/* COUNT is not correct, but for some of these a better type doesn't exist */
 	/* Taken from downstream code's struct */
 	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_CH_A, 'u', 32),
@@ -111,26 +111,26 @@ static const struct iio_chan_spec ssp_hrm_channels_raw[] = {
 	SSP_CHAN_TIMESTAMP(SSP_CHANNEL_SCAN_INDEX_TIME_RAW),
 };
 
-static int ssp_process_hrm_raw_data(struct iio_dev *indio_dev, void *buf,
-				    int64_t timestamp)
+static int ssp_process_hrm_raw_fac_data(struct iio_dev *indio_dev, void *buf,
+					int64_t timestamp)
 {
 	return ssp_common_process_data(indio_dev, buf, SSP_BIO_HRM_RAW_FAC_SIZE,
 				       timestamp);
 }
 
-static const struct iio_buffer_setup_ops ssp_hrm_raw_buffer_ops = {
+static const struct iio_buffer_setup_ops ssp_hrm_raw_fac_buffer_ops = {
 	.postenable = &ssp_common_buffer_postenable,
 	.predisable = &ssp_common_buffer_predisable,
 	.postdisable = &ssp_common_buffer_postdisable,
 };
 
-static int ssp_hrm_raw_probe(struct platform_device *pdev)
+static int ssp_hrm_raw_fac_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct iio_dev *indio_dev;
 	struct ssp_sensor_data *spd;
 
-	dev_info(&pdev->dev, "Probing SSP HRM raw driver\n");
+	dev_info(&pdev->dev, "Probing SSP HRM factory raw driver\n");
 
 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*spd));
 	if (!indio_dev)
@@ -138,17 +138,17 @@ static int ssp_hrm_raw_probe(struct platform_device *pdev)
 
 	spd = iio_priv(indio_dev);
 
-	spd->process_data = ssp_process_hrm_raw_data;
+	spd->process_data = ssp_process_hrm_raw_fac_data;
 	spd->type = SSP_BIO_HRM_RAW_FAC;
 
-	indio_dev->name = ssp_hrm_raw_device_name;
+	indio_dev->name = ssp_hrm_raw_fac_device_name;
 	indio_dev->info = &ssp_hrm_iio_info;
-	indio_dev->channels = ssp_hrm_channels_raw;
-	indio_dev->num_channels = ARRAY_SIZE(ssp_hrm_channels_raw);
+	indio_dev->channels = ssp_hrm_channels_raw_fac;
+	indio_dev->num_channels = ARRAY_SIZE(ssp_hrm_channels_raw_fac);
 	indio_dev->available_scan_masks = ssp_hrm_scan_mask;
 
 	ret = devm_iio_kfifo_buffer_setup(&pdev->dev, indio_dev,
-					  &ssp_hrm_raw_buffer_ops);
+					  &ssp_hrm_raw_fac_buffer_ops);
 	if (ret)
 		return ret;
 
@@ -169,23 +169,23 @@ static int ssp_hrm_raw_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct platform_device_id ssp_hrm_raw_id_table[] = {
-	{ SSP_HRM_RAW_NAME },
+static const struct platform_device_id ssp_hrm_raw_fac_id_table[] = {
+	{ SSP_HRM_RAW_FAC_NAME },
 	{ }
 };
-MODULE_DEVICE_TABLE(platform, ssp_hrm_raw_id_table);
+MODULE_DEVICE_TABLE(platform, ssp_hrm_raw_fac_id_table);
 
-static struct platform_driver ssp_hrm_raw_driver = {
+static struct platform_driver ssp_hrm_raw_fac_driver = {
 	.driver = {
-		.name = SSP_HRM_RAW_NAME,
+		.name = SSP_HRM_RAW_FAC_NAME,
 	},
-	.probe = ssp_hrm_raw_probe,
-	.id_table = ssp_hrm_raw_id_table,
+	.probe = ssp_hrm_raw_fac_probe,
+	.id_table = ssp_hrm_raw_fac_id_table,
 };
 
-module_platform_driver(ssp_hrm_raw_driver);
+module_platform_driver(ssp_hrm_raw_fac_driver);
 
 MODULE_AUTHOR("Davids Paskevics <davids.paskevics@gmail.com>");
-MODULE_DESCRIPTION("Samsung sensorhub heart rate monitor driver (raw values)");
+MODULE_DESCRIPTION("Samsung sensorhub heart rate monitor driver (factory test values)");
 MODULE_LICENSE("GPL");
 MODULE_IMPORT_NS("IIO_SSP_SENSORS");
