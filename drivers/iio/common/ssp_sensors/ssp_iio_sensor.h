@@ -18,6 +18,22 @@
 		},\
 }
 
+#define SSP_COUNT_CHANNEL(_index, _sign, _bits) \
+{ \
+		.type = IIO_COUNT,\
+		.indexed = 1,\
+		.channel = _index,\
+		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SAMP_FREQ),\
+		.scan_index = _index,\
+		.scan_type = {\
+			.sign = _sign,\
+			.realbits = _bits,\
+			.storagebits = _bits,\
+			.shift = 0,\
+			.endianness = IIO_LE,\
+		},\
+}
+
 /* It is defined here as it is a mixed timestamp */
 #define SSP_CHAN_TIMESTAMP(_si) {					\
 	.type = IIO_TIMESTAMP,						\

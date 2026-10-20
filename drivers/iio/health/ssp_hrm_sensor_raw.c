@@ -95,25 +95,25 @@ static const unsigned long ssp_hrm_scan_mask[] = {
 	0,
 };
 
-static struct iio_chan_spec ssp_hrm_channels_raw[] = {
+static const struct iio_chan_spec ssp_hrm_channels_raw[] = {
 	/* COUNT is not correct, but for some of these a better type doesn't exist */
 	/* Taken from downstream code's struct */
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_CH_A),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_CH_B),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_FREQUENCY),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_NOISE),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_DC),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_AC),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_PERFUSION_RATE),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_SNR_AC),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_SNR_DC),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_CH_A, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_CH_B, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_FREQUENCY, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_NOISE, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_DC, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_AC, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_PERFUSION_RATE, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_SNR_AC, 'u', 32),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_SNR_DC, 'u', 32),
 	SSP_CHAN_TIMESTAMP(SSP_CHANNEL_SCAN_INDEX_TIME_RAW),
 };
 
 static int ssp_process_hrm_raw_data(struct iio_dev *indio_dev, void *buf,
 				    int64_t timestamp)
 {
-	return ssp_common_process_data(indio_dev, buf, SSP_BIO_HRM_RAW_SIZE,
+	return ssp_common_process_data(indio_dev, buf, SSP_BIO_HRM_RAW_FAC_SIZE,
 				       timestamp);
 }
 
@@ -128,15 +128,6 @@ static int ssp_hrm_raw_probe(struct platform_device *pdev)
 	int ret;
 	struct iio_dev *indio_dev;
 	struct ssp_sensor_data *spd;
-
-	/*
-	 * Post-process channels defined by macro to make them indexed and avoid naming conflict
-	 * TODO: This should be done with a custom macro in the common header instead
-	*/
-	for (int i = 0; i < ARRAY_SIZE(ssp_hrm_channels_raw); i++) {
-		ssp_hrm_channels_raw[i].indexed = 1;
-		ssp_hrm_channels_raw[i].channel = i;
-	}
 
 	dev_info(&pdev->dev, "Probing SSP HRM raw driver\n");
 

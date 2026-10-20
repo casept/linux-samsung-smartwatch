@@ -83,10 +83,10 @@ static const unsigned long ssp_hrm_scan_mask[] = {
 	0,
 };
 
-static struct iio_chan_spec ssp_hrm_channels[] = {
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_HR),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_RRI),
-	SSP_CHANNEL_AG(IIO_COUNT, IIO_NO_MOD, SSP_CHANNEL_HRM_SNR),
+static const struct iio_chan_spec ssp_hrm_channels[] = {
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_HR, 's', 16),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_RRI, 's', 16),
+	SSP_COUNT_CHANNEL(SSP_CHANNEL_HRM_SNR, 's', 32),
 	SSP_CHAN_TIMESTAMP(SSP_CHANNEL_SCAN_INDEX_TIME_LIB),
 };
 
@@ -108,15 +108,6 @@ static int ssp_hrm_probe(struct platform_device *pdev)
 	int ret;
 	struct iio_dev *indio_dev;
 	struct ssp_sensor_data *spd;
-
-	/*
-	 * Post-process channels defined by macro to make them indexed and avoid naming conflict
-	 * TODO: This should be done with a custom macro in the common header instead
-	*/
-	for (int i = 0; i < ARRAY_SIZE(ssp_hrm_channels); i++) {
-		ssp_hrm_channels[i].indexed = 1;
-		ssp_hrm_channels[i].channel = i;
-	}
 
 	dev_info(&pdev->dev, "Probing SSP HRM driver\n");
 

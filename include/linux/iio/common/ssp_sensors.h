@@ -14,8 +14,8 @@
 #define SSP_BIO_HRM_RAW_FAC_SIZE		36
 #define SSP_BIO_HRM_LIB_SIZE			8
 
-/* Largest scan without the timestamp: the nine 16 bit raw HRM channels */
-#define SSP_MAX_SCAN_SIZE			18
+/* Largest scan without the timestamp: the nine 32 bit raw HRM channels */
+#define SSP_MAX_SCAN_SIZE			36
 
 /**
  * enum ssp_sensor_type - SSP sensor type
