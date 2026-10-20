@@ -741,6 +741,8 @@ static int ssp_probe(struct spi_device *spi)
 	data->spi = spi;
 	spi_set_drvdata(spi, data);
 
+	ssp_debugfs_init(data);
+
 	mutex_init(&data->comm_lock);
 	mutex_init(&data->enable_lock);
 
@@ -802,6 +804,7 @@ err_read_reg:
 	cancel_delayed_work_sync(&data->work_refresh);
 	cancel_delayed_work_sync(&data->work_stale);
 err_setup_irq:
+	ssp_debugfs_remove(data);
 	mutex_destroy(&data->pending_lock);
 	mutex_destroy(&data->enable_lock);
 	mutex_destroy(&data->comm_lock);
@@ -829,6 +832,7 @@ static void ssp_remove(struct spi_device *spi)
 	free_irq(data->spi->irq, data);
 	cancel_delayed_work_sync(&data->work_refresh);
 	cancel_delayed_work_sync(&data->work_stale);
+	ssp_debugfs_remove(data);
 
 	timer_delete_sync(&data->wdt_timer);
 	cancel_work_sync(&data->work_wdt);

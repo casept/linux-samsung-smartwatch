@@ -132,19 +132,18 @@ static void ssp_clean_msg(struct ssp_msg *m)
 	kfree(m);
 }
 
-static int ssp_print_mcu_debug(char *data_frame, int *data_index,
-			       int received_len)
+static int ssp_print_mcu_debug(struct ssp_data *data, char *data_frame,
+			       int *data_index, int received_len)
 {
 	int length = data_frame[(*data_index)++];
 
 	if (length > received_len - *data_index || length <= 0) {
-		ssp_dbg("[SSP]: MSG From MCU-invalid debug length(%d/%d)\n",
+		dev_dbg(SSP_DEV, "invalid MCU debug message length %d/%d\n",
 			length, received_len);
 		return -EPROTO;
 	}
 
-	ssp_dbg("[SSP]: MSG From MCU - %.*s\n", length,
-		&data_frame[*data_index]);
+	ssp_log_mcu_message(data, &data_frame[*data_index], length);
 
 	*data_index += length;
 
@@ -325,7 +324,7 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 			break;
 		case SSP_MSG2AP_INST_DEBUG_DATA:
 			if (idx >= len ||
-			    ssp_print_mcu_debug(dataframe, &idx, len))
+			    ssp_print_mcu_debug(data, dataframe, &idx, len))
 				goto err_frame;
 			break;
 		case SSP_MSG2AP_INST_LIBRARY_DATA:
@@ -508,12 +507,12 @@ int ssp_command(struct ssp_data *data, char command, int arg)
 	if (!msg)
 		return -ENOMEM;
 
-	ssp_dbg("%s - command: 0x%x, arg: %d\n", __func__, command, arg);
+	dev_dbg(SSP_DEV, "command 0x%x, arg %d\n", command, arg);
 
 	ret = ssp_spi_sync_command(data, msg);
 	ssp_clean_msg(msg);
 
-	ssp_dbg("%s - return: 0x%x\n", __func__, ret);
+	dev_dbg(SSP_DEV, "command 0x%x returned %d\n", command, ret);
 
 	return ret;
 }
@@ -542,12 +541,12 @@ int ssp_send_instruction(struct ssp_data *data, u8 inst, u8 sensor_type,
 	ssp_fill_buffer(msg, 0, &sensor_type, 1);
 	ssp_fill_buffer(msg, 1, send_buf, length);
 
-	ssp_dbg("%s - Inst = 0x%x, Sensor Type = 0x%x, data = %u\n", __func__,
-		inst, sensor_type, send_buf[1]);
+	dev_dbg(SSP_DEV, "instruction 0x%x, sensor type %u, length %u\n", inst,
+		sensor_type, length);
 
 	ret = ssp_spi_sync(data, msg, 1000);
 	ssp_clean_msg(msg);
-	ssp_dbg("%s - return = %d\n", __func__, ret);
+	dev_dbg(SSP_DEV, "instruction 0x%x returned %d\n", inst, ret);
 
 	return ret;
 }

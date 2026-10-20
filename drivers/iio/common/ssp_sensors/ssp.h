@@ -6,21 +6,16 @@
 #ifndef __SSP_SENSORHUB_H__
 #define __SSP_SENSORHUB_H__
 
-#define SSP_DBG
-
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/iio/common/ssp_sensors.h>
 #include <linux/iio/iio.h>
+#include <linux/kfifo.h>
+#include <linux/sizes.h>
 #include <linux/spi/spi.h>
+#include <linux/wait.h>
 
 #define SSP_DEVICE_ID		0x55
-
-#ifdef SSP_DBG
-#define ssp_dbg(format, ...) pr_info("[SSP] "format, ##__VA_ARGS__)
-#else
-#define ssp_dbg(format, ...)
-#endif
 
 #define SSP_SW_RESET_TIME		3000
 /* Sensor polling in ms */
@@ -177,6 +172,11 @@ struct ssp_sensorhub_info {
  * @mcu_ap_gpiod:	mcu to ap gpio line
  * @pending_list:	pending list for messages queued to be sent/read
  * @sensor_devs:	registered IIO devices table
+ * @debugfs:		debugfs directory
+ * @mcu_log:		debug messages of the MCU
+ * @mcu_log_lock:	lock protecting @mcu_log
+ * @mcu_log_wq:		wait queue of @mcu_log readers
+ * @mcu_log_closed:	@mcu_log is going away, readers return
  * @header_buffer:	cache aligned buffer for packet header
  */
 struct ssp_data {
@@ -231,6 +231,12 @@ struct ssp_data {
 
 	struct iio_dev *sensor_devs[SSP_SENSOR_MAX];
 
+	struct dentry *debugfs;
+	DECLARE_KFIFO(mcu_log, char, SZ_16K);
+	struct mutex mcu_log_lock;
+	wait_queue_head_t mcu_log_wq;
+	bool mcu_log_closed;
+
 	__le16 header_buffer[SSP_HEADER_BUFFER_SIZE / sizeof(__le16)] __aligned(IIO_DMA_MINALIGN);
 };
 
@@ -255,5 +261,12 @@ int ssp_queue_ssp_refresh_task(struct ssp_data *data, unsigned int delay);
 
 void ssp_remove_stale_sensor(struct ssp_data *data,
 			     enum ssp_sensor_type type);
+
+void ssp_log_mcu_message(struct ssp_data *data, const char *msg,
+			 unsigned int len);
+
+void ssp_debugfs_init(struct ssp_data *data);
+
+void ssp_debugfs_remove(struct ssp_data *data);
 
 #endif /* __SSP_SENSORHUB_H__ */
