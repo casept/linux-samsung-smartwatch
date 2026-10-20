@@ -1323,15 +1323,15 @@ static int ssp_suspend(struct device *dev)
 
 	ssp_disable_wdt_timer(data);
 
+	/*
+	 * A hung or unpowered MCU must not keep the system awake. It keeps
+	 * sending data then, which wakes the system up again.
+	 */
 	ret = ssp_command(data, SSP_MSG2SSP_AP_STATUS_SUSPEND, 0);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(&data->spi->dev,
-			"%s SSP_MSG2SSP_AP_STATUS_SUSPEND failed\n", __func__);
-
-		if (ssp_running_sensors(data))
-			ssp_enable_wdt_timer(data);
-		return ret;
-	}
+			"%s SSP_MSG2SSP_AP_STATUS_SUSPEND failed: %d\n",
+			__func__, ret);
 
 	data->time_syncing = false;
 	disable_irq(data->spi->irq);
@@ -1349,16 +1349,18 @@ static int ssp_resume(struct device *dev)
 	if (ssp_running_sensors(data))
 		ssp_enable_wdt_timer(data);
 
-	ret = ssp_command(data, SSP_MSG2SSP_AP_STATUS_RESUME, 0);
-	if (ret < 0) {
-		dev_err(&data->spi->dev,
-			"%s SSP_MSG2SSP_AP_STATUS_RESUME failed\n", __func__);
-		/* The watchdog stays armed to recover a hung MCU */
-		return ret;
-	}
+	/*
+	 * The AP is awake either way, which the refresh after a recovery of
+	 * the MCU tells it. The watchdog stays armed to recover a hung MCU.
+	 */
+	data->last_resume_state = SSP_MSG2SSP_AP_STATUS_RESUME;
 
 	/* timesyncing is set by MCU */
-	data->last_resume_state = SSP_MSG2SSP_AP_STATUS_RESUME;
+	ret = ssp_command(data, SSP_MSG2SSP_AP_STATUS_RESUME, 0);
+	if (ret < 0)
+		dev_err(&data->spi->dev,
+			"%s SSP_MSG2SSP_AP_STATUS_RESUME failed: %d\n",
+			__func__, ret);
 
 	return 0;
 }
