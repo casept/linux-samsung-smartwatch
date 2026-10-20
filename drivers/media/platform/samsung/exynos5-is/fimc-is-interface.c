@@ -431,7 +431,8 @@ static void shot_done_work_fn(struct work_struct *work)
 			 struct fimc_is_interface, shot_done_work);
 	struct fimc_is *is = fimc_interface_to_is(itf);
 
-	fimc_is_pipeline_shot(&is->pipeline[0]);
+	/* Serialized with closing the pipeline, which frees the shot */
+	fimc_is_pipeline_shot_safe(&is->pipeline[0]);
 }
 
 static void itf_handle_general(struct fimc_is_interface *itf,
@@ -655,6 +656,8 @@ static void itf_handle_shot_done(struct fimc_is_interface *itf,
 	/* Clear state & call shot again */
 	clear_bit(PIPELINE_RUN, &pipeline->state);
 	clear_bit(COMP_RUN, &pipeline->subip_state[IS_ISP]);
+	/* Stopping waits for the shot while holding the lock the work takes */
+	wake_up(&pipeline->wait_q);
 	queue_work(system_freezable_wq, &itf->shot_done_work);
 	if (status != ISR_DONE) {
 		fimc_is_pipeline_reset(pipeline);
