@@ -44,6 +44,8 @@ static const struct ssp_sensorhub_info ssp_rinato_info = {
 	.fw_name = "ssp_B2.fw",
 	.fw_crashed_name = "ssp_crashed.fw",
 	.fw_rev = 14031200,
+	.libraries = BIT_ULL(SSP_LIBRARY_PEDOMETER) |
+		     BIT_ULL(SSP_LIBRARY_ACTIVITY),
 	.mag_table = ssp_magnitude_table,
 	.mag_length = ARRAY_SIZE(ssp_magnitude_table),
 };
@@ -56,26 +58,78 @@ static const struct ssp_sensorhub_info ssp_thermostat_info = {
 	.mag_length = ARRAY_SIZE(ssp_magnitude_table),
 };
 
-static const struct mfd_cell sensorhub_sensor_devs[] = {
-	{
-		.name = "ssp-accelerometer",
-	},
-	{
-		.name = "ssp-gyroscope",
-	},
-	{
-		.name = "ssp-hrm",
-	},
-	{
-		.name = "ssp-hrm-raw",
-	},
-	{
-		.name = "ssp-pedometer",
-	},
-	{
-		.name = "ssp-activity",
-	},
+/**
+ * struct ssp_cell - Device of a sensor or library of the MCU
+ * @cell:	device to create
+ * @sensors:	sensors the MCU needs to have for it
+ * @library:	library the firmware needs to have for it, if one
+ */
+struct ssp_cell {
+	struct mfd_cell cell;
+	unsigned int sensors;
+	int library;
 };
+
+#define SSP_CELL(_name, _sensors) {			\
+	.cell = { .name = _name },			\
+	.sensors = _sensors,				\
+	.library = -1,					\
+}
+
+#define SSP_LIBRARY_CELL(_name, _library, _sensors) {	\
+	.cell = { .name = _name },			\
+	.sensors = _sensors,				\
+	.library = _library,				\
+}
+
+static const struct ssp_cell sensorhub_sensor_devs[] = {
+	SSP_CELL("ssp-accelerometer", BIT(SSP_ACCELEROMETER_SENSOR)),
+	SSP_CELL("ssp-gyroscope", BIT(SSP_GYROSCOPE_SENSOR)),
+	SSP_CELL("ssp-hrm", BIT(SSP_BIO_HRM_LIB)),
+	SSP_CELL("ssp-hrm-raw", BIT(SSP_BIO_HRM_RAW_FAC)),
+	/* The libraries work on the accelerometer data */
+	SSP_LIBRARY_CELL("ssp-pedometer", SSP_LIBRARY_PEDOMETER,
+			 BIT(SSP_ACCELEROMETER_SENSOR)),
+	SSP_LIBRARY_CELL("ssp-activity", SSP_LIBRARY_ACTIVITY,
+			 BIT(SSP_ACCELEROMETER_SENSOR)),
+};
+
+/*
+ * Creates the devices for the sensors the MCU found at its initialization,
+ * and for the libraries its firmware is known to have
+ */
+static int ssp_add_cells(struct ssp_data *data)
+{
+	const struct ssp_cell *c;
+	int ret;
+
+	for (c = sensorhub_sensor_devs;
+	     c < sensorhub_sensor_devs + ARRAY_SIZE(sensorhub_sensor_devs);
+	     c++) {
+		if ((data->available_sensors & c->sensors) != c->sensors) {
+			dev_dbg(&data->spi->dev, "No sensors for %s\n",
+				c->cell.name);
+			continue;
+		}
+
+		if (c->library >= 0 &&
+		    !(data->sensorhub_info->libraries & BIT_ULL(c->library))) {
+			dev_dbg(&data->spi->dev, "No library for %s\n",
+				c->cell.name);
+			continue;
+		}
+
+		ret = mfd_add_devices(&data->spi->dev, PLATFORM_DEVID_NONE,
+				      &c->cell, 1, NULL, 0, NULL);
+		if (ret < 0) {
+			/* The ones added before stay otherwise */
+			mfd_remove_devices(&data->spi->dev);
+			return ret;
+		}
+	}
+
+	return 0;
+}
 
 static void ssp_toggle_mcu_reset_gpio(struct ssp_data *data)
 {
@@ -1199,9 +1253,7 @@ static int ssp_probe(struct spi_device *spi)
 		goto err_read_reg;
 	}
 
-	ret = mfd_add_devices(&spi->dev, PLATFORM_DEVID_NONE,
-			      sensorhub_sensor_devs,
-			      ARRAY_SIZE(sensorhub_sensor_devs), NULL, 0, NULL);
+	ret = ssp_add_cells(data);
 	if (ret < 0) {
 		dev_err(&spi->dev, "mfd add devices fail\n");
 		goto err_read_reg;

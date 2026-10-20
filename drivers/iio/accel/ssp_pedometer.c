@@ -18,7 +18,6 @@
 #include <linux/unaligned.h>
 
 #define SSP_PEDOMETER_NAME		"ssp-pedometer"
-#define SSP_LIBRARY_PEDOMETER		3
 
 /*
  * The MCU reports what changed since its previous report, while the AP is

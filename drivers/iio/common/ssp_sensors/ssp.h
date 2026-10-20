@@ -115,6 +115,8 @@ struct ssp_sensorhub_info {
 	char *fw_name;
 	char *fw_crashed_name;
 	unsigned int fw_rev;
+	/* The firmware can't tell which libraries it has */
+	u64 libraries;
 	const u8 * const mag_table;
 	const unsigned int mag_length;
 };

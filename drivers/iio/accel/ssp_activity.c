@@ -18,7 +18,6 @@
 #include <linux/timekeeping.h>
 
 #define SSP_ACTIVITY_NAME		"ssp-activity"
-#define SSP_LIBRARY_ACTIVITY		0x1a
 
 /*
  * Requests are added and removed with their type and a mask of the

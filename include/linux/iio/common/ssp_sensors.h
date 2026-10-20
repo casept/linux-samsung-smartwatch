@@ -66,6 +66,8 @@ int ssp_register_consumer(struct iio_dev *indio_dev,
 			  enum ssp_sensor_type type);
 
 /* Library ids are a separate number space from the sensor types */
+#define SSP_LIBRARY_PEDOMETER			3
+#define SSP_LIBRARY_ACTIVITY			0x1a
 #define SSP_LIBRARY_MAX				64
 #define SSP_LIBRARY_ADD_MAX_SIZE		16
 #define SSP_LIBRARY_REMOVE_SIZE			2
