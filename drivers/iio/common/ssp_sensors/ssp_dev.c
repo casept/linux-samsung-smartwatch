@@ -466,11 +466,13 @@ static void ssp_refresh_task(struct work_struct *work)
 
 int ssp_queue_ssp_refresh_task(struct ssp_data *data, unsigned int delay)
 {
-	cancel_delayed_work_sync(&data->work_refresh);
-
-	return queue_delayed_work(system_power_efficient_wq,
-				  &data->work_refresh,
-				  msecs_to_jiffies(delay));
+	/*
+	 * Called from the interrupt thread, which a running refresh task
+	 * needs to complete its transfers, so don't wait for it. If it is
+	 * running, it runs once more afterwards.
+	 */
+	return mod_delayed_work(system_power_efficient_wq, &data->work_refresh,
+				msecs_to_jiffies(delay));
 }
 
 static const struct of_device_id ssp_of_match[] = {
