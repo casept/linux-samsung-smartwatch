@@ -300,10 +300,16 @@ static int ssp_spi_sync(struct ssp_data *data, struct ssp_msg *msg,
 	return ssp_do_transfer(data, msg, &done, timeout);
 }
 
+/* Big data the MCU offers to be read: type, then le32 length and address */
+#define SSP_BIG_DATA_SIZE	9
+
 static int ssp_handle_big_data(struct ssp_data *data, char *dataframe, int *idx)
 {
-	/* mock-up, it will be changed with adding another sensor types */
-	*idx += 8;
+	dev_dbg(SSP_DEV, "MCU offers big data type %u, %u bytes\n",
+		(u8)dataframe[*idx], get_unaligned_le32(&dataframe[*idx + 1]));
+
+	/* Reading it isn't supported */
+	*idx += SSP_BIG_DATA_SIZE;
 	return 0;
 }
 
@@ -364,7 +370,7 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 			idx += lib_len;
 			break;
 		case SSP_MSG2AP_INST_BIG_DATA:
-			if (len - idx < 8)
+			if (len - idx < SSP_BIG_DATA_SIZE)
 				goto err_frame;
 			ssp_handle_big_data(data, dataframe, &idx);
 			break;
