@@ -5,6 +5,9 @@
 
 #include "ssp.h"
 
+#define CREATE_TRACE_POINTS
+#include "ssp_trace.h"
+
 #define SSP_DEV (&data->spi->dev)
 #define SSP_GET_MESSAGE_TYPE(data) (data & (3 << SSP_RW))
 
@@ -177,8 +180,8 @@ static int ssp_check_lines(struct ssp_data *data, bool state)
 	return 0;
 }
 
-static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
-			   struct completion *done, int timeout)
+static int __ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
+			     struct completion *done, int timeout)
 {
 	int status;
 	/*
@@ -256,6 +259,26 @@ _error_locked:
 	mutex_unlock(&data->comm_lock);
 	data->timeout_cnt++;
 	return status;
+}
+
+static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
+			   struct completion *done, int timeout)
+{
+	const struct ssp_msg_header *h = (struct ssp_msg_header *)msg->buffer;
+	const void *payload = &msg->buffer[SSP_HEADER_SIZE_ALIGNED];
+	bool write = msg->options == SSP_AP2HUB_WRITE;
+	int ret;
+
+	trace_ssp_msg_start(SSP_DEV, h->cmd, msg->options,
+			    le32_to_cpu(h->data), payload,
+			    write ? msg->length : 0);
+
+	ret = __ssp_do_transfer(data, msg, done, timeout);
+
+	trace_ssp_msg_done(SSP_DEV, h->cmd, msg->options, ret, payload,
+			   write || ret < 0 ? 0 : msg->length);
+
+	return ret;
 }
 
 static inline int ssp_spi_sync_command(struct ssp_data *data,
@@ -381,6 +404,7 @@ int ssp_irq_msg(struct ssp_data *data)
 
 	length = le16_to_cpu(data->header_buffer[1]);
 	msg_options = le16_to_cpu(data->header_buffer[0]);
+	trace_ssp_rx_header(SSP_DEV, msg_options, length);
 
 	if (length == 0) {
 		dev_err(SSP_DEV, "length received from mcu is 0\n");
@@ -419,8 +443,10 @@ int ssp_irq_msg(struct ssp_data *data)
 
 			/* got dead packet so it is always an error */
 			ret = spi_read(data->spi, buffer, length);
-			if (ret >= 0)
+			if (ret >= 0) {
+				trace_ssp_rx_frame(SSP_DEV, buffer, length);
 				ret = -EPROTO;
+			}
 
 			kfree(buffer);
 
@@ -468,6 +494,7 @@ _unlock:
 			break;
 		}
 
+		trace_ssp_rx_frame(SSP_DEV, buffer, length);
 		ret = ssp_parse_dataframe(data, buffer, length);
 
 		kfree(buffer);
