@@ -51,6 +51,7 @@ enum {
 #define SSP_MSG2SSP_INST_LIBRARY_ADD		0xb1
 #define SSP_MSG2SSP_INST_LIBRARY_REMOVE		0xb2
 #define SSP_MSG2SSP_INST_LIB_NOTI		0xb4
+#define SSP_MSG2SSP_INST_LIB_REQUEST		0xb8
 #define SSP_MSG2SSP_INST_LIB_DATA		0xc1
 
 #define SSP_MSG2SSP_AP_MCU_SET_GYRO_CAL		0xcd
@@ -174,6 +175,8 @@ struct ssp_sensorhub_info {
  * @mcu_ap_gpiod:	mcu to ap gpio line
  * @pending_list:	pending list for messages queued to be sent/read
  * @sensor_devs:	registered IIO devices table
+ * @libraries:		registered library consumers table
+ * @profile:		user profile for the libraries, see ssp_profile_field
  * @debugfs:		debugfs directory
  * @mcu_log:		debug messages of the MCU
  * @mcu_log_lock:	lock protecting @mcu_log
@@ -234,6 +237,8 @@ struct ssp_data {
 	struct list_head pending_list;
 
 	struct iio_dev *sensor_devs[SSP_SENSOR_MAX];
+	struct ssp_library *libraries[SSP_LIBRARY_MAX];
+	u8 profile[SSP_PROFILE_MAX];
 
 	struct dentry *debugfs;
 	DECLARE_KFIFO(mcu_log, char, SZ_16K);
@@ -249,7 +254,7 @@ void ssp_clean_pending_list(struct ssp_data *data);
 int ssp_command(struct ssp_data *data, char command, int arg);
 
 int ssp_send_instruction(struct ssp_data *data, u8 inst, u8 sensor_type,
-			 u8 *send_buf, u8 length);
+			 const u8 *send_buf, u8 length);
 
 int ssp_irq_msg(struct ssp_data *data);
 
@@ -265,6 +270,9 @@ int ssp_queue_ssp_refresh_task(struct ssp_data *data, unsigned int delay);
 
 void ssp_remove_stale_sensor(struct ssp_data *data,
 			     enum ssp_sensor_type type);
+
+void ssp_handle_library_data(struct ssp_data *data, const u8 *buf,
+			     unsigned int len);
 
 void ssp_log_mcu_message(struct ssp_data *data, const char *msg,
 			 unsigned int len);

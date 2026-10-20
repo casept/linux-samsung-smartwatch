@@ -3,6 +3,8 @@
  *  Copyright (C) 2014, Samsung Electronics Co. Ltd. All Rights Reserved.
  */
 
+#include <linux/unaligned.h>
+
 #include "ssp.h"
 
 #define CREATE_TRACE_POINTS
@@ -307,7 +309,7 @@ static int ssp_handle_big_data(struct ssp_data *data, char *dataframe, int *idx)
 
 static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 {
-	int idx, start, sd;
+	int idx, start, sd, lib_len;
 	struct ssp_sensor_data *spd;
 	struct iio_dev *indio_dev;
 
@@ -351,7 +353,15 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 				goto err_frame;
 			break;
 		case SSP_MSG2AP_INST_LIBRARY_DATA:
-			idx += len;
+			if (len - idx < 2)
+				goto err_frame;
+			lib_len = get_unaligned_le16(&dataframe[idx]);
+			idx += 2;
+			if (lib_len > len - idx)
+				goto err_frame;
+			ssp_handle_library_data(data, (u8 *)&dataframe[idx],
+						lib_len);
+			idx += lib_len;
 			break;
 		case SSP_MSG2AP_INST_BIG_DATA:
 			if (len - idx < 8)
@@ -545,7 +555,7 @@ int ssp_command(struct ssp_data *data, char command, int arg)
 }
 
 int ssp_send_instruction(struct ssp_data *data, u8 inst, u8 sensor_type,
-			 u8 *send_buf, u8 length)
+			 const u8 *send_buf, u8 length)
 {
 	int ret;
 	struct ssp_msg *msg;
@@ -554,8 +564,9 @@ int ssp_send_instruction(struct ssp_data *data, u8 inst, u8 sensor_type,
 		dev_err(SSP_DEV, "%s - Skip Inst! DL state = %d\n",
 			__func__, data->fw_dl_state);
 		return -EBUSY;
-	} else if (!(data->available_sensors & BIT(sensor_type)) &&
-		   (inst <= SSP_MSG2SSP_INST_CHANGE_DELAY)) {
+	} else if (inst <= SSP_MSG2SSP_INST_CHANGE_DELAY &&
+		   (sensor_type >= SSP_SENSOR_MAX ||
+		    !(data->available_sensors & BIT(sensor_type)))) {
 		dev_err(SSP_DEV, "%s - Bypass Inst Skip! - %u\n",
 			__func__, sensor_type);
 		return -EIO; /* just fail */

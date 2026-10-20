@@ -92,7 +92,52 @@ static int ssp_add_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 				    type, (u8 *)&to_send, sizeof(to_send));
 }
 
-/* Re-adds the sensors that were running before the MCU got reset */
+/* Library commands setting the user profile, in the order of its fields */
+#define SSP_LIB_SET_HEIGHT		0x12
+
+static int ssp_send_profile_field(struct ssp_data *data,
+				  enum ssp_profile_field field)
+{
+	lockdep_assert_held(&data->enable_lock);
+
+	return ssp_send_instruction(data, SSP_MSG2SSP_INST_LIB_DATA,
+				    SSP_LIB_SET_HEIGHT + field,
+				    &data->profile[field], 1);
+}
+
+/*
+ * The MCU keeps one profile for all libraries, and starting a library may
+ * reset it to the library's defaults, so send it after every start.
+ */
+static int ssp_send_profile(struct ssp_data *data)
+{
+	int i, ret;
+
+	for (i = 0; i < SSP_PROFILE_MAX; i++) {
+		ret = ssp_send_profile_field(data, i);
+		if (ret < 0) {
+			dev_err(&data->spi->dev, "Sending the profile failed\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static bool ssp_libraries_added(struct ssp_data *data)
+{
+	int i;
+
+	lockdep_assert_held(&data->enable_lock);
+
+	for (i = 0; i < SSP_LIBRARY_MAX; i++)
+		if (data->libraries[i] && data->libraries[i]->added)
+			return true;
+
+	return false;
+}
+
+/* Re-adds the sensors and libraries that ran before the MCU got reset */
 static int ssp_sync_enabled_sensors(struct ssp_data *data)
 {
 	int i, ret, err = 0;
@@ -109,6 +154,31 @@ static int ssp_sync_enabled_sensors(struct ssp_data *data)
 			/* The first error tells the most */
 			err = err ?: ret;
 		}
+	}
+
+	for (i = 0; i < SSP_LIBRARY_MAX; ++i) {
+		struct ssp_library *lib = data->libraries[i];
+
+		if (!lib || !lib->added)
+			continue;
+
+		ret = ssp_send_instruction(data, SSP_MSG2SSP_INST_LIBRARY_ADD,
+					   lib->id, lib->add_buf,
+					   lib->add_len);
+		if (ret < 0) {
+			dev_err(&data->spi->dev, "Sync library %d fail\n", i);
+			err = err ?: ret;
+			continue;
+		}
+
+		if (lib->readded)
+			lib->readded(lib);
+	}
+
+	if (ssp_libraries_added(data)) {
+		ret = ssp_send_profile(data);
+		if (ret < 0)
+			err = err ?: ret;
 	}
 
 	ret = ssp_command(data, SSP_MSG2SSP_AP_MCU_SET_DUMPMODE,
@@ -746,6 +816,299 @@ static int ssp_probe_mcu(struct ssp_data *data)
 	return ssp_initialize_mcu(data);
 }
 
+static int ssp_send_library_instruction(struct ssp_library *lib, u8 inst,
+					const void *buf, u8 len)
+{
+	lockdep_assert_held(&lib->data->enable_lock);
+
+	return ssp_send_instruction(lib->data, inst, lib->id, buf, len);
+}
+
+static int __ssp_library_remove(struct ssp_library *lib)
+{
+	int ret;
+
+	if (!lib->added)
+		return 0;
+
+	ret = ssp_send_library_instruction(lib, SSP_MSG2SSP_INST_LIBRARY_REMOVE,
+					   lib->remove_buf,
+					   sizeof(lib->remove_buf));
+	if (ret < 0)
+		dev_err(&lib->data->spi->dev, "Removing library %u failed\n",
+			lib->id);
+
+	/* Data for it is dropped anyway */
+	lib->added = false;
+
+	return ret;
+}
+
+static void ssp_unregister_library(void *arg)
+{
+	struct ssp_library *lib = arg;
+	struct ssp_data *data = lib->data;
+
+	scoped_guard(mutex, &data->enable_lock) {
+		__ssp_library_remove(lib);
+		WRITE_ONCE(data->libraries[lib->id], NULL);
+	}
+
+	ssp_sync_consumers(data);
+}
+
+/* Library records: type, kind, then a kind specific header */
+#define SSP_LIB_RECORD			1
+#define SSP_LIB_RECORD_DATA		1
+#define SSP_LIB_RECORD_REPLY		3
+#define SSP_LIB_RECORD_DEBUG		4
+
+/**
+ * ssp_handle_library_data() - dispatches the records of a library frame
+ * @data:	sensorhub structure
+ * @buf:	frame payload
+ * @len:	length of @buf
+ *
+ * Data records are [type, kind, library id, payload], replies to a request
+ * have one more byte before the payload. Debug records are [type, kind,
+ * length, text].
+ */
+void ssp_handle_library_data(struct ssp_data *data, const u8 *buf,
+			     unsigned int len)
+{
+	struct ssp_library *lib;
+	unsigned int idx = 0;
+	u8 kind, id;
+	int ret;
+
+	while (len - idx >= 2) {
+		if (buf[idx] != SSP_LIB_RECORD)
+			goto err_record;
+
+		kind = buf[idx + 1];
+		idx += 2;
+
+		if (kind == SSP_LIB_RECORD_DEBUG) {
+			if (idx >= len || buf[idx] > len - idx - 1)
+				goto err_record;
+
+			ssp_log_mcu_message(data, (const char *)&buf[idx + 1],
+					    buf[idx]);
+			idx += 1 + buf[idx];
+			continue;
+		}
+
+		if (kind != SSP_LIB_RECORD_DATA && kind != SSP_LIB_RECORD_REPLY)
+			goto err_record;
+
+		if (len - idx < (kind == SSP_LIB_RECORD_REPLY ? 2 : 1))
+			goto err_record;
+
+		id = buf[idx++];
+		if (kind == SSP_LIB_RECORD_REPLY)
+			idx++;
+
+		lib = id < SSP_LIBRARY_MAX ? READ_ONCE(data->libraries[id]) :
+					     NULL;
+		if (!lib) {
+			/* Its records can't be skipped without knowing them */
+			dev_dbg(&data->spi->dev, "No consumer for library %u\n",
+				id);
+			return;
+		}
+
+		ret = lib->process_data(lib, &buf[idx], len - idx);
+		if (ret < 0 || ret > len - idx) {
+			dev_err_ratelimited(&data->spi->dev,
+					    "Library %u record error %d\n", id,
+					    ret);
+			return;
+		}
+
+		idx += ret;
+	}
+
+	return;
+
+err_record:
+	dev_err_ratelimited(&data->spi->dev, "Mcu library frame error\n");
+}
+
+/**
+ * ssp_library_init() - binds a library consumer to the sensorhub
+ * @dev:	consumer device, a child of the sensorhub
+ * @lib:	library consumer
+ *
+ * Lets the consumer use the profile, the library can't run before it is
+ * registered.
+ */
+void ssp_library_init(struct device *dev, struct ssp_library *lib)
+{
+	lib->data = dev_get_drvdata(dev->parent);
+	lib->added = false;
+}
+EXPORT_SYMBOL_NS(ssp_library_init, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_register_library() - registers a library consumer in ssp framework
+ * @dev:	consumer device, a child of the sensorhub
+ * @lib:	library consumer, initialized with ssp_library_init()
+ *
+ * Records of the library are passed to the consumer from now on, so
+ * register it after what its process_data callback uses, such as the IIO
+ * device. The library is removed from the MCU and unregistered
+ * automatically when @dev is unbound, before what was set up earlier.
+ *
+ * Return: 0 or negative error code
+ */
+int ssp_register_library(struct device *dev, struct ssp_library *lib)
+{
+	struct ssp_data *data = lib->data;
+
+	if (lib->id >= SSP_LIBRARY_MAX)
+		return -EINVAL;
+
+	scoped_guard(mutex, &data->enable_lock) {
+		if (data->libraries[lib->id])
+			return -EBUSY;
+
+		/* The interrupt thread may use it right away */
+		smp_store_release(&data->libraries[lib->id], lib);
+	}
+
+	return devm_add_action_or_reset(dev, ssp_unregister_library, lib);
+}
+EXPORT_SYMBOL_NS(ssp_register_library, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_library_add() - starts a library on the MCU
+ * @lib:	library consumer
+ * @buf:	library specific arguments
+ * @len:	length of @buf
+ *
+ * The library is added again with the same arguments after an MCU reset.
+ *
+ * Return: 0 or negative error code
+ */
+int ssp_library_add(struct ssp_library *lib, const void *buf, u8 len)
+{
+	int ret;
+
+	if (len > sizeof(lib->add_buf))
+		return -EINVAL;
+
+	guard(mutex)(&lib->data->enable_lock);
+
+	/* Not registered yet, or unregistered already */
+	if (lib->data->libraries[lib->id] != lib)
+		return -ENODEV;
+
+	ret = ssp_send_library_instruction(lib, SSP_MSG2SSP_INST_LIBRARY_ADD,
+					   buf, len);
+	if (ret < 0)
+		return ret;
+
+	memcpy(lib->add_buf, buf, len);
+	lib->add_len = len;
+	lib->added = true;
+
+	/* It runs with the defaults of the library otherwise */
+	ret = ssp_send_profile(lib->data);
+	if (ret < 0) {
+		__ssp_library_remove(lib);
+		return ret;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_NS(ssp_library_add, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_library_remove() - stops a library on the MCU
+ * @lib:	library consumer
+ *
+ * The library counts as removed even if the MCU could not be told.
+ *
+ * Return: 0 or negative error code
+ */
+int ssp_library_remove(struct ssp_library *lib)
+{
+	guard(mutex)(&lib->data->enable_lock);
+
+	return __ssp_library_remove(lib);
+}
+EXPORT_SYMBOL_NS(ssp_library_remove, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_library_request() - asks a running library on the MCU for a report
+ * @lib:	library consumer
+ * @buf:	library specific arguments
+ * @len:	length of @buf
+ *
+ * The report arrives later through the library's process_data callback.
+ *
+ * Return: 0 or negative error code
+ */
+int ssp_library_request(struct ssp_library *lib, const void *buf, u8 len)
+{
+	guard(mutex)(&lib->data->enable_lock);
+
+	if (!lib->added)
+		return -ENODEV;
+
+	return ssp_send_library_instruction(lib, SSP_MSG2SSP_INST_LIB_REQUEST,
+					    buf, len);
+}
+EXPORT_SYMBOL_NS(ssp_library_request, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_library_get_profile() - reads a field of the user profile
+ * @lib:	library consumer
+ * @field:	profile field
+ *
+ * Return: value of the field
+ */
+u8 ssp_library_get_profile(struct ssp_library *lib,
+			   enum ssp_profile_field field)
+{
+	guard(mutex)(&lib->data->enable_lock);
+
+	return lib->data->profile[field];
+}
+EXPORT_SYMBOL_NS(ssp_library_get_profile, "IIO_SSP_SENSORS");
+
+/**
+ * ssp_library_set_profile() - changes a field of the user profile
+ * @lib:	library consumer
+ * @field:	profile field
+ * @val:	new value
+ *
+ * Running libraries take the change right away.
+ *
+ * Return: 0 or negative error code
+ */
+int ssp_library_set_profile(struct ssp_library *lib,
+			    enum ssp_profile_field field, u8 val)
+{
+	struct ssp_data *data = lib->data;
+	u8 old;
+	int ret;
+
+	guard(mutex)(&data->enable_lock);
+
+	old = data->profile[field];
+	data->profile[field] = val;
+	if (!ssp_libraries_added(data))
+		return 0;
+
+	ret = ssp_send_profile_field(data, field);
+	if (ret < 0)
+		data->profile[field] = old;
+
+	return ret;
+}
+EXPORT_SYMBOL_NS(ssp_library_set_profile, "IIO_SSP_SENSORS");
+
 static int ssp_probe(struct spi_device *spi)
 {
 	int ret, i;
@@ -756,6 +1119,11 @@ static int ssp_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "Failed to find platform data\n");
 		return -ENODEV;
 	}
+
+	/* Defaults of the stock software */
+	data->profile[SSP_PROFILE_HEIGHT] = 170;
+	data->profile[SSP_PROFILE_WEIGHT] = 60;
+	data->profile[SSP_PROFILE_GENDER] = SSP_PROFILE_MALE;
 
 	/* The MCU firmware hangs during boot without this supply */
 	ret = devm_regulator_get_enable(&spi->dev, "vdd");
