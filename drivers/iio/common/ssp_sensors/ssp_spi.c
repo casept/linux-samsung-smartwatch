@@ -143,7 +143,8 @@ static int ssp_print_mcu_debug(char *data_frame, int *data_index,
 		return -EPROTO;
 	}
 
-	ssp_dbg("[SSP]: MSG From MCU - %s\n", &data_frame[*data_index]);
+	ssp_dbg("[SSP]: MSG From MCU - %.*s\n", length,
+		&data_frame[*data_index]);
 
 	*data_index += length;
 
@@ -284,21 +285,21 @@ static int ssp_handle_big_data(struct ssp_data *data, char *dataframe, int *idx)
 
 static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 {
-	int idx, sd;
+	int idx, start, sd;
 	struct ssp_sensor_data *spd;
 	struct iio_dev *indio_dev;
 
 	for (idx = 0; idx < len;) {
+		start = idx;
 		switch (dataframe[idx++]) {
 		case SSP_MSG2AP_INST_BYPASS_DATA:
 			if (idx >= len)
-				return -EPROTO;
+				goto err_frame;
 			sd = dataframe[idx++];
-			if (sd < 0 || sd >= SSP_SENSOR_MAX) {
-				dev_err(SSP_DEV,
-					"Mcu data frame1 error %d\n", sd);
-				return -EPROTO;
-			}
+			if (sd < 0 || sd >= SSP_SENSOR_MAX ||
+			    ssp_offset_map[sd] == SSP_UNIMPLEMENTED ||
+			    ssp_offset_map[sd] > len - idx)
+				goto err_frame;
 
 			if (!(READ_ONCE(data->sensor_enable) & BIT(sd))) {
 				/* Not after a confirmed removal, in flight */
@@ -312,13 +313,10 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 			indio_dev = READ_ONCE(data->sensor_devs[sd]);
 			if (indio_dev) {
 				spd = iio_priv(indio_dev);
-				if (spd->process_data) {
-					if (idx >= len)
-						return -EPROTO;
+				if (spd->process_data)
 					spd->process_data(indio_dev,
 							  &dataframe[idx],
 							  data->timestamp);
-				}
 			} else {
 				dev_err(SSP_DEV, "no client for frame\n");
 			}
@@ -326,20 +324,23 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 			idx += ssp_offset_map[sd];
 			break;
 		case SSP_MSG2AP_INST_DEBUG_DATA:
-			if (idx >= len)
-				return -EPROTO;
-			sd = ssp_print_mcu_debug(dataframe, &idx, len);
-			if (sd) {
-				dev_err(SSP_DEV,
-					"Mcu data frame3 error %d\n", sd);
-				return sd;
-			}
+			if (idx >= len ||
+			    ssp_print_mcu_debug(dataframe, &idx, len))
+				goto err_frame;
 			break;
 		case SSP_MSG2AP_INST_LIBRARY_DATA:
 			idx += len;
 			break;
 		case SSP_MSG2AP_INST_BIG_DATA:
+			if (len - idx < 8)
+				goto err_frame;
 			ssp_handle_big_data(data, dataframe, &idx);
+			break;
+		case SSP_MSG2AP_INST_META_DATA:
+			/* Sent after a flush, a constant 1 and the sensor type */
+			if (len - idx < 2)
+				goto err_frame;
+			idx += 2;
 			break;
 		case SSP_MSG2AP_INST_TIME_SYNC:
 			data->time_syncing = true;
@@ -347,6 +348,8 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 		case SSP_MSG2AP_INST_RESET:
 			ssp_queue_ssp_refresh_task(data, 0);
 			break;
+		default:
+			goto err_frame;
 		}
 	}
 
@@ -354,6 +357,12 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 		data->timestamp = ktime_get_real_ns();
 
 	return 0;
+
+err_frame:
+	/* The message type and what follows tell what didn't fit */
+	dev_err_ratelimited(SSP_DEV, "Mcu data frame error at %d of %d: %*ph\n",
+			    start, len, min(len - start, 4), &dataframe[start]);
+	return -EPROTO;
 }
 
 /* threaded irq */
