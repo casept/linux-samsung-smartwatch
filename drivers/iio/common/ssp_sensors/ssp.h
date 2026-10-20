@@ -145,6 +145,7 @@ struct ssp_sensorhub_info {
  * @work_firmware:	firmware upgrade work queue
  * @work_refresh:	refresh work queue for reset request from MCU
  * @shut_down:		shut down flag
+ * @irq_wake:		the interrupt is enabled as wakeup source
  * @mcu_dump_mode:	mcu dump mode for debug
  * @time_syncing:	time syncing indication flag
  * @timestamp:		previous time in ns calculated for time syncing
@@ -189,6 +190,7 @@ struct ssp_data {
 	struct delayed_work work_refresh;
 
 	bool shut_down;
+	bool irq_wake;
 	bool mcu_dump_mode;
 	bool time_syncing;
 	int64_t timestamp;

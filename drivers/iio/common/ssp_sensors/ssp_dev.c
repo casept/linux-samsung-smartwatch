@@ -114,6 +114,20 @@ static void ssp_sync_enabled_sensors(struct ssp_data *data)
 			"SSP_MSG2SSP_AP_MCU_SET_DUMPMODE failed\n");
 }
 
+/* Disabling a wakeup source that failed to enable warns */
+static void ssp_set_irq_wake(struct ssp_data *data, bool on)
+{
+	if (on == data->irq_wake)
+		return;
+
+	if (on) {
+		data->irq_wake = !enable_irq_wake(data->spi->irq);
+	} else {
+		disable_irq_wake(data->spi->irq);
+		data->irq_wake = false;
+	}
+}
+
 static void ssp_enable_mcu(struct ssp_data *data, bool enable)
 {
 	dev_info(&data->spi->dev, "current shutdown = %d, old = %d\n", enable,
@@ -122,11 +136,11 @@ static void ssp_enable_mcu(struct ssp_data *data, bool enable)
 	if (enable && data->shut_down) {
 		data->shut_down = false;
 		enable_irq(data->spi->irq);
-		enable_irq_wake(data->spi->irq);
+		ssp_set_irq_wake(data, true);
 	} else if (!enable && !data->shut_down) {
 		data->shut_down = true;
 		disable_irq(data->spi->irq);
-		disable_irq_wake(data->spi->irq);
+		ssp_set_irq_wake(data, false);
 	} else {
 		dev_warn(&data->spi->dev, "current shutdown = %d, old = %d\n",
 			 enable, data->shut_down);
@@ -764,8 +778,7 @@ static int ssp_probe(struct spi_device *spi)
 	/* Restart the MCU in case it got stuck before vdd was enabled */
 	ssp_toggle_mcu_reset_gpio(data);
 
-	/* just to avoid unbalanced irq set wake up */
-	enable_irq_wake(data->spi->irq);
+	ssp_set_irq_wake(data, true);
 
 	ret = ssp_probe_mcu(data);
 	if (ret < 0) {
@@ -784,6 +797,7 @@ static int ssp_probe(struct spi_device *spi)
 	return 0;
 
 err_read_reg:
+	ssp_set_irq_wake(data, false);
 	free_irq(data->spi->irq, data);
 	cancel_delayed_work_sync(&data->work_refresh);
 	cancel_delayed_work_sync(&data->work_stale);
