@@ -36,6 +36,8 @@ struct ssp_msg {
 	u16 options;
 	struct list_head list;
 	struct completion *done;
+	/* Result for the waiter, set before completing */
+	int status;
 	struct ssp_msg_header *h;
 	char *buffer;
 };
@@ -213,6 +215,12 @@ static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 	if (status < 0) {
 		if (!use_no_irq) {
 			mutex_lock(&data->pending_lock);
+			/* Answered although the handshake timed out */
+			if (done && completion_done(done)) {
+				mutex_unlock(&data->pending_lock);
+				mutex_unlock(&data->comm_lock);
+				return msg->status;
+			}
 			list_del_init(&msg->list);
 			mutex_unlock(&data->pending_lock);
 		}
@@ -233,7 +241,7 @@ static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 			mutex_lock(&data->pending_lock);
 			if (completion_done(done)) {
 				mutex_unlock(&data->pending_lock);
-				return 0;
+				return msg->status;
 			}
 			list_del_init(&msg->list);
 			mutex_unlock(&data->pending_lock);
@@ -242,7 +250,7 @@ static int ssp_do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 			return -ETIMEDOUT;
 		}
 
-	return 0;
+	return msg->status;
 
 _error_locked:
 	mutex_unlock(&data->comm_lock);
@@ -424,6 +432,7 @@ int ssp_irq_msg(struct ssp_data *data)
 			}
 		}
 
+		msg->status = ret < 0 ? ret : 0;
 		if (msg->done)
 			if (!completion_done(msg->done))
 				complete(msg->done);
@@ -462,6 +471,8 @@ void ssp_clean_pending_list(struct ssp_data *data)
 	mutex_lock(&data->pending_lock);
 	list_for_each_entry_safe(msg, n, &data->pending_list, list) {
 		list_del_init(&msg->list);
+		/* The MCU won't answer anymore */
+		msg->status = -ECANCELED;
 
 		if (msg->done)
 			if (!completion_done(msg->done))
