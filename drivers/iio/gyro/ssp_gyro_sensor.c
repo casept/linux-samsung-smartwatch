@@ -7,6 +7,7 @@
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
+#include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -128,11 +129,18 @@ static int ssp_gyro_probe(struct platform_device *pdev)
 	return devm_iio_device_register(&pdev->dev, indio_dev);
 }
 
+static const struct platform_device_id ssp_gyro_id_table[] = {
+	{ SSP_GYROSCOPE_NAME },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, ssp_gyro_id_table);
+
 static struct platform_driver ssp_gyro_driver = {
 	.driver = {
 		.name = SSP_GYROSCOPE_NAME,
 	},
 	.probe = ssp_gyro_probe,
+	.id_table = ssp_gyro_id_table,
 };
 
 module_platform_driver(ssp_gyro_driver);
