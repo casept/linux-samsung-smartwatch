@@ -21,6 +21,7 @@
 #include <asm/pgalloc.h>
 #include <asm/procinfo.h>
 #include <asm/proc-fns.h>
+#include <asm/sections.h>
 
 #include "mm.h"
 
@@ -270,6 +271,15 @@ void __init kasan_init(void)
 
 		create_mapping(start, end);
 	}
+
+	/*
+	 * The initial page tables and the kernel image are accessed all the
+	 * time, but can be in memory marked NOMAP, which the loop above skips.
+	 * That happens when the first memory block isn't PMD aligned, for
+	 * example because a reserved no-map region precedes the kernel, as
+	 * adjust_lowmem_bounds() marks the memory up to the next PMD NOMAP.
+	 */
+	create_mapping(swapper_pg_dir, (void *)KERNEL_END);
 
 	/*
 	 * 1. The module global variables are in MODULES_VADDR ~ MODULES_END,
