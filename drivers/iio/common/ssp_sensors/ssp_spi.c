@@ -300,6 +300,15 @@ static int ssp_parse_dataframe(struct ssp_data *data, char *dataframe, int len)
 				return -EPROTO;
 			}
 
+			if (!(READ_ONCE(data->sensor_enable) & BIT(sd))) {
+				/* Not after a confirmed removal, in flight */
+				if ((READ_ONCE(data->sensor_unremoved) |
+				     READ_ONCE(data->sensor_given_up)) & BIT(sd))
+					ssp_remove_stale_sensor(data, sd);
+				idx += ssp_offset_map[sd];
+				break;
+			}
+
 			indio_dev = READ_ONCE(data->sensor_devs[sd]);
 			if (indio_dev) {
 				spd = iio_priv(indio_dev);

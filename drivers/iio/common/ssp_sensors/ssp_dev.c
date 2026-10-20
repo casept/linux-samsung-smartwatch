@@ -254,6 +254,148 @@ u32 ssp_get_sensor_delay(struct ssp_data *data, enum ssp_sensor_type type)
 }
 EXPORT_SYMBOL_NS(ssp_get_sensor_delay, "IIO_SSP_SENSORS");
 
+static int __ssp_change_delay(struct ssp_data *data, enum ssp_sensor_type type,
+			      u32 delay)
+{
+	int ret;
+	struct ssp_instruction to_send;
+
+	lockdep_assert_held(&data->enable_lock);
+
+	to_send.a = cpu_to_le32(delay);
+	to_send.b = cpu_to_le32(data->batch_latency_buf[type]);
+	to_send.c = data->batch_opt_buf[type];
+
+	ret = ssp_send_instruction(data, SSP_MSG2SSP_INST_CHANGE_DELAY, type,
+				   (u8 *)&to_send, sizeof(to_send));
+	if (ret < 0) {
+		dev_err(&data->spi->dev, "Changing sensor delay failed\n");
+		return ret;
+	}
+
+	data->delay_buf[type] = delay;
+
+	return 0;
+}
+
+/* Sensors the MCU may run, also those whose removal it didn't confirm */
+static unsigned int ssp_running_sensors(struct ssp_data *data)
+{
+	/*
+	 * Also read without enable_lock by the PM callbacks, when userspace
+	 * and the freezable work changing the masks are frozen
+	 */
+	return READ_ONCE(data->sensor_enable) |
+	       READ_ONCE(data->sensor_unremoved);
+}
+
+/* Keep the HRM supply and the watchdog only while the MCU may need them */
+static void ssp_update_running(struct ssp_data *data)
+{
+	lockdep_assert_held(&data->enable_lock);
+
+	if (!(ssp_running_sensors(data) & SSP_HRM_SENSORS))
+		ssp_set_hrm_power(data, false);
+	if (!ssp_running_sensors(data))
+		ssp_disable_wdt_timer(data);
+}
+
+/* Attempts to remove a stale sensor before assuming the MCU did remove it */
+#define SSP_STALE_RETRIES	3
+
+/* The MCU got reset, which removed all sensors */
+static void ssp_forget_unremoved(struct ssp_data *data)
+{
+	lockdep_assert_held(&data->enable_lock);
+
+	WRITE_ONCE(data->sensor_unremoved, 0);
+	WRITE_ONCE(data->sensor_given_up, 0);
+	WRITE_ONCE(data->stale_sensors, 0);
+	memset(data->stale_failures, 0, sizeof(data->stale_failures));
+}
+
+static void ssp_stale_work_func(struct work_struct *work)
+{
+	struct ssp_data *data = container_of(work, struct ssp_data,
+					     work_stale.work);
+	unsigned long stale = xchg(&data->stale_sensors, 0);
+	unsigned long failed = 0;
+	__le32 command;
+	int type;
+
+	guard(mutex)(&data->enable_lock);
+
+	for_each_set_bit(type, &stale, SSP_SENSOR_MAX) {
+		/* It got enabled or the MCU reset while the work was pending */
+		if ((data->sensor_enable & BIT(type)) ||
+		    !((data->sensor_unremoved | data->sensor_given_up) &
+		      BIT(type)))
+			continue;
+
+		/* Counted removed, but it sends data after all */
+		WRITE_ONCE(data->sensor_unremoved,
+			   data->sensor_unremoved | BIT(type));
+		WRITE_ONCE(data->sensor_given_up,
+			   data->sensor_given_up & ~BIT(type));
+
+		command = cpu_to_le32(data->delay_buf[type]);
+		if (ssp_send_instruction(data, SSP_MSG2SSP_INST_BYPASS_SENSOR_RM,
+					 type, (u8 *)&command,
+					 sizeof(command)) < 0) {
+			dev_err_ratelimited(&data->spi->dev,
+					    "Removing stale sensor %d failed\n",
+					    type);
+			failed |= BIT(type);
+			continue;
+		}
+
+		data->stale_failures[type] = 0;
+		WRITE_ONCE(data->sensor_unremoved,
+			   data->sensor_unremoved & ~BIT(type));
+	}
+
+	/*
+	 * The MCU may have removed it and only the answer got lost, so no
+	 * frame would ask again. Retry for a while, then count it removed,
+	 * frames ask again if it isn't.
+	 */
+	for_each_set_bit(type, &failed, SSP_SENSOR_MAX) {
+		if (++data->stale_failures[type] < SSP_STALE_RETRIES) {
+			set_bit(type, &data->stale_sensors);
+			queue_delayed_work(system_freezable_power_efficient_wq,
+					   &data->work_stale,
+					   msecs_to_jiffies(SSP_SW_RESET_TIME));
+			continue;
+		}
+
+		dev_err(&data->spi->dev,
+			"Giving up removing stale sensor %d\n", type);
+		data->stale_failures[type] = 0;
+		WRITE_ONCE(data->sensor_unremoved,
+			   data->sensor_unremoved & ~BIT(type));
+		WRITE_ONCE(data->sensor_given_up,
+			   data->sensor_given_up | BIT(type));
+	}
+
+	ssp_update_running(data);
+}
+
+/**
+ * ssp_remove_stale_sensor() - removes a sensor the MCU runs on its own
+ * @data:	sensorhub structure
+ * @type:	SSP sensor type
+ *
+ * The MCU keeps sending data for a sensor whose removal it did not get. The
+ * removal is retried a few times, and again whenever more data arrives.
+ */
+void ssp_remove_stale_sensor(struct ssp_data *data,
+			     enum ssp_sensor_type type)
+{
+	set_bit(type, &data->stale_sensors);
+	queue_delayed_work(system_freezable_power_efficient_wq,
+			   &data->work_stale, 0);
+}
+
 /**
  * ssp_enable_sensor() - enables data acquisition for sensor
  * @data:	sensorhub structure
@@ -266,60 +408,35 @@ int ssp_enable_sensor(struct ssp_data *data, enum ssp_sensor_type type,
 		      u32 delay)
 {
 	int ret;
-	struct ssp_instruction to_send;
-
-	to_send.a = cpu_to_le32(delay);
-	to_send.b = cpu_to_le32(data->batch_latency_buf[type]);
-	to_send.c = data->batch_opt_buf[type];
 
 	guard(mutex)(&data->enable_lock);
 
-	switch (data->check_status[type]) {
-	case SSP_INITIALIZATION_STATE:
-		/* do calibration step, now just enable */
-	case SSP_ADD_SENSOR_STATE:
-		if (BIT(type) & SSP_HRM_SENSORS) {
-			ret = ssp_set_hrm_power(data, true);
-			if (ret)
-				return ret;
-		}
+	if (data->sensor_enable & BIT(type))
+		return __ssp_change_delay(data, type, delay);
 
-		ret = ssp_add_sensor(data, type, delay);
-		if (ret < 0) {
-			dev_err(&data->spi->dev, "Enabling sensor failed\n");
-			data->check_status[type] = SSP_NO_SENSOR_STATE;
-			if (!(data->sensor_enable & SSP_HRM_SENSORS))
-				ssp_set_hrm_power(data, false);
-			goto derror;
-		}
+	if (BIT(type) & SSP_HRM_SENSORS) {
+		ret = ssp_set_hrm_power(data, true);
+		if (ret)
+			return ret;
+	}
 
-		data->sensor_enable |= BIT(type);
-		data->check_status[type] = SSP_RUNNING_SENSOR_STATE;
-		break;
-	case SSP_RUNNING_SENSOR_STATE:
-		ret = ssp_send_instruction(data,
-					   SSP_MSG2SSP_INST_CHANGE_DELAY, type,
-					   (u8 *)&to_send, sizeof(to_send));
-		if (ret < 0) {
-			dev_err(&data->spi->dev,
-				"Changing sensor delay failed\n");
-			goto derror;
-		}
-		break;
-	default:
-		data->check_status[type] = SSP_ADD_SENSOR_STATE;
-		break;
+	ret = ssp_add_sensor(data, type, delay);
+	if (ret < 0) {
+		dev_err(&data->spi->dev, "Enabling sensor failed\n");
+		ssp_update_running(data);
+		return ret;
 	}
 
 	data->delay_buf[type] = delay;
 
-	if (atomic_inc_return(&data->enable_refcount) == 1)
+	if (!ssp_running_sensors(data))
 		ssp_enable_wdt_timer(data);
+	WRITE_ONCE(data->sensor_enable, data->sensor_enable | BIT(type));
+	WRITE_ONCE(data->sensor_unremoved, data->sensor_unremoved & ~BIT(type));
+	WRITE_ONCE(data->sensor_given_up, data->sensor_given_up & ~BIT(type));
+	data->stale_failures[type] = 0;
 
 	return 0;
-
-derror:
-	return ret;
 }
 EXPORT_SYMBOL_NS(ssp_enable_sensor, "IIO_SSP_SENSORS");
 
@@ -334,25 +451,15 @@ EXPORT_SYMBOL_NS(ssp_enable_sensor, "IIO_SSP_SENSORS");
 int ssp_change_delay(struct ssp_data *data, enum ssp_sensor_type type,
 		     u32 delay)
 {
-	int ret;
-	struct ssp_instruction to_send;
-
-	to_send.a = cpu_to_le32(delay);
-	to_send.b = cpu_to_le32(data->batch_latency_buf[type]);
-	to_send.c = data->batch_opt_buf[type];
-
 	guard(mutex)(&data->enable_lock);
 
-	ret = ssp_send_instruction(data, SSP_MSG2SSP_INST_CHANGE_DELAY, type,
-				   (u8 *)&to_send, sizeof(to_send));
-	if (ret < 0) {
-		dev_err(&data->spi->dev, "Changing sensor delay failed\n");
-		return ret;
+	/* A stopped sensor gets the delay when it is enabled */
+	if (!(data->sensor_enable & BIT(type))) {
+		data->delay_buf[type] = delay;
+		return 0;
 	}
 
-	data->delay_buf[type] = delay;
-
-	return 0;
+	return __ssp_change_delay(data, type, delay);
 }
 EXPORT_SYMBOL_NS(ssp_change_delay, "IIO_SSP_SENSORS");
 
@@ -361,6 +468,9 @@ EXPORT_SYMBOL_NS(ssp_change_delay, "IIO_SSP_SENSORS");
  *
  * @data:	sensorhub structure
  * @type:	SSP sensor type
+ *
+ * The sensor counts as disabled even if the MCU could not be told, but its
+ * supply and the watchdog stay until the MCU confirms or gets reset.
  *
  * Returns 0 or negative value in case of error
  */
@@ -371,29 +481,24 @@ int ssp_disable_sensor(struct ssp_data *data, enum ssp_sensor_type type)
 
 	guard(mutex)(&data->enable_lock);
 
-	if (data->sensor_enable & BIT(type)) {
-		command = cpu_to_le32(data->delay_buf[type]);
+	if (!(data->sensor_enable & BIT(type)))
+		return 0;
 
-		ret = ssp_send_instruction(data,
-					   SSP_MSG2SSP_INST_BYPASS_SENSOR_RM,
-					   type, (u8 *)&command,
-					   sizeof(command));
-		if (ret < 0) {
-			dev_err(&data->spi->dev, "Remove sensor fail\n");
-			return ret;
-		}
+	command = cpu_to_le32(data->delay_buf[type]);
 
-		data->sensor_enable &= ~BIT(type);
-		if (!(data->sensor_enable & SSP_HRM_SENSORS))
-			ssp_set_hrm_power(data, false);
+	ret = ssp_send_instruction(data, SSP_MSG2SSP_INST_BYPASS_SENSOR_RM,
+				   type, (u8 *)&command, sizeof(command));
+	if (ret < 0) {
+		dev_err(&data->spi->dev, "Remove sensor fail\n");
+		WRITE_ONCE(data->sensor_unremoved,
+			   data->sensor_unremoved | BIT(type));
+		ssp_remove_stale_sensor(data, type);
 	}
 
-	data->check_status[type] = SSP_ADD_SENSOR_STATE;
+	WRITE_ONCE(data->sensor_enable, data->sensor_enable & ~BIT(type));
+	ssp_update_running(data);
 
-	if (atomic_dec_and_test(&data->enable_refcount))
-		ssp_disable_wdt_timer(data);
-
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_NS(ssp_disable_sensor, "IIO_SSP_SENSORS");
 
@@ -467,7 +572,9 @@ static void ssp_refresh_task(struct work_struct *work)
 	data->reset_cnt++;
 
 	if (ssp_initialize_mcu(data) >= 0) {
+		ssp_forget_unremoved(data);
 		ssp_sync_enabled_sensors(data);
+		ssp_update_running(data);
 		if (data->last_ap_state != 0)
 			ssp_command(data, data->last_ap_state, 0);
 
@@ -627,7 +734,6 @@ static int ssp_probe(struct spi_device *spi)
 		data->delay_buf[i] = SSP_DEFAULT_POLLING_DELAY;
 		data->batch_latency_buf[i] = 0;
 		data->batch_opt_buf[i] = 0;
-		data->check_status[i] = SSP_INITIALIZATION_STATE;
 	}
 
 	data->delay_buf[SSP_BIO_HRM_LIB] = 100;
@@ -637,9 +743,8 @@ static int ssp_probe(struct spi_device *spi)
 	mutex_init(&data->pending_lock);
 	INIT_LIST_HEAD(&data->pending_list);
 
-	atomic_set(&data->enable_refcount, 0);
-
 	INIT_WORK(&data->work_wdt, ssp_wdt_work_func);
+	INIT_DELAYED_WORK(&data->work_stale, ssp_stale_work_func);
 	INIT_DELAYED_WORK(&data->work_refresh, ssp_refresh_task);
 
 	timer_setup(&data->wdt_timer, ssp_wdt_timer_func, 0);
@@ -681,6 +786,7 @@ static int ssp_probe(struct spi_device *spi)
 err_read_reg:
 	free_irq(data->spi->irq, data);
 	cancel_delayed_work_sync(&data->work_refresh);
+	cancel_delayed_work_sync(&data->work_stale);
 err_setup_irq:
 	mutex_destroy(&data->pending_lock);
 	mutex_destroy(&data->enable_lock);
@@ -708,6 +814,7 @@ static void ssp_remove(struct spi_device *spi)
 
 	free_irq(data->spi->irq, data);
 	cancel_delayed_work_sync(&data->work_refresh);
+	cancel_delayed_work_sync(&data->work_stale);
 
 	timer_delete_sync(&data->wdt_timer);
 	cancel_work_sync(&data->work_wdt);
@@ -726,15 +833,15 @@ static int ssp_suspend(struct device *dev)
 
 	data->last_resume_state = SSP_MSG2SSP_AP_STATUS_SUSPEND;
 
-	if (atomic_read(&data->enable_refcount) > 0)
-		ssp_disable_wdt_timer(data);
+	ssp_disable_wdt_timer(data);
 
 	ret = ssp_command(data, SSP_MSG2SSP_AP_STATUS_SUSPEND, 0);
 	if (ret < 0) {
 		dev_err(&data->spi->dev,
 			"%s SSP_MSG2SSP_AP_STATUS_SUSPEND failed\n", __func__);
 
-		ssp_enable_wdt_timer(data);
+		if (ssp_running_sensors(data))
+			ssp_enable_wdt_timer(data);
 		return ret;
 	}
 
@@ -751,14 +858,14 @@ static int ssp_resume(struct device *dev)
 
 	enable_irq(data->spi->irq);
 
-	if (atomic_read(&data->enable_refcount) > 0)
+	if (ssp_running_sensors(data))
 		ssp_enable_wdt_timer(data);
 
 	ret = ssp_command(data, SSP_MSG2SSP_AP_STATUS_RESUME, 0);
 	if (ret < 0) {
 		dev_err(&data->spi->dev,
 			"%s SSP_MSG2SSP_AP_STATUS_RESUME failed\n", __func__);
-		ssp_disable_wdt_timer(data);
+		/* The watchdog stays armed to recover a hung MCU */
 		return ret;
 	}
 

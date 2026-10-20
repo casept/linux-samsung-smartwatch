@@ -34,13 +34,6 @@ enum {
 	SSP_KERNEL_CRASHED_BINARY,
 };
 
-enum {
-	SSP_INITIALIZATION_STATE = 0,
-	SSP_NO_SENSOR_STATE,
-	SSP_ADD_SENSOR_STATE,
-	SSP_RUNNING_SENSOR_STATE,
-};
-
 /* Firmware download STATE */
 enum {
 	SSP_FW_DL_STATE_FAIL = -1,
@@ -146,13 +139,15 @@ struct ssp_sensorhub_info {
  * @sensorhub_info:	info about sensorhub board specific features
  * @wdt_timer:		watchdog timer
  * @work_wdt:		watchdog work
+ * @work_stale:		work removing sensors the MCU runs on its own
+ * @stale_sensors:	sensors the MCU sent data for without being enabled
+ * @stale_failures:	failed attempts to remove each stale sensor in a row
  * @work_firmware:	firmware upgrade work queue
  * @work_refresh:	refresh work queue for reset request from MCU
  * @shut_down:		shut down flag
  * @mcu_dump_mode:	mcu dump mode for debug
  * @time_syncing:	time syncing indication flag
  * @timestamp:		previous time in ns calculated for time syncing
- * @check_status:	status table for each sensor
  * @com_fail_cnt:	communication fail count
  * @reset_cnt:		reset count
  * @timeout_cnt:	timeout count
@@ -162,6 +157,8 @@ struct ssp_sensorhub_info {
  *                      state of ssp
  * @last_ap_state:	(obsolete) sleep notification for MCU
  * @sensor_enable:	sensor enable mask
+ * @sensor_unremoved:	disabled sensors the MCU may still run
+ * @sensor_given_up:	disabled sensors counted removed after failed removals
  * @delay_buf:		data acquisition intervals table
  * @batch_latency_buf:	yet unknown but existing in communication protocol
  * @batch_opt_buf:	yet unknown but existing in communication protocol
@@ -179,7 +176,6 @@ struct ssp_sensorhub_info {
  * @mcu_ap_gpiod:	mcu to ap gpio line
  * @pending_list:	pending list for messages queued to be sent/read
  * @sensor_devs:	registered IIO devices table
- * @enable_refcount:	enable reference count for wdt (watchdog timer)
  * @header_buffer:	cache aligned buffer for packet header
  */
 struct ssp_data {
@@ -187,14 +183,15 @@ struct ssp_data {
 	const struct ssp_sensorhub_info *sensorhub_info;
 	struct timer_list wdt_timer;
 	struct work_struct work_wdt;
+	struct delayed_work work_stale;
+	unsigned long stale_sensors;
+	u8 stale_failures[SSP_SENSOR_MAX];
 	struct delayed_work work_refresh;
 
 	bool shut_down;
 	bool mcu_dump_mode;
 	bool time_syncing;
 	int64_t timestamp;
-
-	int check_status[SSP_SENSOR_MAX];
 
 	unsigned int com_fail_cnt;
 	unsigned int reset_cnt;
@@ -207,6 +204,8 @@ struct ssp_data {
 	char last_ap_state;
 
 	unsigned int sensor_enable;
+	unsigned int sensor_unremoved;
+	unsigned int sensor_given_up;
 	u32 delay_buf[SSP_SENSOR_MAX];
 	s32 batch_latency_buf[SSP_SENSOR_MAX];
 	s8 batch_opt_buf[SSP_SENSOR_MAX];
@@ -229,7 +228,6 @@ struct ssp_data {
 	struct list_head pending_list;
 
 	struct iio_dev *sensor_devs[SSP_SENSOR_MAX];
-	atomic_t enable_refcount;
 
 	__le16 header_buffer[SSP_HEADER_BUFFER_SIZE / sizeof(__le16)] __aligned(IIO_DMA_MINALIGN);
 };
@@ -252,5 +250,8 @@ unsigned int ssp_get_sensor_scanning_info(struct ssp_data *data);
 unsigned int ssp_get_firmware_rev(struct ssp_data *data);
 
 int ssp_queue_ssp_refresh_task(struct ssp_data *data, unsigned int delay);
+
+void ssp_remove_stale_sensor(struct ssp_data *data,
+			     enum ssp_sensor_type type);
 
 #endif /* __SSP_SENSORHUB_H__ */
