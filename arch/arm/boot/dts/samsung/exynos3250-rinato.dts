@@ -457,6 +457,7 @@
 		pullup-ohm = <100000>;
 		pulldown-ohm = <100000>;
 		io-channels = <&adc 0>;
+		#io-channel-cells = <0>;
 		#thermal-sensor-cells = <0>;
 	};
 };
@@ -957,6 +958,10 @@
 		maxim,rcomp = /bits/ 8 <0x47>;
 		/* 0x58 on the R381 */
 		maxim,rcomp-charging = /bits/ 8 <0x62>;
+		maxim,rcomp-tempco-hot = <(-1600)>;
+		maxim,rcomp-tempco-cold = <(-9200)>;
+		io-channels = <&thermistor_battery>;
+		io-channel-names = "temp";
 	};
 };
 

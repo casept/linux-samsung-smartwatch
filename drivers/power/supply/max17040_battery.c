@@ -19,6 +19,8 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/iio/consumer.h>
+#include <linux/math64.h>
+#include <linux/minmax.h>
 
 #define MAX17040_VCELL	0x02
 #define MAX17040_SOC	0x04
@@ -32,6 +34,8 @@
 #define MAX17040_DELAY		1000
 #define MAX17040_BATTERY_FULL	95
 #define MAX17040_RCOMP_DEFAULT  0x9700
+/* Temperature the RCOMP values apply at, in milli-degree Celsius */
+#define MAX17040_RCOMP_TEMP	20000
 
 #define MAX17040_ATHD_MASK		0x3f
 #define MAX17040_ALSC_MASK		0x40
@@ -155,6 +159,9 @@ struct max17040_chip {
 	u16 rcomp;
 	/* used instead of rcomp while the battery is charging */
 	u16 rcomp_charging;
+	/* RCOMP change per degree above/below MAX17040_RCOMP_TEMP, x 1000 */
+	s32 rcomp_tempco_hot;
+	s32 rcomp_tempco_cold;
 };
 
 static int max17040_reset(struct max17040_chip *chip)
@@ -183,11 +190,29 @@ static int max17040_set_rcomp(struct max17040_chip *chip, u16 rcomp)
 	return regmap_update_bits(chip->regmap, MAX17040_CONFIG, mask, rcomp);
 }
 
+static bool max17040_rcomp_follows_temp(struct max17040_chip *chip)
+{
+	return chip->channel_temp &&
+	       (chip->rcomp_tempco_hot || chip->rcomp_tempco_cold);
+}
+
+static u16 max17040_compensate_rcomp(struct max17040_chip *chip, u16 rcomp,
+				     int temp)
+{
+	int delta = temp - MAX17040_RCOMP_TEMP;
+	s32 tempco = delta > 0 ? chip->rcomp_tempco_hot :
+				 chip->rcomp_tempco_cold;
+	int msb = (rcomp >> 8) + div_s64((s64)delta * tempco, 1000000);
+
+	return clamp(msb, 0, 0xff) << 8 | (rcomp & 0xff);
+}
+
 static void max17040_update_rcomp(struct power_supply *psy)
 {
 	struct max17040_chip *chip = power_supply_get_drvdata(psy);
 	union power_supply_propval status;
 	u16 rcomp = chip->rcomp;
+	int temp;
 	int ret;
 
 	ret = power_supply_get_property_from_supplier(psy,
@@ -195,6 +220,12 @@ static void max17040_update_rcomp(struct power_supply *psy)
 						      &status);
 	if (!ret && status.intval == POWER_SUPPLY_STATUS_CHARGING)
 		rcomp = chip->rcomp_charging;
+
+	if (max17040_rcomp_follows_temp(chip)) {
+		ret = iio_read_channel_processed(chip->channel_temp, &temp);
+		if (!ret)
+			rcomp = max17040_compensate_rcomp(chip, rcomp, temp);
+	}
 
 	ret = max17040_set_rcomp(chip, rcomp);
 	if (ret)
@@ -302,8 +333,17 @@ static int max17040_get_of_data(struct max17040_chip *chip)
 		return ret;
 
 	chip->rcomp_charging = chip->rcomp;
-	return max17040_read_rcomp(chip, "maxim,rcomp-charging",
-				   &chip->rcomp_charging);
+	ret = max17040_read_rcomp(chip, "maxim,rcomp-charging",
+				  &chip->rcomp_charging);
+	if (ret)
+		return ret;
+
+	device_property_read_u32(dev, "maxim,rcomp-tempco-hot",
+				 (u32 *)&chip->rcomp_tempco_hot);
+	device_property_read_u32(dev, "maxim,rcomp-tempco-cold",
+				 (u32 *)&chip->rcomp_tempco_cold);
+
+	return 0;
 }
 
 static void max17040_check_changes(struct max17040_chip *chip)
@@ -313,6 +353,9 @@ static void max17040_check_changes(struct max17040_chip *chip)
 	soc = max17040_get_soc(chip);
 	if (soc >= 0)
 		chip->soc = soc;
+
+	if (max17040_rcomp_follows_temp(chip))
+		max17040_update_rcomp(chip->battery);
 }
 
 static void max17040_queue_work(struct max17040_chip *chip)
