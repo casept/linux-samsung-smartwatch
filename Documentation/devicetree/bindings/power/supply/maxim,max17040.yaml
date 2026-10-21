@@ -61,6 +61,18 @@ properties:
       from maxim,rcomp. The charge state is taken from the supplying power
       supply. Same format as maxim,rcomp, defaults to maxim,rcomp.
 
+  maxim,rcomp-tempco-hot:
+    $ref: /schemas/types.yaml#/definitions/int32
+    description: |
+      Change of the rcomp value per degree Celsius above 20 degrees Celsius,
+      in thousandths. maxim,rcomp and maxim,rcomp-charging apply at 20
+      degrees Celsius. Needs the temp IIO channel, defaults to 0.
+
+  maxim,rcomp-tempco-cold:
+    $ref: /schemas/types.yaml#/definitions/int32
+    description: |
+      Like maxim,rcomp-tempco-hot, but below 20 degrees Celsius.
+
   interrupts:
     maxItems: 1
 
