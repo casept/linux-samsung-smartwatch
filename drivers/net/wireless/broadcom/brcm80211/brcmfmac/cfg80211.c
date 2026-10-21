@@ -986,6 +986,16 @@ static struct wireless_dev *brcmf_cfg80211_add_iface(struct wiphy *wiphy,
 	int err;
 
 	brcmf_dbg(TRACE, "enter: %s type %d\n", name, type);
+
+	/* brcmf_detach() takes the bus down before removing the primary
+	 * interface and the P2P state, and only unregisters the wiphy after
+	 * that. The primary interface can't go away while the RTNL held here
+	 * is, so refusing once the bus is down keeps the new interface from
+	 * using what detach tears down.
+	 */
+	if (drvr->bus_if->state != BRCMF_BUS_UP)
+		return ERR_PTR(-EIO);
+
 	err = brcmf_vif_add_validate(wiphy_to_cfg(wiphy), type);
 	if (err) {
 		bphy_err(drvr, "iface validation failed: err=%d\n", err);
