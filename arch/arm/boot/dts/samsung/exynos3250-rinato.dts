@@ -76,16 +76,6 @@
 			no-map;
 			reg = <0x40000000 0x4000>;
 		};
-
-		/*
-		 * The FIMC-IS firmware has to sit at a 64 MiB boundary, which a
-		 * reusable pool can't guarantee. Same region as the Tizen kernel.
-		 */
-		fimc_is_mem: fimc-is@58000000 {
-			compatible = "shared-dma-pool";
-			reg = <0x58000000 0x4000000>;
-			no-map;
-		};
 	};
 
 	sboot-upload {
@@ -540,25 +530,6 @@
 	status = "okay";
 };
 
-&csis_0 {
-	vddcore-supply = <&ldo6_reg>;
-	vddio-supply = <&ldo6_reg>;
-	status = "okay";
-
-	/* Camera B (3) MIPI CSI-2 (CSIS0) */
-	port@3 {
-		reg = <3>;
-
-		csis0_ep: endpoint {
-			remote-endpoint = <&s5k8b1_ep>;
-			/* What the downstream kernel uses */
-			data-lanes = <1>;
-			samsung,csis-hs-settle = <16>;
-			samsung,csis-wclk;
-		};
-	};
-};
-
 &dsi_0 {
 	vddcore-supply = <&ldo6_reg>;
 	vddio-supply = <&ldo6_reg>;
@@ -577,16 +548,6 @@
 	};
 };
 
-&fimc_is {
-	pinctrl-names = "default";
-	pinctrl-0 = <&cam_port_b_clk_active>;
-	memory-region = <&fimc_is_mem>;
-	status = "okay";
-};
-
-&fimc_lite_0 {
-	status = "okay";
-};
 
 &fimd {
 	status = "okay";
@@ -949,15 +910,14 @@
 	samsung,i2c-max-bus-freq = <400000>;
 	status = "okay";
 
-	fuelgauge@36 {
+	fuel_gauge: fuelgauge@36 {
 		compatible = "maxim,max77836-battery";
 		interrupt-parent = <&gpx1>;
 		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
 		reg = <0x36>;
 		maxim,double-soc;
 		maxim,rcomp = /bits/ 8 <0x47>;
-		/* 0x58 on the R381 */
-		maxim,rcomp-charging = /bits/ 8 <0x62>;
+		maxim,rcomp-charging = /bits/ 8 <0x58>;
 		maxim,rcomp-tempco-hot = <(-1600)>;
 		maxim,rcomp-tempco-cold = <(-9200)>;
 		io-channels = <&thermistor_battery>;
@@ -992,28 +952,6 @@
 		melfas,tsp_rx = <7>;
 		/* Unsure about this */
 		melfas,config_fw_version = "V700_ME_0910";
-	};
-};
-
-&i2c0_isp {
-	image-sensor@6a {
-		compatible = "samsung,s5k8b1";
-		reg = <0x6a>;
-		vdda-supply = <&ldo13_reg>;
-		vddio-supply = <&ldo21_reg>;
-		vddd-supply = <&ldo22_reg>;
-		afvdd-supply = <&ldo18_reg>;
-		xshutdown-gpios = <&gpm2 3 GPIO_ACTIVE_LOW>;
-		clocks = <&cmu CLK_SCLK_CAM1>;
-		clock-names = "extclk";
-		clock-frequency = <24000000>;
-
-		port {
-			s5k8b1_ep: endpoint {
-				remote-endpoint = <&csis0_ep>;
-				data-lanes = <1>;
-			};
-		};
 	};
 };
 

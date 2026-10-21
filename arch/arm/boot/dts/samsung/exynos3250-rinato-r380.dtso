@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Samsung Gear 2 (SM-R380) on top of the Rinato base, which describes the
+ * Gear 2 Neo (SM-R381). Only the R380 has a camera.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/exynos3250.h>
+#include <dt-bindings/gpio/gpio.h>
+
+&{/reserved-memory} {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	/*
+	 * The FIMC-IS firmware has to sit at a 64 MiB boundary, which a
+	 * reusable pool can't guarantee. Same region as the Tizen kernel.
+	 */
+	fimc_is_mem: fimc-is@58000000 {
+		compatible = "shared-dma-pool";
+		reg = <0x58000000 0x4000000>;
+		no-map;
+	};
+};
+
+&csis_0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	vddcore-supply = <&ldo6_reg>;
+	vddio-supply = <&ldo6_reg>;
+	status = "okay";
+
+	/* Camera B (3) MIPI CSI-2 (CSIS0) */
+	port@3 {
+		reg = <3>;
+
+		csis0_ep: endpoint {
+			remote-endpoint = <&s5k8b1_ep>;
+			/* What the downstream kernel uses */
+			data-lanes = <1>;
+			samsung,csis-hs-settle = <16>;
+			samsung,csis-wclk;
+		};
+	};
+};
+
+&fimc_is {
+	pinctrl-names = "default";
+	pinctrl-0 = <&cam_port_b_clk_active>;
+	memory-region = <&fimc_is_mem>;
+	status = "okay";
+};
+
+&fimc_lite_0 {
+	status = "okay";
+};
+
+&fuel_gauge {
+	maxim,rcomp-charging = /bits/ 8 <0x62>;
+};
+
+&i2c0_isp {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	image-sensor@6a {
+		compatible = "samsung,s5k8b1";
+		reg = <0x6a>;
+		vdda-supply = <&ldo13_reg>;
+		vddio-supply = <&ldo21_reg>;
+		vddd-supply = <&ldo22_reg>;
+		afvdd-supply = <&ldo18_reg>;
+		xshutdown-gpios = <&gpm2 3 GPIO_ACTIVE_LOW>;
+		clocks = <&cmu CLK_SCLK_CAM1>;
+		clock-names = "extclk";
+		clock-frequency = <24000000>;
+
+		port {
+			s5k8b1_ep: endpoint {
+				remote-endpoint = <&csis0_ep>;
+				data-lanes = <1>;
+			};
+		};
+	};
+};

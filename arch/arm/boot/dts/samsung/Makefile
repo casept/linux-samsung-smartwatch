@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0
+# Allow overlays to be applied to the base
+DTC_FLAGS_exynos3250-rinato := -@
 dtb-$(CONFIG_ARCH_EXYNOS3) += \
 	exynos3250-artik5-eval.dtb \
 	exynos3250-monk.dtb \
 	exynos3250-rinato.dtb \
+	exynos3250-rinato-r380.dtbo \
 	exynos3250-wc1.dtb
 dtb-$(CONFIG_ARCH_EXYNOS4) += \
 	exynos4210-i9100.dtb \
