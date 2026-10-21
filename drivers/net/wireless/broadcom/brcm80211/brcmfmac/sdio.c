@@ -2509,9 +2509,12 @@ static void brcmf_sdio_bus_stop(struct device *dev)
 					   SBSDIO_FUNC1_CHIPCLKCSR,
 					   bpreq, &err);
 		}
-		if (err)
+		if (err) {
 			brcmf_err("Failed to force clock for F2: err %d\n",
 				  err);
+			/* The chip doesn't answer, so leave it alone */
+			brcmf_sdiod_change_state(sdiodev, BRCMF_SDIOD_NOMEDIUM);
+		}
 
 		/* Turn off the bus (F2), free any pending packets */
 		brcmf_dbg(INTR, "disable SDIO interrupts\n");
@@ -2582,6 +2585,21 @@ static int brcmf_sdio_intr_rstatus(struct brcmf_sdio *bus)
 	}
 
 	return ret;
+}
+
+/*
+ * The chip stopped answering on the backplane. Every further access to it
+ * waits for a timeout, while callers hold RTNL or run in the suspend path,
+ * so fail them right away and reset the chip. Probing it again after the
+ * reset gets a new state.
+ */
+static void brcmf_sdio_chip_dead(struct brcmf_sdio *bus)
+{
+	if (bus->sdiodev->state != BRCMF_SDIOD_DATA)
+		return;
+
+	brcmf_sdiod_change_state(bus->sdiodev, BRCMF_SDIOD_NOMEDIUM);
+	brcmf_fw_crashed(&bus->sdiodev->func1->dev);
 }
 
 static void brcmf_sdio_dpc(struct brcmf_sdio *bus)
@@ -2738,6 +2756,8 @@ static void brcmf_sdio_dpc(struct brcmf_sdio *bus)
 			}
 			sdio_release_host(bus->sdiodev->func1);
 		}
+		if (err)
+			brcmf_sdio_chip_dead(bus);
 	} else if (atomic_read(&bus->intstatus) ||
 		   atomic_read(&bus->ipend) > 0 ||
 		   (!atomic_read(&bus->fcstate) &&
@@ -3614,6 +3634,9 @@ static int brcmf_sdio_bus_get_memdump(struct device *dev, void *data,
 
 	brcmf_dbg(INFO, "dump at 0x%08x: size=%zu\n", bus->ci->rambase,
 		  mem_size);
+
+	if (sdiodev->state == BRCMF_SDIOD_NOMEDIUM)
+		return -ENODEV;
 
 	address = bus->ci->rambase;
 	offset = err = 0;

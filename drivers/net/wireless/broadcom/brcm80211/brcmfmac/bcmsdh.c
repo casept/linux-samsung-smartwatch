@@ -868,7 +868,11 @@ void brcmf_sdiod_freezer_uncount(struct brcmf_sdio_dev *sdiodev)
 
 int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev)
 {
-	sdiodev->state = BRCMF_SDIOD_DOWN;
+	/* A chip that is gone or stopped answering stays NOMEDIUM, so the
+	 * teardown below doesn't wait for it on every access.
+	 */
+	if (sdiodev->state != BRCMF_SDIOD_NOMEDIUM)
+		sdiodev->state = BRCMF_SDIOD_DOWN;
 	if (sdiodev->bus) {
 		brcmf_sdio_remove(sdiodev->bus);
 		sdiodev->bus = NULL;
@@ -877,10 +881,15 @@ int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev)
 	brcmf_sdiod_freezer_detach(sdiodev);
 
 	/* Disable functions 2 then 1. */
-	sdio_claim_host(sdiodev->func1);
-	sdio_disable_func(sdiodev->func2);
-	sdio_disable_func(sdiodev->func1);
-	sdio_release_host(sdiodev->func1);
+	if (sdiodev->state != BRCMF_SDIOD_NOMEDIUM) {
+		sdio_claim_host(sdiodev->func1);
+		sdio_disable_func(sdiodev->func2);
+		sdio_disable_func(sdiodev->func1);
+		sdio_release_host(sdiodev->func1);
+	}
+
+	/* A probe after resume or reset starts over */
+	sdiodev->state = BRCMF_SDIOD_DOWN;
 
 	sg_free_table(&sdiodev->sgtable);
 	sdiodev->sbwad = 0;
