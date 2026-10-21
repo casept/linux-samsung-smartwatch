@@ -92,6 +92,11 @@ properties:
     description: Thermal sensor cells if used for thermal sensoring.
     const: 0
 
+  "#io-channel-cells":
+    description: The thermistor provides its temperature as an IIO channel,
+      for example to a battery fuel gauge.
+    const: 0
+
   pullup-uv:
     $ref: /schemas/types.yaml#/definitions/uint32
     description: Pull-up voltage in micro volts. Must always be specified.
