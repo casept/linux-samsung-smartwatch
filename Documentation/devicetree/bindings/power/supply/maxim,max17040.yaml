@@ -52,6 +52,15 @@ properties:
       max17040,41 have 2 byte rcomp, default to 0x97 0x00.
       All other devices have one byte rcomp, default to 0x97.
 
+  maxim,rcomp-charging:
+    $ref: /schemas/types.yaml#/definitions/uint8-array
+    minItems: 1
+    maxItems: 2
+    description: |
+      The rcomp value to use while the battery is charging, if it differs
+      from maxim,rcomp. The charge state is taken from the supplying power
+      supply. Same format as maxim,rcomp, defaults to maxim,rcomp.
+
   interrupts:
     maxItems: 1
 
