@@ -15,6 +15,7 @@
 #include <linux/err.h>
 #include <linux/fixp-arith.h>
 #include <linux/iio/consumer.h>
+#include <linux/iio/iio.h>
 #include <linux/hwmon.h>
 
 enum ntc_thermistor_type {
@@ -562,6 +563,55 @@ static const struct hwmon_chip_info ntc_chip_info = {
 	.info = ntc_info,
 };
 
+static const struct iio_chan_spec ntc_iio_channels[] = {
+	{
+		.type = IIO_TEMP,
+		.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
+	},
+};
+
+static int ntc_iio_read_raw(struct iio_dev *indio_dev,
+			    struct iio_chan_spec const *chan,
+			    int *val, int *val2, long mask)
+{
+	struct ntc_data *data = *(struct ntc_data **)iio_priv(indio_dev);
+	int ohm;
+
+	if (mask != IIO_CHAN_INFO_PROCESSED)
+		return -EINVAL;
+
+	ohm = ntc_thermistor_get_ohm(data);
+	if (ohm < 0)
+		return ohm;
+
+	*val = get_temp_mc(data, ohm);
+
+	return IIO_VAL_INT;
+}
+
+static const struct iio_info ntc_iio_info = {
+	.read_raw = ntc_iio_read_raw,
+};
+
+static int ntc_iio_register(struct device *dev, struct ntc_data *data)
+{
+	struct iio_dev *indio_dev;
+
+	indio_dev = devm_iio_device_alloc(dev, sizeof(data));
+	if (!indio_dev)
+		return -ENOMEM;
+
+	*(struct ntc_data **)iio_priv(indio_dev) = data;
+
+	indio_dev->name = dev_name(dev);
+	indio_dev->info = &ntc_iio_info;
+	indio_dev->modes = INDIO_DIRECT_MODE;
+	indio_dev->channels = ntc_iio_channels;
+	indio_dev->num_channels = ARRAY_SIZE(ntc_iio_channels);
+
+	return devm_iio_device_register(dev, indio_dev);
+}
+
 static int ntc_thermistor_parse_props(struct device *dev,
 				      struct ntc_data *data)
 {
@@ -647,6 +697,11 @@ static int ntc_thermistor_probe(struct platform_device *pdev)
 		dev_err(dev, "unable to register as hwmon device.\n");
 		return PTR_ERR(hwmon_dev);
 	}
+
+	ret = ntc_iio_register(dev, data);
+	if (ret)
+		return dev_err_probe(dev, ret,
+				     "unable to register as IIO device\n");
 
 	dev_info(dev, "Thermistor type: %s successfully probed.\n",
 		 pdev_id->name);
