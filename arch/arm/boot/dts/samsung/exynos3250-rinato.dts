@@ -954,12 +954,9 @@
 		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
 		reg = <0x36>;
 		maxim,double-soc;
-		/*
-		 * Downstream uses 0x62 on R380 and 0x58 on R381, picked at
-		 * runtime from the board revision. The mainline driver cannot
-		 * switch RCOMP by charge state, so hardcode the R380 value.
-		 */
-		maxim,rcomp = /bits/ 8 <0x62>;
+		maxim,rcomp = /bits/ 8 <0x47>;
+		/* 0x58 on the R381 */
+		maxim,rcomp-charging = /bits/ 8 <0x62>;
 	};
 };
 

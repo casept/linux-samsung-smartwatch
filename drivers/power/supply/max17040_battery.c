@@ -153,6 +153,8 @@ struct max17040_chip {
 	bool quirk_double_soc;
 	/* higher 8 bits for 17043+, 16 bits for 17040,41 */
 	u16 rcomp;
+	/* used instead of rcomp while the battery is charging */
+	u16 rcomp_charging;
 };
 
 static int max17040_reset(struct max17040_chip *chip)
@@ -179,6 +181,24 @@ static int max17040_set_rcomp(struct max17040_chip *chip, u16 rcomp)
 		0xffff : MAX17040_CFG_RCOMP_MASK;
 
 	return regmap_update_bits(chip->regmap, MAX17040_CONFIG, mask, rcomp);
+}
+
+static void max17040_update_rcomp(struct power_supply *psy)
+{
+	struct max17040_chip *chip = power_supply_get_drvdata(psy);
+	union power_supply_propval status;
+	u16 rcomp = chip->rcomp;
+	int ret;
+
+	ret = power_supply_get_property_from_supplier(psy,
+						      POWER_SUPPLY_PROP_STATUS,
+						      &status);
+	if (!ret && status.intval == POWER_SUPPLY_STATUS_CHARGING)
+		rcomp = chip->rcomp_charging;
+
+	ret = max17040_set_rcomp(chip, rcomp);
+	if (ret)
+		dev_err(&chip->client->dev, "Failed to set RCOMP: %d\n", ret);
 }
 
 static int max17040_raw_vcell_to_uvolts(struct max17040_chip *chip, u16 vcell)
@@ -229,13 +249,38 @@ static int max17040_get_online(struct max17040_chip *chip)
 	return 1;
 }
 
-static int max17040_get_of_data(struct max17040_chip *chip)
+static int max17040_read_rcomp(struct max17040_chip *chip,
+			      const char *propname, u16 *rcomp)
 {
 	struct device *dev = &chip->client->dev;
 	struct chip_data *data = &max17040_family[
 		(uintptr_t) of_device_get_match_data(dev)];
 	int rcomp_len;
-	u8 rcomp[2];
+	u8 buf[2];
+	int ret;
+
+	rcomp_len = device_property_count_u8(dev, propname);
+	if (rcomp_len < 0)
+		return 0;
+
+	if (rcomp_len != data->rcomp_bytes) {
+		dev_err(dev, "%s has incorrect length\n", propname);
+		return -EINVAL;
+	}
+
+	ret = device_property_read_u8_array(dev, propname, buf, rcomp_len);
+	if (ret)
+		return ret;
+
+	*rcomp = rcomp_len == 2 ? buf[0] << 8 | buf[1] : buf[0] << 8;
+
+	return 0;
+}
+
+static int max17040_get_of_data(struct max17040_chip *chip)
+{
+	struct device *dev = &chip->client->dev;
+	int ret;
 
 	chip->quirk_double_soc = device_property_read_bool(dev,
 							   "maxim,double-soc");
@@ -251,19 +296,14 @@ static int max17040_get_of_data(struct max17040_chip *chip)
 		return -EINVAL;
 	}
 
-	rcomp_len = device_property_count_u8(dev, "maxim,rcomp");
 	chip->rcomp = MAX17040_RCOMP_DEFAULT;
-	if (rcomp_len == data->rcomp_bytes) {
-		if (!device_property_read_u8_array(dev, "maxim,rcomp",
-						   rcomp, rcomp_len))
-			chip->rcomp = rcomp_len == 2 ? rcomp[0] << 8 | rcomp[1] :
-				      rcomp[0] << 8;
-	} else if (rcomp_len > 0) {
-		dev_err(dev, "maxim,rcomp has incorrect length\n");
-		return -EINVAL;
-	}
+	ret = max17040_read_rcomp(chip, "maxim,rcomp", &chip->rcomp);
+	if (ret)
+		return ret;
 
-	return 0;
+	chip->rcomp_charging = chip->rcomp;
+	return max17040_read_rcomp(chip, "maxim,rcomp-charging",
+				   &chip->rcomp_charging);
 }
 
 static void max17040_check_changes(struct max17040_chip *chip)
@@ -356,6 +396,12 @@ static int max17040_enable_alert_irq(struct max17040_chip *chip)
 					chip->battery->desc->name, chip);
 
 	return ret;
+}
+
+static void max17040_external_power_changed(struct power_supply *psy)
+{
+	max17040_update_rcomp(psy);
+	power_supply_changed(psy);
 }
 
 static int max17040_prop_writeable(struct power_supply *psy,
@@ -477,6 +523,7 @@ static const struct power_supply_desc max17040_battery_desc = {
 	.get_property		= max17040_get_property,
 	.set_property		= max17040_set_property,
 	.property_is_writeable  = max17040_prop_writeable,
+	.external_power_changed	= max17040_external_power_changed,
 	.properties		= max17040_battery_props,
 	.num_properties		= ARRAY_SIZE(max17040_battery_props),
 };
@@ -487,6 +534,7 @@ static const struct power_supply_desc max17040_battery_desc_no_temp = {
 	.get_property		= max17040_get_property,
 	.set_property		= max17040_set_property,
 	.property_is_writeable  = max17040_prop_writeable,
+	.external_power_changed	= max17040_external_power_changed,
 	.properties		= max17040_battery_props_no_temp,
 	.num_properties		= ARRAY_SIZE(max17040_battery_props_no_temp),
 };
@@ -548,7 +596,7 @@ static int max17040_probe(struct i2c_client *client)
 	if (chip_id == ID_MAX17040 || chip_id == ID_MAX17041)
 		max17040_reset(chip);
 
-	max17040_set_rcomp(chip, chip->rcomp);
+	max17040_update_rcomp(chip->battery);
 
 	/* check interrupt */
 	if (client->irq && chip->data.has_low_soc_alert) {
