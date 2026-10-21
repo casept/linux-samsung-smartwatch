@@ -1697,6 +1697,13 @@ static int charger_manager_probe(struct platform_device *pdev)
 	}
 	psy_cfg.attr_grp = desc->sysfs_groups;
 
+	cm->supplied_to[0] = devm_kstrdup(&pdev->dev, desc->psy_fuel_gauge,
+					  GFP_KERNEL);
+	if (!cm->supplied_to[0])
+		return -ENOMEM;
+	psy_cfg.supplied_to = cm->supplied_to;
+	psy_cfg.num_supplicants = ARRAY_SIZE(cm->supplied_to);
+
 	/*
 	 * Acquire charger regulators before exposing the sysfs entries, so
 	 * userspace cannot reach externally_control before the regulators

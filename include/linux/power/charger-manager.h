@@ -217,6 +217,8 @@ struct charger_desc {
  *	When setting true, stop charging
  * @psy_name_buf: the name of power-supply-class for charger manager
  * @charger_psy: power_supply for charger manager
+ * @supplied_to: the fuel gauge, which learns the charge state from
+ *	charger manager
  * @status_save_ext_pwr_inserted:
  *	saved status of external power before entering suspend-to-RAM
  * @status_save_batt:
@@ -244,6 +246,7 @@ struct charger_manager {
 	char psy_name_buf[PSY_NAME_MAX + 1];
 	struct power_supply_desc charger_psy_desc;
 	struct power_supply *charger_psy;
+	char *supplied_to[1];
 
 	u64 charging_start_time;
 	u64 charging_end_time;
