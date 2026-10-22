@@ -424,6 +424,12 @@
 			power-domains = <&pd_isp>;
 		};
 
+		cmu_acp: clock-controller@10450000 {
+			compatible = "samsung,exynos3250-cmu-acp";
+			reg = <0x10450000 0x1000>;
+			#clock-cells = <1>;
+		};
+
 		cmu_dmc: clock-controller@105c0000 {
 			compatible = "samsung,exynos3250-cmu-dmc";
 			reg = <0x105c0000 0x2000>;
@@ -484,6 +490,14 @@
 			clocks = <&cmu CLK_WDT>;
 			clock-names = "watchdog";
 			samsung,syscon-phandle = <&pmu_system_controller>;
+		};
+
+		trng: rng@10830600 {
+			compatible = "samsung,exynos3250-trng",
+				     "samsung,exynos5250-trng";
+			reg = <0x10830600 0x100>;
+			clocks = <&cmu_acp CLK_SSS>;
+			clock-names = "secss";
 		};
 
 		pinctrl_1: pinctrl@11000000 {
