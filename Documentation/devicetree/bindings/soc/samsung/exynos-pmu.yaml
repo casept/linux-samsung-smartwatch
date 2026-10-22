@@ -134,6 +134,14 @@ properties:
     description:
       Phandle to PMU interrupt generation interface.
 
+patternProperties:
+  "^syscon-poweroff-[a-z0-9-]+$":
+    $ref: /schemas/power/reset/syscon-poweroff.yaml#
+    type: object
+    description:
+      Further power off methods, tried in order of priority when the
+      syscon-poweroff one returns without powering off.
+
 required:
   - compatible
   - reg
