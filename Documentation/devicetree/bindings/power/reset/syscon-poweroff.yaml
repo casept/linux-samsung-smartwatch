@@ -31,6 +31,14 @@ properties:
     $ref: /schemas/types.yaml#/definitions/uint32
     description: Offset in the register map for the poweroff register (in bytes).
 
+  priority:
+    $ref: /schemas/types.yaml#/definitions/int32
+    default: 0
+    description:
+      Priority of this power off method. Methods with a higher priority are
+      tried first, and when one returns without powering off, the next one
+      is tried. Priorities other than the default must be unique.
+
   regmap:
     $ref: /schemas/types.yaml#/definitions/phandle
     deprecated: true
