@@ -1131,6 +1131,25 @@
 };
 
 &pmu_system_controller {
+	/*
+	 * A charger keeps the watch powered when PS_HOLD drops. Do what the
+	 * stock kernel does then: reset with INFORM2 cleared, which makes
+	 * S-Boot boot in charging mode (LPM) rather than normally.
+	 */
+	syscon-poweroff-charging {
+		compatible = "syscon-poweroff";
+		offset = <0x0808>; /* S5P_INFORM2 */
+		value = <0x0>;
+		priority = <(-10)>;
+	};
+
+	syscon-poweroff-reset {
+		compatible = "syscon-poweroff";
+		offset = <0x0400>; /* SWRESET */
+		value = <0x1>;
+		priority = <(-20)>;
+	};
+
 	/* Reboot mode for S-Boot is set in S5P_INFORM3 register of PMU */
 	reboot-mode {
 		compatible = "syscon-reboot-mode";
