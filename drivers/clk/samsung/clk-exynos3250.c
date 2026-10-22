@@ -103,6 +103,7 @@
 #define CLKS_NR_MAIN				(CLK_SCLK_MMC2 + 1)
 #define CLKS_NR_DMC				(CLK_DIV_DMCD + 1)
 #define CLKS_NR_ISP				(CLK_SCLK_MPWM_ISP + 1)
+#define CLKS_NR_ACP				(CLK_SSS + 1)
 
 static const unsigned long exynos3250_cmu_clk_regs[] __initconst = {
 	SRC_LEFTBUS,
@@ -938,6 +939,64 @@ static void __init exynos3250_cmu_dmc_init(struct device_node *np)
 }
 CLK_OF_DECLARE(exynos3250_cmu_dmc, "samsung,exynos3250-cmu-dmc",
 		exynos3250_cmu_dmc_init);
+
+/*
+ * CMU ACP
+ */
+
+#define SRC_ACP			0x0300
+#define DIV_ACP0		0x0500
+#define GATE_IP_ACP0		0x0900
+
+static const unsigned long exynos3250_cmu_acp_clk_regs[] __initconst = {
+	SRC_ACP,
+	DIV_ACP0,
+	GATE_IP_ACP0,
+};
+
+PNAME(mout_mpll_user_acp_p)	= { "fin_pll", "div_mpll_pre", };
+PNAME(mout_bpll_user_acp_p)	= { "fin_pll", "sclk_bpll", };
+PNAME(mout_core_r_bus_p)	= { "mout_mpll_user_acp", "mout_bpll_user_acp", };
+
+static const struct samsung_mux_clock acp_mux_clks[] __initconst = {
+	/* SRC_ACP */
+	MUX(CLK_MOUT_MPLL_USER_ACP, "mout_mpll_user_acp", mout_mpll_user_acp_p,
+	    SRC_ACP, 13, 1),
+	MUX(CLK_MOUT_BPLL_USER_ACP, "mout_bpll_user_acp", mout_bpll_user_acp_p,
+	    SRC_ACP, 11, 1),
+	MUX(CLK_MOUT_CORE_R_BUS, "mout_core_r_bus", mout_core_r_bus_p,
+	    SRC_ACP, 4, 1),
+};
+
+static const struct samsung_div_clock acp_div_clks[] __initconst = {
+	/* DIV_ACP0 */
+	DIV(CLK_DIV_PCLK_ACP, "div_pclk_acp", "div_aclk_acp", DIV_ACP0, 4, 3),
+	DIV(CLK_DIV_ACLK_ACP, "div_aclk_acp", "mout_core_r_bus", DIV_ACP0, 0, 3),
+};
+
+static const struct samsung_gate_clock acp_gate_clks[] __initconst = {
+	/* GATE_IP_ACP0 */
+	GATE(CLK_SSS, "sss", "div_aclk_acp", GATE_IP_ACP0, 4, 0, 0),
+};
+
+static const struct samsung_cmu_info acp_cmu_info __initconst = {
+	.mux_clks		= acp_mux_clks,
+	.nr_mux_clks		= ARRAY_SIZE(acp_mux_clks),
+	.div_clks		= acp_div_clks,
+	.nr_div_clks		= ARRAY_SIZE(acp_div_clks),
+	.gate_clks		= acp_gate_clks,
+	.nr_gate_clks		= ARRAY_SIZE(acp_gate_clks),
+	.nr_clk_ids		= CLKS_NR_ACP,
+	.clk_regs		= exynos3250_cmu_acp_clk_regs,
+	.nr_clk_regs		= ARRAY_SIZE(exynos3250_cmu_acp_clk_regs),
+};
+
+static void __init exynos3250_cmu_acp_init(struct device_node *np)
+{
+	samsung_cmu_register_one(np, &acp_cmu_info);
+}
+CLK_OF_DECLARE(exynos3250_cmu_acp, "samsung,exynos3250-cmu-acp",
+		exynos3250_cmu_acp_init);
 
 
 /*
