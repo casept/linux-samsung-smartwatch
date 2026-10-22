@@ -42,6 +42,7 @@ static int syscon_poweroff_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct syscon_poweroff_data *data;
 	int mask_err, value_err;
+	int priority;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -77,9 +78,12 @@ static int syscon_poweroff_probe(struct platform_device *pdev)
 		data->mask = 0xFFFFFFFF;
 	}
 
+	if (of_property_read_s32(dev->of_node, "priority", &priority))
+		priority = SYS_OFF_PRIO_DEFAULT;
+
 	return devm_register_sys_off_handler(&pdev->dev,
 					     SYS_OFF_MODE_POWER_OFF,
-					     SYS_OFF_PRIO_DEFAULT,
+					     priority,
 					     syscon_poweroff, data);
 }
 
