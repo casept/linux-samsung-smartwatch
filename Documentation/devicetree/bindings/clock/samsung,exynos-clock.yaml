@@ -21,6 +21,7 @@ properties:
     oneOf:
       - enum:
           - samsung,exynos3250-cmu
+          - samsung,exynos3250-cmu-acp
           - samsung,exynos3250-cmu-dmc
           - samsung,exynos3250-cmu-isp
           - samsung,exynos4210-clock

@@ -278,6 +278,22 @@
 #define CLK_DIV_DMCD			20
 
 /*
+ * CMU ACP
+ */
+
+/* Muxes */
+#define CLK_MOUT_MPLL_USER_ACP		1
+#define CLK_MOUT_BPLL_USER_ACP		2
+#define CLK_MOUT_CORE_R_BUS		3
+
+/* Dividers */
+#define CLK_DIV_ACLK_ACP		4
+#define CLK_DIV_PCLK_ACP		5
+
+/* Gates */
+#define CLK_SSS				6
+
+/*
  * CMU ISP
  */
 
