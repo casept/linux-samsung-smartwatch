@@ -30,6 +30,13 @@ config LOGO_LINUX_CLUT224
 	bool "Standard 224-color Linux logo"
 	default y
 
+config LOGO_ASTEROID_CLUT224
+	bool "224-color AsteroidOS logo"
+	help
+	  Show the AsteroidOS logo instead of the standard Linux logo. It is
+	  the logo the AsteroidOS boot splash shows, so the boot looks the same
+	  from the kernel to the splash screen.
+
 config LOGO_DEC_CLUT224
 	bool "224-color Digital Equipment Corporation Linux logo"
 	depends on MACH_DECSTATION || ALPHA
