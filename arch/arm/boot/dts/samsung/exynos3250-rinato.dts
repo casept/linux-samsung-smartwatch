@@ -33,6 +33,7 @@
 
 	chosen {
 		stdout-path = &serial_1;
+		bootargs = "console=ttySAC1,115200 console=ttyGS0,115200 bcon=logo-count:1 fbcon=logo-pos:center vt.global_cursor_default=0 printk.always_kmsg_dump=1 crash_kexec_post_notifiers panic=5 nosgx g_ether.dev_addr=12:34:56:78:9a:bc g_ether.host_addr=12:34:56:78:9a:bd root=/dev/mmcblk0p14 rw rootwait";
 	};
 
 	/* For ramoops, recoverable via upload mode */
