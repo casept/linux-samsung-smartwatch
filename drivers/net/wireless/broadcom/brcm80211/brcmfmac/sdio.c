@@ -324,7 +324,6 @@ struct rte_console {
 #define BRCMF_IDLE_INTERVAL	1
 
 #define KSO_WAIT_US 50
-#define MAX_KSO_ATTEMPTS (PMU_MAX_TRANSITION_DLY/KSO_WAIT_US)
 #define BRCMF_SDIO_MAX_ACCESS_ERRORS	5
 
 #ifdef DEBUG
@@ -703,6 +702,7 @@ brcmf_sdio_kso_control(struct brcmf_sdio *bus, bool on)
 	int err = 0;
 	int err_cnt = 0;
 	int try_cnt = 0;
+	unsigned long timeout;
 
 	brcmf_dbg(TRACE, "Enter: on=%d\n", on);
 
@@ -742,7 +742,11 @@ brcmf_sdio_kso_control(struct brcmf_sdio *bus, bool on)
 		bmask = SBSDIO_FUNC1_SLEEPCSR_KSO_MASK;
 	}
 
-	do {
+	/* Each try also reads and writes the register over the bus, which
+	 * takes longer than the delay between tries, so limit the time.
+	 */
+	timeout = jiffies + usecs_to_jiffies(PMU_MAX_TRANSITION_DLY);
+	for (;;) {
 		/* reliable KSO bit set/clr:
 		 * the sdiod sleep write access is synced to PMU 32khz clk
 		 * just one write attempt may fail,
@@ -759,18 +763,22 @@ brcmf_sdio_kso_control(struct brcmf_sdio *bus, bool on)
 		if (err && (err_cnt++ > BRCMF_SDIO_MAX_ACCESS_ERRORS))
 			break;
 
+		if (time_after(jiffies, timeout)) {
+			dev_err(bus->sdiodev->dev,
+				"KSO timeout after %d tries: rd_val=0x%x err=%d\n",
+				try_cnt, rd_val, err);
+			break;
+		}
+
 		udelay(KSO_WAIT_US);
 		brcmf_sdiod_writeb(bus->sdiodev, SBSDIO_FUNC1_SLEEPCSR, wr_val,
 				   &err);
-
-	} while (try_cnt++ < MAX_KSO_ATTEMPTS);
+		try_cnt++;
+	}
 
 	if (try_cnt > 2)
 		brcmf_dbg(SDIO, "try_cnt=%d rd_val=0x%x err=%d\n", try_cnt,
 			  rd_val, err);
-
-	if (try_cnt > MAX_KSO_ATTEMPTS)
-		brcmf_err("max tries: rd_val=0x%x err=%d\n", rd_val, err);
 
 	if (on)
 		sdio_retune_release(bus->sdiodev->func1);
