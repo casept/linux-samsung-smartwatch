@@ -1285,17 +1285,22 @@ static int dwc2_hsotg_handle_unaligned_buf_start(struct dwc2_hsotg *hsotg,
 						 struct dwc2_hsotg_req *hs_req)
 {
 	void *req_buf = hs_req->req.buf;
+	unsigned int len = hs_req->req.length;
 
-	/* If dma is not being used or buffer is aligned */
-	if (!using_dma(hsotg) || !((long)req_buf & 3))
+	/*
+	 * The DMA writes OUT data in whole words, so it overruns a buffer
+	 * whose length isn't a multiple of four by up to three bytes.
+	 */
+	if (!using_dma(hsotg) || !req_buf ||
+	    (!((long)req_buf & 3) && (hs_ep->dir_in || !(len & 3))))
 		return 0;
 
 	WARN_ON(hs_req->saved_req_buf);
 
 	dev_dbg(hsotg->dev, "%s: %s: buf=%p length=%d\n", __func__,
-		hs_ep->ep.name, req_buf, hs_req->req.length);
+		hs_ep->ep.name, req_buf, len);
 
-	hs_req->req.buf = kmalloc(hs_req->req.length, GFP_ATOMIC);
+	hs_req->req.buf = kmalloc(ALIGN(len, 4), GFP_ATOMIC);
 	if (!hs_req->req.buf) {
 		hs_req->req.buf = req_buf;
 		dev_err(hsotg->dev,
