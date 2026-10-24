@@ -433,10 +433,14 @@ static void exynos3250_pm_resume(void *data)
 {
 	u32 cpuid = read_cpuid_part();
 
+	/*
+	 * Restore this even when the system never slept: exynos_pm_suspend()
+	 * left the sequencer waiting for CPU0 alone, which AFTR must not use.
+	 */
+	pmu_raw_writel(S5P_USE_STANDBY_WFI_ALL, S5P_CENTRAL_SEQ_OPTION);
+
 	if (exynos_pm_central_resume())
 		goto early_wakeup;
-
-	pmu_raw_writel(S5P_USE_STANDBY_WFI_ALL, S5P_CENTRAL_SEQ_OPTION);
 
 	if (call_firmware_op(resume) == -ENOSYS
 	    && cpuid == ARM_CPU_PART_CORTEX_A9)
