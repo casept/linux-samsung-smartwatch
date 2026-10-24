@@ -169,4 +169,5 @@ const struct exynos_pmu_data exynos3250_pmu_data = {
 	.pmu_config	= exynos3250_pmu_config,
 	.pmu_init	= exynos3250_pmu_init,
 	.powerdown_conf_extra	= exynos3250_powerdown_conf_extra,
+	.pmu_reserved_abort	= true,
 };

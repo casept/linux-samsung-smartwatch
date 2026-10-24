@@ -8,6 +8,7 @@
 #include <linux/array_size.h>
 #include <linux/arm-smccc.h>
 #include <linux/bitmap.h>
+#include <linux/clk.h>
 #include <linux/cpuhotplug.h>
 #include <linux/cpu_pm.h>
 #include <linux/of.h>
@@ -235,6 +236,56 @@ static const struct regmap_config regmap_smccfg = {
 	.reg_update_bits = tensor_sec_update_bits,
 	.use_raw_spinlock = true,
 };
+
+/*
+ * Reading a reserved PMU address raises an external abort. Mark every
+ * register precious so that regmap's debugfs dump, which walks the whole
+ * range under the map lock, skips them. Drivers read and write as usual.
+ */
+static bool exynos_pmu_precious_reg(struct device *dev, unsigned int reg)
+{
+	return true;
+}
+
+static struct regmap *exynos_pmu_init_mmio_regmap(struct device *dev,
+						  struct resource *res)
+{
+	const struct regmap_config cfg = {
+		.reg_bits = 32,
+		.reg_stride = 4,
+		.val_bits = 32,
+		.max_register = resource_size(res) - 4,
+		.precious_reg = exynos_pmu_precious_reg,
+	};
+	struct regmap *regmap;
+	struct clk *clk;
+	int ret;
+
+	/* Same clock and range as the generic syscon regmap */
+	clk = devm_clk_get_optional(dev, NULL);
+	if (IS_ERR(clk))
+		return ERR_CAST(clk);
+
+	regmap = devm_regmap_init_mmio(dev, pmu_base_addr, &cfg);
+	if (IS_ERR(regmap))
+		return regmap;
+
+	if (clk) {
+		ret = regmap_mmio_attach_clk(regmap, clk);
+		if (ret)
+			return ERR_PTR(ret);
+	}
+
+	ret = of_syscon_register_regmap(dev->of_node, regmap);
+	if (ret == -EEXIST) {
+		dev_warn(dev, "syscon regmap created before probe, debugfs reads of it may fault\n");
+		return syscon_node_to_regmap(dev->of_node);
+	}
+	if (ret)
+		return ERR_PTR(ret);
+
+	return regmap;
+}
 
 static const struct regmap_config regmap_pmu_intr = {
 	.name = "pmu_intr_gen",
@@ -642,6 +693,12 @@ static int exynos_pmu_probe(struct platform_device *pdev)
 		ret = of_syscon_register_regmap(dev->of_node, regmap);
 		if (ret)
 			return ret;
+	} else if (pmu_context->pmu_data &&
+		   pmu_context->pmu_data->pmu_reserved_abort) {
+		regmap = exynos_pmu_init_mmio_regmap(dev, res);
+		if (IS_ERR(regmap))
+			return dev_err_probe(&pdev->dev, PTR_ERR(regmap),
+					     "regmap init failed\n");
 	} else {
 		/* let syscon create mmio regmap */
 		regmap = syscon_node_to_regmap(dev->of_node);
