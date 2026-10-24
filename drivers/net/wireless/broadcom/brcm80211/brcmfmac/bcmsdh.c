@@ -1086,6 +1086,9 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
 		kfree(bus_if);
 		return -ENOMEM;
 	}
+	/* Only brcmf_sdio_probe() leaves the device to a firmware callback */
+	init_completion(&sdiodev->dev_init_done);
+	complete_all(&sdiodev->dev_init_done);
 
 	/* store refs to functions used. mmc_card does
 	 * not hold the F0 function pointer.
@@ -1135,6 +1138,10 @@ static void brcmf_ops_sdio_remove(struct sdio_func *func)
 	bus_if = dev_get_drvdata(&func->dev);
 	if (bus_if) {
 		sdiodev = bus_if->bus_priv.sdio;
+
+		/* Let the firmware callback finish setting the device up */
+		if (func->num == 1)
+			wait_for_completion(&sdiodev->dev_init_done);
 
 		/* start by unregistering irqs */
 		brcmf_sdiod_intr_unregister(sdiodev);
@@ -1204,6 +1211,9 @@ static int brcmf_ops_sdio_suspend(struct device *dev)
 
 	bus_if = dev_get_drvdata(dev);
 	sdiodev = bus_if->bus_priv.sdio;
+
+	/* Let the firmware callback finish setting the device up */
+	wait_for_completion(&sdiodev->dev_init_done);
 
 	if (sdiodev->wowl_enabled || !cap_power_off) {
 		brcmf_sdiod_freezer_on(sdiodev);

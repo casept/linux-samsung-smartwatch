@@ -6,6 +6,7 @@
 #ifndef	BRCMFMAC_SDIO_H
 #define	BRCMFMAC_SDIO_H
 
+#include <linux/completion.h>
 #include <linux/skbuff.h>
 #include <linux/firmware.h>
 #include "firmware.h"
@@ -193,6 +194,7 @@ struct brcmf_sdio_dev {
 	enum brcmf_sdiod_state state;
 	struct brcmf_sdiod_freezer *freezer;
 	const struct firmware *clm_fw;
+	struct completion dev_init_done;
 };
 
 /* sdio core registers */
