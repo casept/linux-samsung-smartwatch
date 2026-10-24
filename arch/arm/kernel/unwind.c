@@ -24,6 +24,8 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/export.h>
+#include <linux/percpu.h>
+#include <linux/preempt.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -83,6 +85,28 @@ extern const struct unwind_idx __stop_unwind_idx[];
 
 static DEFINE_RAW_SPINLOCK(unwind_lock);
 static LIST_HEAD(unwind_tables);
+
+/*
+ * Set while this CPU is inside the module-table lookup below, from just
+ * before unwind_lock is taken until just after it is released.
+ *
+ * search_index() can call pr_warn() while unwind_lock is held (e.g. its
+ * "Unknown symbol address" message). Printing can, in turn, synchronously
+ * walk the current stack again - e.g. lockdep capturing a trace for a new
+ * dependency edge on some unrelated lock taken by the console/printk path.
+ * If that nested stack walk needs to resolve a PC in module text, it comes
+ * straight back into this function on the very same CPU, and would try to
+ * take unwind_lock a second time. unwind_lock is a non-recursive raw
+ * spinlock, so that is a self-deadlock: it spins forever with IRQs off,
+ * wedging the CPU (see the "BUG: spinlock recursion on ... unwind_lock"
+ * report this guard is meant to prevent).
+ *
+ * Rather than rely on none of that call chain ever touching module text,
+ * just refuse to re-enter: a reentrant lookup returns "not found", which
+ * only truncates whatever nested backtrace triggered it instead of
+ * deadlocking the machine.
+ */
+static DEFINE_PER_CPU(bool, unwind_active);
 
 /* Convert a prel31 symbol to an absolute address */
 #define prel31_to_addr(ptr)				\
@@ -189,6 +213,19 @@ static const struct unwind_idx *unwind_find_idx(unsigned long addr)
 		/* module unwind tables */
 		struct unwind_table *table;
 
+		/*
+		 * Refuse to re-enter: see the comment on unwind_active. This
+		 * must be checked and set *before* taking unwind_lock, since
+		 * the deadlock this guards against is a second, nested
+		 * attempt to take that very lock on this CPU.
+		 */
+		preempt_disable();
+		if (unlikely(this_cpu_read(unwind_active))) {
+			preempt_enable();
+			return NULL;
+		}
+		this_cpu_write(unwind_active, true);
+
 		raw_spin_lock_irqsave(&unwind_lock, flags);
 		list_for_each_entry(table, &unwind_tables, list) {
 			if (addr >= table->begin_addr &&
@@ -202,6 +239,9 @@ static const struct unwind_idx *unwind_find_idx(unsigned long addr)
 			}
 		}
 		raw_spin_unlock_irqrestore(&unwind_lock, flags);
+
+		this_cpu_write(unwind_active, false);
+		preempt_enable();
 	}
 
 	pr_debug("%s: idx = %p\n", __func__, idx);
