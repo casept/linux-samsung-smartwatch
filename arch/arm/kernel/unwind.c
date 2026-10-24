@@ -169,7 +169,8 @@ static const struct unwind_idx *search_index(unsigned long addr,
 	if (likely(start->addr_offset <= addr_prel31))
 		return start;
 	else {
-		pr_warn("unwind: Unknown symbol address %08lx\n", addr);
+		pr_warn_ratelimited("unwind: Unknown symbol address %08lx\n",
+				    addr);
 		return NULL;
 	}
 }
@@ -469,7 +470,8 @@ int unwind_frame(struct stackframe *frame)
 				frame->pc = frame->lr;
 				return URC_OK;
 			}
-			pr_warn("unwind: Index not found %08lx\n", frame->pc);
+			pr_warn_ratelimited("unwind: Index not found %08lx\n",
+					    frame->pc);
 		}
 		return -URC_FAILURE;
 	}
