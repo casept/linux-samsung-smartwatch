@@ -20,15 +20,19 @@
 
 struct exynos_dsi {
 	struct drm_encoder encoder;
+	struct exynos_drm_crtc *crtc;
 };
 
 static irqreturn_t exynos_dsi_te_irq_handler(struct samsung_dsim *dsim)
 {
 	struct exynos_dsi *dsi = dsim->priv;
-	struct drm_encoder *encoder = &dsi->encoder;
 
+	/*
+	 * Not encoder->crtc: every atomic commit including the connector
+	 * clears it for a moment, even while the output stays enabled.
+	 */
 	if (dsim->state & DSIM_STATE_VIDOUT_AVAILABLE)
-		exynos_drm_crtc_te_handler(encoder->crtc);
+		exynos_drm_crtc_te_handler(&dsi->crtc->base);
 
 	return IRQ_HANDLED;
 }
@@ -84,6 +88,8 @@ static int exynos_dsi_bind(struct device *dev, struct device *master, void *data
 	ret = exynos_drm_set_possible_crtcs(encoder, EXYNOS_DISPLAY_TYPE_LCD);
 	if (ret < 0)
 		return ret;
+
+	dsi->crtc = exynos_drm_crtc_get_by_type(drm_dev, EXYNOS_DISPLAY_TYPE_LCD);
 
 	return mipi_dsi_host_register(&dsim->dsi_host);
 }
