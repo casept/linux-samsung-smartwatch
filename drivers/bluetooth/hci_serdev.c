@@ -281,8 +281,13 @@ static size_t hci_uart_receive_buf(struct serdev_device *serdev,
 		return 0;
 	}
 
-	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags))
+	/* Keep the protocol from being closed while it receives */
+	percpu_down_read(&hu->proto_lock);
+
+	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags)) {
+		percpu_up_read(&hu->proto_lock);
 		return 0;
+	}
 
 	/* It does not need a lock here as it is already protected by a mutex in
 	 * tty caller
@@ -291,6 +296,8 @@ static size_t hci_uart_receive_buf(struct serdev_device *serdev,
 
 	if (hu->hdev)
 		hu->hdev->stat.byte_rx += count;
+
+	percpu_up_read(&hu->proto_lock);
 
 	return count;
 }
@@ -330,7 +337,7 @@ int hci_uart_register_device_priv(struct hci_uart *hu,
 	if (!hdev) {
 		BT_ERR("Can't allocate HCI device");
 		err = -ENOMEM;
-		goto err_alloc;
+		goto err_close_proto;
 	}
 
 	hu->hdev = hdev;
@@ -372,18 +379,20 @@ int hci_uart_register_device_priv(struct hci_uart *hu,
 	if (hci_register_dev(hdev) < 0) {
 		BT_ERR("Can't register HCI device");
 		err = -ENODEV;
-		goto err_register;
+		goto err_close_proto;
 	}
 
 	set_bit(HCI_UART_REGISTERED, &hu->flags);
 
 	return 0;
 
-err_register:
-	hci_free_dev(hdev);
-err_alloc:
+err_close_proto:
+	percpu_down_write(&hu->proto_lock);
 	clear_bit(HCI_UART_PROTO_READY, &hu->flags);
+	percpu_up_write(&hu->proto_lock);
 	p->close(hu);
+	if (hdev)
+		hci_free_dev(hdev);
 err_open:
 	serdev_device_close(hu->serdev);
 err_rwsem:
